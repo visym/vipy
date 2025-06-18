@@ -47,7 +47,7 @@ Quickstart
 -------------------
 ```python
 import vipy
-vipy.image.owl().mindim(512).centersquare().show()
+vipy.image.owl().mindim(512).show()
 ```
 <img src="https://raw.githubusercontent.com/visym/vipy/master/docs/vipy_image_owl.jpg" width="700">
 
@@ -58,7 +58,6 @@ vipy.dataset.registry('coco_2014').takeone().show()
 <img src="https://raw.githubusercontent.com/visym/vipy/master/docs/vipy_coco2014_000000290678.jpg" width="700">
 
 ```python
-import vipy
 v = vipy.dataset.registry('youtubeBB').takeone()
 vipy.visualize.montage([im.centersquare().mindim(256).annotate() t in v.trackclip() for im in t.framerate(1)]).show()
 ```
