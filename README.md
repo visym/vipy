@@ -53,9 +53,5 @@ vipy.image.owl().mindim(512).zeropad(padwidth=150, padheight=0).show()
 ```
 <img src="https://raw.githubusercontent.com/visym/vipy/master/docs/vipy_image_owl.jpg" width="700">
 
-```python
-print(vipy.dataset.registry('imagenet21k'))
-<vipy.dataset.Dataset: id=imagenet21k, len=13153500, type=<class 'vipy.image.TaggedImage'>>
-```
 
-The [tutorials](https://visym.github.io/vipy/#tutorials) and [demos](https://github.com/visym/vipy/tree/master/demo) provide useful examples to help you get started.
+The [tutorials](https://visym.github.io/vipy/#tutorials) provide useful examples to help you get started.
