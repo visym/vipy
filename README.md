@@ -49,19 +49,19 @@ Quickstart
 import vipy
 vipy.image.owl().mindim(512).show()
 ```
-<img src="https://raw.githubusercontent.com/visym/vipy/master/docs/vipy_image_owl.jpg" width="700">
+<img src="https://raw.githubusercontent.com/visym/vipy/master/docs/vipy_image_owl.jpg" width="980">
 
 ```python
 import vipy
 vipy.dataset.registry('coco_2014').takeone().show()
 ```
-<img src="https://raw.githubusercontent.com/visym/vipy/master/docs/vipy_coco2014_000000290678.jpg" width="700">
+<img src="https://raw.githubusercontent.com/visym/vipy/master/docs/vipy_coco2014_000000290678.jpg" width="980">
 
 ```python
 v = vipy.dataset.registry('youtubeBB').takeone()
 vipy.visualize.montage([im.centersquare().mindim(256).annotate() t in v.trackclip() for im in t.framerate(1)]).show()
 ```
-<img src="https://raw.githubusercontent.com/visym/vipy/master/test/youtubeBB_bear_framerate_29p97.jpg" width="700">
+<img src="https://raw.githubusercontent.com/visym/vipy/master/test/youtubeBB_bear_framerate_29p97.jpg" width="980">
 
 
 The [tutorials](https://visym.github.io/vipy/#tutorials) provide useful examples to help you get started.
