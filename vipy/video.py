@@ -1493,7 +1493,7 @@ class Video():
         """Return the size in bytes of the filename(), None if the filename() is invalid"""
         return os.path.getsize(self.filename()) if self.hasfilename() else None
 
-    def downloadif(self, timeout=10, verbose=True, max_filesize='999m'):
+    def downloadif(self, timeout=10, verbose=False, max_filesize='999m'):
         """Download URL to filename if the filename has not already been downloaded"""
         return self.download(timeout=timeout, verbose=verbose, max_filesize=max_filesize) if self.hasurl() and not self.isdownloaded() else self
     
@@ -1656,7 +1656,7 @@ class Video():
         if self.isloaded():
             return self[framenum]
         elif self.hasurl() and not self.hasfilename():
-            self.download(verbose=True)  
+            self.download(verbose=False)  
         if not self.hasfilename():
             raise ValueError('Video file not found')
         if iswebp(self.filename()) or isgif(self.filename()):
