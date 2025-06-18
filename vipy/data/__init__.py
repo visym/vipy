@@ -42,3 +42,6 @@ import vipy.data.lvis
 import vipy.data.widerface
 import vipy.data.kitti
 import vipy.data.youtubeBB
+import vipy.data.pip
+import vipy.data.cap
+

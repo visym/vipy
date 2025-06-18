@@ -58,7 +58,7 @@ class Dataset():
         assert loader is None or callable(loader)
         
         self._id = id
-        self._ds = dataset  
+        self._ds = dataset if not isinstance(dataset, Dataset) else dataset._ds
         self._idx = None  # random access on-demand
         self._loader = loader  # not serializable if lambda is provided
 
@@ -750,7 +750,8 @@ def registry(name=None, datadir=None, freeze=True, clean=False, download=False, 
        'yfcc100m','yfcc100m_url','tiny_imagenet','coyo300m','coyo700m','pascal_voc_2007','coco_2014', 'ava',
        'activitynet', 'open_images_v7', 'imagenet', 'imagenet21k', 'visualgenome' ,'widerface','meva_kf1',
        'objectnet','lfw','inaturalist_2021','kinetics','hmdb','places365','ucf101','lvis','kitti',
-       'imagenet_localization','laion2b','datacomp_1b','imagenet2014_det','imagenet_faces','youtubeBB'
+       'imagenet_localization','laion2b','datacomp_1b','imagenet2014_det','imagenet_faces','youtubeBB',
+       'pip_370k','pip_175k','cap','cap_pad','cap_detection'
 
     Returns:
        (trainset, valset, testset) tuple where each is a `vipy.dataset.Dataset` or None, or a single split if name has a ":SPLIT" suffix or split kwarg provided
@@ -763,7 +764,8 @@ def registry(name=None, datadir=None, freeze=True, clean=False, download=False, 
                 'yfcc100m','yfcc100m_url','tiny_imagenet','coyo300m','coyo700m','pascal_voc_2007','coco_2014', 'ava',
                 'activitynet','open_images_v7','imagenet','imagenet21k','visualgenome','widerface', 'youtubeBB',
                 'objectnet','lfw','inaturalist_2021','kinetics','hmdb','places365','ucf101','kitti','meva_kf1',
-                'lvis','imagenet_localization','laion2b','datacomp_1b','imagenet2014_det','imagenet_faces')  # Add to docstring too...
+                'lvis','imagenet_localization','laion2b','datacomp_1b','imagenet2014_det','imagenet_faces',
+                'pip_175k','pip_370k','cap','cap_pad','cap_detection')  # Add to docstring too...
     
     if name is None:
         return tuple(sorted(datasets))
@@ -894,6 +896,16 @@ def registry(name=None, datadir=None, freeze=True, clean=False, download=False, 
         trainset = vipy.data.youtubeBB.YoutubeBB(namedir)
     elif name == 'meva_kf1':
         trainset = vipy.data.meva.KF1(namedir).dataset()  # consider using "with vipy.globals.multiprocessing(pct=0.5):"
+    elif name == 'pip_175k':
+        trainset = vipy.data.pip.PIP_175k(namedir)
+    elif name == 'pip_370k':
+        trainset = vipy.data.pip.PIP_370k(namedir)
+    elif name == 'cap':
+        trainset = vipy.data.cap.CAP_classification_clip(namedir)
+    elif name == 'cap_pad':
+        trainset = vipy.data.cap.CAP_classification_pad(namedir)        
+    elif name == 'cap_detection':
+        trainset = vipy.data.cap.CAP_detection(namedir)
     else:
         raise ValueError('unknown dataset "%s" - choose from "%s"' % (name, ', '.join(sorted(datasets))))
     
