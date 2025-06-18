@@ -18,7 +18,7 @@ def _test_youtubeBB():
 
     v = vipy.load('youtubeBB_bear_framerate_29p97.json')  # in test/
     framelist = [[im for im in t.framerate(1).load()] for t in v.clone().trackclip()]    
-    vipy.visualize.montage([im.centersquare().annotate() for frames in framelist for im in frames]).saveas('youtubeBB_bear_framerate_29p97.jpg')
+    vipy.visualize.montage([im.centersquare().mindim(256).annotate() for frames in framelist for im in frames]).saveas('youtubeBB_bear_framerate_29p97.jpg')
 
     print('PASSED')
 

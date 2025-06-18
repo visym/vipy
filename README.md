@@ -11,11 +11,11 @@ VIPY provides:
 
 * Representation of videos with labeled activities that can be resized, clipped, rotated, scaled, padded, cropped and resampled
 * Representation of images with object bounding boxes that can be manipulated as easily as editing an image
-* Clean visualization of annotated images and videos 
+* Clean visualization of annotated images and video
+* Fluent interface for chaining operations on videos and images
 * Lazy loading of images and videos suitable for distributed processing (e.g. dask, spark)
 * Straightforward integration into machine learning toolchains (e.g. torch, numpy)
-* Fluent interface for chaining operations on videos and images
-* Image/Video dataset download, unpack and import (e.g. Imagenet21k, Coco 2014, Visual Genome, Open Images V7, Kinetics700, YoutubeBB, ActivityNet, ... )
+* Visual dataset download, unpack and import (e.g. Imagenet21k, Coco 2014, Visual Genome, Open Images V7, Kinetics700, YoutubeBB, ActivityNet, ... )
 * Minimum dependencies for easy installation (e.g. AWS Lambda, Flask)
 
 
@@ -47,14 +47,22 @@ Quickstart
 -------------------
 ```python
 import vipy
-vipy.image.owl().mindim(512).zeropad(padwidth=150, padheight=0).show()
+vipy.image.owl().mindim(512).centersquare().show()
 ```
 <img src="https://raw.githubusercontent.com/visym/vipy/master/docs/vipy_image_owl.jpg" width="700">
 
 ```python
+import vipy
 vipy.dataset.registry('coco_2014').takeone().show()
 ```
 <img src="https://raw.githubusercontent.com/visym/vipy/master/docs/vipy_coco2014_000000290678.jpg" width="700">
+
+```python
+import vipy
+v = vipy.dataset.registry('youtubeBB').takeone()
+vipy.visualize.montage([im.centersquare().mindim(256).annotate() t in v.trackclip() for im in t.framerate(1)]).show()
+```
+<img src="https://raw.githubusercontent.com/visym/vipy/master/test/youtubeBB_bear_framerate_29p97.jpg" width="700">
 
 
 The [tutorials](https://visym.github.io/vipy/#tutorials) provide useful examples to help you get started.

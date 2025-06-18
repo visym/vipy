@@ -2321,8 +2321,8 @@ class Scene(TaggedImage):
         return self.objects([])
     
     def boundingbox(self):
-        """The boundingbox of a scene is the union of all object bounding boxes, or None if there are no objects"""
-        boxes = [vipy.geometry.BoundingBox.cast(bb) for bb in self.objects()]
+        """The boundingbox of a scene is the union of all object bounding boxes, or None if there are no objects.  Load to compensate for normalized coordinates"""
+        boxes = [vipy.geometry.BoundingBox.cast(bb) for bb in self.load().objects()]
         bb = boxes[0].clone() if len(boxes) >= 1 else None
         return bb.union(boxes[1:]) if len(boxes) >= 2 else bb
 
@@ -2469,7 +2469,7 @@ class Scene(TaggedImage):
     def objectsquare(self, dilate=1.0):
         """Crop image using the `vipy.image.Scene.boundingbox` with dilation factor, setting to maxsquare prior to crop.  Crop will be zeropadded if outside the image rectangle."""
         bb = self.boundingbox()
-        return self.padcrop(bb.dilate(dilate).maxsquare() if maxsquare else bb.dilate(dilate)) if bb is not None else self        
+        return self.padcrop(bb.dilate(dilate).maxsquare()) if bb is not None else self        
     
     def centercrop(self, height, width):
         """Crop image of size (height x width) in the center, keeping the image centroid constant"""
