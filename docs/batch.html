@@ -26,7 +26,7 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/batch.py#L1-L225" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/f10b3f6aec0ef011e86ee11667579388379a8ac3/vipy/batch.py#L1-L225" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">import os
 import sys
@@ -304,7 +304,7 @@ If so, then an operation on the batch is performed on each of the elements in th
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/batch.py#L22-L223" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/f10b3f6aec0ef011e86ee11667579388379a8ac3/vipy/batch.py#L22-L223" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Batch():
     &#34;&#34;&#34;vipy.batch.Batch class
@@ -519,7 +519,7 @@ If so, then an operation on the batch is performed on each of the elements in th
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/batch.py#L185-L197" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/f10b3f6aec0ef011e86ee11667579388379a8ac3/vipy/batch.py#L185-L197" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def filter(self, f_lambda):
     &#34;&#34;&#34;Run the lambda function on each of the elements of the batch and filter based on the provided lambda keeping those elements that return true 
@@ -556,7 +556,7 @@ If it does, construct the lambda with default parameter capture:</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/batch.py#L157-L183" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/f10b3f6aec0ef011e86ee11667579388379a8ac3/vipy/batch.py#L157-L183" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def map(self, f_lambda, args=None):
     &#34;&#34;&#34;Run the lambda function on each of the elements of the batch and return the batch object.
@@ -595,7 +595,7 @@ If it does, construct the lambda with default parameter capture:</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/batch.py#L145-L151" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/f10b3f6aec0ef011e86ee11667579388379a8ac3/vipy/batch.py#L145-L151" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def result(self):
     &#34;&#34;&#34;Return the result of the batch processing, ordered&#34;&#34;&#34;
@@ -627,7 +627,7 @@ net to take advantage of this GPU rather than using the default cuda:0.</p></div
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/batch.py#L199-L223" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/f10b3f6aec0ef011e86ee11667579388379a8ac3/vipy/batch.py#L199-L223" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def scattermap(self, f_lambda, obj):
     &#34;&#34;&#34;Scatter obj to all workers, and apply lambda function f(obj, im) to each element in batch

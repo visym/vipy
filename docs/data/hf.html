@@ -1,0 +1,738 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
+<meta name="generator" content="pdoc 0.11.6" />
+<meta name="google-site-verification" content="aB8LkQegj94_TJPdrcJm2ldIRWyXY82Jp24Gtkdgyn0" />
+<title>vipy.data.hf API documentation</title>
+<meta name="description" content="" />
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
+<link rel="stylesheet preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/styles/github.min.css" crossorigin>
+<style>:root{--highlight-color:#fe9}.flex{display:flex !important}body{line-height:1.5em}#content{padding:20px}#sidebar{padding:30px;overflow:hidden}#sidebar > *:last-child{margin-bottom:2cm}#lunr-search{width:100%;font-size:1em;padding:6px 9px 5px 9px;border:1px solid silver}.http-server-breadcrumbs{font-size:130%;margin:0 0 15px 0}#footer{font-size:.75em;padding:5px 30px;border-top:1px solid #ddd;text-align:right}#footer p{margin:0 0 0 1em;display:inline-block}#footer p:last-child{margin-right:30px}h1,h2,h3,h4,h5{font-weight:300}h1{font-size:2.5em;line-height:1.1em}h2{font-size:1.75em;margin:1em 0 .50em 0}h3{font-size:1.4em;margin:25px 0 10px 0}h4{margin:0;font-size:105%}h1:target,h2:target,h3:target,h4:target,h5:target,h6:target{background:var(--highlight-color);padding:.2em 0}a{color:#058;text-decoration:none;transition:color .3s ease-in-out}a:hover{color:#e82}.title code{font-weight:bold}h2[id^="header-"]{margin-top:2em}.ident{color:#900}pre code{background:#f8f8f8;font-size:.8em;line-height:1.4em}code{background:#f2f2f1;padding:1px 4px;overflow-wrap:break-word}h1 code{background:transparent}pre{background:#f8f8f8;border:0;border-top:1px solid #ccc;border-bottom:1px solid #ccc;margin:1em 0;padding:1ex}#http-server-module-list{display:flex;flex-flow:column}#http-server-module-list div{display:flex}#http-server-module-list dt{min-width:10%}#http-server-module-list p{margin-top:0}.toc ul,#index{list-style-type:none;margin:0;padding:0}#index code{background:transparent}#index h3{border-bottom:1px solid #ddd}#index ul{padding:0}#index h4{margin-top:.6em;font-weight:bold}@media (min-width:200ex){#index .two-column{column-count:2}}@media (min-width:300ex){#index .two-column{column-count:3}}dl{margin-bottom:2em}dl dl:last-child{margin-bottom:4em}dd{margin:0 0 1em 3em}#header-classes + dl > dd{margin-bottom:3em}dd dd{margin-left:2em}dd p{margin:10px 0}.name{background:#eee;font-weight:bold;font-size:.85em;padding:5px 10px;display:inline-block;min-width:40%}.name:hover{background:#e0e0e0}dt:target .name{background:var(--highlight-color)}.name > span:first-child{white-space:nowrap}.name.class > span:nth-child(2){margin-left:.4em}.inherited{color:#999;border-left:5px solid #eee;padding-left:1em}.inheritance em{font-style:normal;font-weight:bold}.desc h2{font-weight:400;font-size:1.25em}.desc h3{font-size:1em}.desc dt code{background:inherit}.source summary,.git-link-div{color:#666;text-align:right;font-weight:400;font-size:.8em;text-transform:uppercase}.source summary > *{white-space:nowrap;cursor:pointer}.git-link{color:inherit;margin-left:1em}.source pre{max-height:500px;overflow:auto;margin:0}.source pre code{font-size:12px;overflow:visible}.hlist{list-style:none}.hlist li{display:inline}.hlist li:after{content:',\2002'}.hlist li:last-child:after{content:none}.hlist .hlist{display:inline;padding-left:1em}img{max-width:100%}td{padding:0 .5em}.admonition{padding:.1em .5em;margin-bottom:1em}.admonition-title{font-weight:bold}.admonition.note,.admonition.info,.admonition.important{background:#aef}.admonition.todo,.admonition.versionadded,.admonition.tip,.admonition.hint{background:#dfd}.admonition.warning,.admonition.versionchanged,.admonition.deprecated{background:#fd4}.admonition.error,.admonition.danger,.admonition.caution{background:lightpink}</style>
+<style media="screen and (min-width: 700px)">@media screen and (min-width:700px){#sidebar{width:30%;height:100vh;overflow:auto;position:sticky;top:0}#content{width:70%;max-width:100ch;padding:3em 4em;border-left:1px solid #ddd}pre code{font-size:1em}.item .name{font-size:1em}main{display:flex;flex-direction:row-reverse;justify-content:flex-end}.toc ul ul,#index ul{padding-left:1.5em}.toc > ul > li{margin-top:.5em}}</style>
+<style media="print">@media print{#sidebar h1{page-break-before:always}.source{display:none}}@media print{*{background:transparent !important;color:#000 !important;box-shadow:none !important;text-shadow:none !important}a[href]:after{content:" (" attr(href) ")";font-size:90%}a[href][title]:after{content:none}abbr[title]:after{content:" (" attr(title) ")"}.ir a:after,a[href^="javascript:"]:after,a[href^="#"]:after{content:""}pre,blockquote{border:1px solid #999;page-break-inside:avoid}thead{display:table-header-group}tr,img{page-break-inside:avoid}img{max-width:100% !important}@page{margin:0.5cm}p,h2,h3{orphans:3;widows:3}h1,h2,h3,h4,h5,h6{page-break-after:avoid}}</style>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/highlight.min.js" integrity="sha256-Uv3H6lx7dJmRfRvH8TH6kJD1TSK1aFcwgx+mdg3epi8=" crossorigin></script>
+<script>window.addEventListener('DOMContentLoaded', () => hljs.initHighlighting())</script>
+</head>
+<body>
+<main>
+<article id="content">
+<header>
+<h1 class="title">Module <code>vipy.data.hf</code></h1>
+</header>
+<section id="section-intro">
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/f10b3f6aec0ef011e86ee11667579388379a8ac3/vipy/data/hf.py#L1-L214" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">import os
+import numpy as np
+import json
+import PIL
+import io
+
+from vipy.dataset import Dataset
+from vipy.image import ImageCategory, TaggedImage, Scene, Image
+from vipy.util import try_import, readjson, tocache, cache, flatlist
+from vipy.object import Detection
+
+
+# Huggingface datasets
+try_import(&#39;datasets&#39;);
+from datasets import load_dataset
+from datasets import Image as HFImage
+
+
+def mnist():
+    dataset = load_dataset(&#34;ylecun/mnist&#34;, trust_remote_code=True)
+
+    loader = lambda r: ImageCategory(category=str(r[&#39;label&#39;])).loader(Image.PIL_loader, r[&#39;image&#39;])
+    trainset = Dataset(dataset[&#39;train&#39;], id=&#39;mnist&#39;, loader=loader).load()  # metadata in arrow, slow if we need to access this multiple times, load it instead
+    testset = Dataset(dataset[&#39;test&#39;], id=&#39;mnist:test&#39;, loader=loader)
+    return (trainset, testset)
+
+
+def cifar10():
+    &#34;&#34;&#34;Huggingface wrapper for cifar10, returns (train,test) tuple&#34;&#34;&#34;
+    
+    dataset = load_dataset(&#39;cifar10&#39;, trust_remote_code=True)
+    d_idx_to_category = {0:&#39;airplane&#39;, 1:&#39;automobile&#39;, 2:&#39;bird&#39;, 3:&#39;cat&#39;, 4:&#39;deer&#39;, 5:&#39;dog&#39;, 6:&#39;frog&#39;, 7:&#39;horse&#39;, 8:&#39;ship&#39;, 9:&#39;truck&#39;}
+    
+    loader = lambda r, category=d_idx_to_category: ImageCategory(category=category[r[&#39;label&#39;]]).loader(Image.PIL_loader, r[&#39;img&#39;])
+    trainset = Dataset(dataset[&#39;train&#39;], id=&#39;cifar10&#39;, loader=loader).load()
+    testset = Dataset(dataset[&#39;test&#39;], id=&#39;cifar10:test&#39;, loader=loader)
+    
+    return (trainset, testset)
+
+
+def cifar100():
+    &#34;&#34;&#34;Huggingface wrapper for cifar100 returns (train,test) tuple&#34;&#34;&#34;
+    
+    d_idx_to_fine = {int(k):v for (k,v) in json.loads(&#39;{&#34;0&#34;: &#34;apple&#34;, &#34;1&#34;: &#34;aquarium_fish&#34;, &#34;2&#34;: &#34;baby&#34;, &#34;3&#34;: &#34;bear&#34;, &#34;4&#34;: &#34;beaver&#34;, &#34;5&#34;: &#34;bed&#34;, &#34;6&#34;: &#34;bee&#34;, &#34;7&#34;: &#34;beetle&#34;, &#34;8&#34;: &#34;bicycle&#34;, &#34;9&#34;: &#34;bottle&#34;, &#34;10&#34;: &#34;bowl&#34;, &#34;11&#34;: &#34;boy&#34;, &#34;12&#34;: &#34;bridge&#34;, &#34;13&#34;: &#34;bus&#34;, &#34;14&#34;: &#34;butterfly&#34;, &#34;15&#34;: &#34;camel&#34;, &#34;16&#34;: &#34;can&#34;, &#34;17&#34;: &#34;castle&#34;, &#34;18&#34;: &#34;caterpillar&#34;, &#34;19&#34;: &#34;cattle&#34;, &#34;20&#34;: &#34;chair&#34;, &#34;21&#34;: &#34;chimpanzee&#34;, &#34;22&#34;: &#34;clock&#34;, &#34;23&#34;: &#34;cloud&#34;, &#34;24&#34;: &#34;cockroach&#34;, &#34;25&#34;: &#34;couch&#34;, &#34;26&#34;: &#34;crab&#34;, &#34;27&#34;: &#34;crocodile&#34;, &#34;28&#34;: &#34;cup&#34;, &#34;29&#34;: &#34;dinosaur&#34;, &#34;30&#34;: &#34;dolphin&#34;, &#34;31&#34;: &#34;elephant&#34;, &#34;32&#34;: &#34;flatfish&#34;, &#34;33&#34;: &#34;forest&#34;, &#34;34&#34;: &#34;fox&#34;, &#34;35&#34;: &#34;girl&#34;, &#34;36&#34;: &#34;hamster&#34;, &#34;37&#34;: &#34;house&#34;, &#34;38&#34;: &#34;kangaroo&#34;, &#34;39&#34;: &#34;keyboard&#34;, &#34;40&#34;: &#34;lamp&#34;, &#34;41&#34;: &#34;lawn_mower&#34;, &#34;42&#34;: &#34;leopard&#34;, &#34;43&#34;: &#34;lion&#34;, &#34;44&#34;: &#34;lizard&#34;, &#34;45&#34;: &#34;lobster&#34;, &#34;46&#34;: &#34;man&#34;, &#34;47&#34;: &#34;maple_tree&#34;, &#34;48&#34;: &#34;motorcycle&#34;, &#34;49&#34;: &#34;mountain&#34;, &#34;50&#34;: &#34;mouse&#34;, &#34;51&#34;: &#34;mushroom&#34;, &#34;52&#34;: &#34;oak_tree&#34;, &#34;53&#34;: &#34;orange&#34;, &#34;54&#34;: &#34;orchid&#34;, &#34;55&#34;: &#34;otter&#34;, &#34;56&#34;: &#34;palm_tree&#34;, &#34;57&#34;: &#34;pear&#34;, &#34;58&#34;: &#34;pickup_truck&#34;, &#34;59&#34;: &#34;pine_tree&#34;, &#34;60&#34;: &#34;plain&#34;, &#34;61&#34;: &#34;plate&#34;, &#34;62&#34;: &#34;poppy&#34;, &#34;63&#34;: &#34;porcupine&#34;, &#34;64&#34;: &#34;possum&#34;, &#34;65&#34;: &#34;rabbit&#34;, &#34;66&#34;: &#34;raccoon&#34;, &#34;67&#34;: &#34;ray&#34;, &#34;68&#34;: &#34;road&#34;, &#34;69&#34;: &#34;rocket&#34;, &#34;70&#34;: &#34;rose&#34;, &#34;71&#34;: &#34;sea&#34;, &#34;72&#34;: &#34;seal&#34;, &#34;73&#34;: &#34;shark&#34;, &#34;74&#34;: &#34;shrew&#34;, &#34;75&#34;: &#34;skunk&#34;, &#34;76&#34;: &#34;skyscraper&#34;, &#34;77&#34;: &#34;snail&#34;, &#34;78&#34;: &#34;snake&#34;, &#34;79&#34;: &#34;spider&#34;, &#34;80&#34;: &#34;squirrel&#34;, &#34;81&#34;: &#34;streetcar&#34;, &#34;82&#34;: &#34;sunflower&#34;, &#34;83&#34;: &#34;sweet_pepper&#34;, &#34;84&#34;: &#34;table&#34;, &#34;85&#34;: &#34;tank&#34;, &#34;86&#34;: &#34;telephone&#34;, &#34;87&#34;: &#34;television&#34;, &#34;88&#34;: &#34;tiger&#34;, &#34;89&#34;: &#34;tractor&#34;, &#34;90&#34;: &#34;train&#34;, &#34;91&#34;: &#34;trout&#34;, &#34;92&#34;: &#34;tulip&#34;, &#34;93&#34;: &#34;turtle&#34;, &#34;94&#34;: &#34;wardrobe&#34;, &#34;95&#34;: &#34;whale&#34;, &#34;96&#34;: &#34;willow_tree&#34;, &#34;97&#34;: &#34;wolf&#34;, &#34;98&#34;: &#34;woman&#34;, &#34;99&#34;: &#34;worm&#34;}&#39;).items()}
+
+    d_idx_to_coarse = {int(k):v for (k,v) in json.loads(&#39;{&#34;0&#34;: &#34;aquatic_mammals&#34;, &#34;1&#34;: &#34;fish&#34;, &#34;2&#34;: &#34;flowers&#34;, &#34;3&#34;: &#34;food_containers&#34;, &#34;4&#34;: &#34;fruit_and_vegetables&#34;, &#34;5&#34;: &#34;household_electrical_devices&#34;, &#34;6&#34;: &#34;household_furniture&#34;, &#34;7&#34;: &#34;insects&#34;, &#34;8&#34;: &#34;large_carnivores&#34;, &#34;9&#34;: &#34;large_man-made_outdoor_things&#34;, &#34;10&#34;: &#34;large_natural_outdoor_scenes&#34;, &#34;11&#34;: &#34;large_omnivores_and_herbivores&#34;, &#34;12&#34;: &#34;medium_mammals&#34;, &#34;13&#34;: &#34;non-insect_invertebrates&#34;, &#34;14&#34;: &#34;people&#34;, &#34;15&#34;: &#34;reptiles&#34;, &#34;16&#34;: &#34;small_mammals&#34;, &#34;17&#34;: &#34;trees&#34;, &#34;18&#34;: &#34;vehicles_1&#34;, &#34;19&#34;: &#34;vehicles_2&#34;}&#39;).items()}
+    
+    D = load_dataset(&#39;cifar100&#39;, trust_remote_code=True)
+    loader = lambda r, fine=d_idx_to_fine, coarse=d_idx_to_coarse: ImageCategory(category=fine[r[&#39;fine_label&#39;]], attributes={&#39;tags&#39;:coarse[r[&#39;coarse_label&#39;]]}).loader(Image.PIL_loader, r[&#39;img&#39;])
+    return (Dataset(D[&#39;train&#39;], id=&#39;cifar100&#39;, loader=loader), 
+            Dataset(D[&#39;test&#39;], id=&#39;cifar100:test&#39;, loader=loader))
+    
+
+def oxford_pets():
+    &#34;&#34;&#34;https://www.robots.ox.ac.uk/~vgg/data/pets/&#34;&#34;&#34;
+    D = load_dataset(&#34;visual-layer/oxford-iiit-pet-vl-enriched&#34;)
+    loader = lambda r: Scene(category=str(r[&#39;label_breed&#39;]),
+                                        objects=[Detection(xywh=d[&#39;bbox&#39;], category=d[&#39;label&#39;]) for d in r[&#39;label_bbox_enriched&#39;]] if &#39;label_bbox_enriched&#39; in r and r[&#39;label_bbox_enriched&#39;] is not None else [],
+                                        attributes={k:r[k] for k in (&#39;label_cat_dog&#39;, &#39;caption_enriched&#39;, &#39;image_id&#39;, &#39;issues&#39;)}).loader(Image.PIL_loader, r[&#39;image&#39;])
+    return (Dataset(D[&#39;train&#39;], id=&#39;oxford_pets&#39;, loader=loader),
+            Dataset(D[&#39;test&#39;], id=&#39;oxford_pets:test&#39;, loader=loader))
+
+    
+def sun397():
+    &#34;&#34;&#34;Sun-397 dataset: https://vision.princeton.edu/projects/2010/SUN/&#34;&#34;&#34;
+
+    jsonfile = os.path.join(os.path.dirname(os.path.realpath(__file__)), &#39;sun397.json&#39;)
+    d_idx_to_category = {k:v.split(&#39;/&#39;) for (k,v) in readjson(jsonfile).items()}
+    
+    configs = [&#39;standard-part1-120k&#39;, &#39;standard-part2-120k&#39;, &#39;standard-part3-120k&#39;, &#39;standard-part4-120k&#39;, &#39;standard-part5-120k&#39;, &#39;standard-part6-120k&#39;, &#39;standard-part7-120k&#39;, &#39;standard-part8-120k&#39;, &#39;standard-part9-120k&#39;, &#39;standard-part10-120k&#39;]    
+    D = load_dataset(&#34;HuggingFaceM4/sun397&#34;, &#39;standard-part1-120k&#39;, trust_remote_code=True)
+    loader = lambda r, d_idx_to_category=d_idx_to_category: TaggedImage(tags=d_idx_to_category[str(r[&#39;label&#39;])]).loader(Image.PIL_loader, r[&#39;image&#39;])
+    return (Dataset(D[&#39;train&#39;], id=&#39;sun397:train&#39;, loader=loader), 
+            Dataset(D[&#39;test&#39;], id=&#39;sun397:test&#39;, loader=loader),
+            Dataset(D[&#39;other&#39;], id=&#39;sun397_other&#39;, loader=loader))            
+
+def flickr30k():
+    &#34;&#34;&#34;http://shannon.cs.illinois.edu/DenotationGraph/data/index.html&#34;&#34;&#34;
+    D = load_dataset(&#34;lmms-lab/flickr30k&#34;).cast_column(&#34;image&#34;, HFImage(decode=False))
+    loader = lambda r: TaggedImage(caption=r[&#39;caption&#39;], attributes={&#39;sentid&#39;:r[&#39;sentids&#39;]}).loader(Image.bytes_array_loader, r[&#34;image&#34;][&#34;bytes&#34;])
+    return Dataset(D[&#39;test&#39;], id=&#39;flickr30k&#39;, loader=loader)
+
+    
+def oxford_fgvc_aircraft():
+    &#34;&#34;&#34;https://www.robots.ox.ac.uk/~vgg/data/fgvc-aircraft/&#34;&#34;&#34;
+    jsonfile = os.path.join(os.path.dirname(os.path.realpath(__file__)), &#39;oxford_fgvc_aircraft.json&#39;)
+    d_idx_to_category = readjson(jsonfile)
+    
+    D = load_dataset(&#34;HuggingFaceM4/FGVC-Aircraft&#34;, trust_remote_code=True)
+    loader = lambda r, d_idx_to_category=d_idx_to_category: ImageDetection(category=d_idx_to_category[&#39;family&#39;][str(r[&#39;family&#39;])],
+                                                                                      xmin=r[&#39;bbox&#39;][&#39;xmin&#39;], ymin=r[&#39;bbox&#39;][&#39;ymin&#39;], xmax=r[&#39;bbox&#39;][&#39;xmax&#39;], ymax=r[&#39;bbox&#39;][&#39;ymax&#39;],
+                                                                                      attributes={&#39;manufacturer&#39;:d_idx_to_category[&#39;manufacturer&#39;][str(r[&#39;manufacturer&#39;])], &#39;variant&#39;:d_idx_to_category[&#39;variant&#39;][str(r[&#39;variant&#39;])]}).loader(Image.PIL_loader, r[&#39;image&#39;])
+    return Dataset(D[&#39;train&#39;], id=&#39;oxford_fgvc_aircraft&#39;, loader=loader)
+
+
+def pascal_voc_2007():
+    &#34;&#34;&#34;http://host.robots.ox.ac.uk/pascal/VOC/&#34;&#34;&#34;
+    D = load_dataset(&#34;HuggingFaceM4/pascal_voc&#34;, &#39;voc2007_main&#39;, trust_remote_code=True)
+
+    # https://huggingface.co/datasets/HuggingFaceM4/pascal_voc/blob/main/pascal_voc.py
+    CLASS_INFOS = [(&#39;aeroplane&#39;, 0, 0, (128, 0, 0)),
+                   (&#39;bicycle&#39;, 1, 1, (0, 128, 0)),
+                   (&#39;bird&#39;, 2, 2, (128, 128, 0)),
+                   (&#39;boat&#39;, 3, 3, (0, 0, 128)),
+                   (&#39;bottle&#39;, 4, 4, (128, 0, 128)),
+                   (&#39;bus&#39;, 5, 5, (0, 128, 128)),
+                   (&#39;car&#39;, 6, 6, (128, 128, 128)),
+                   (&#39;cat&#39;, 7, 7, (64, 0, 0)),
+                   (&#39;chair&#39;, 8, 8, (192, 0, 0)),
+                   (&#39;cow&#39;, 9, 9, (64, 128, 0)),
+                   (&#39;diningtable&#39;, 10, 10, (192, 128, 0)),
+                   (&#39;dog&#39;, 11, 11, (64, 0, 128)),
+                   (&#39;horse&#39;, 12, 12, (192, 0, 128)),
+                   (&#39;motorbike&#39;, 13, 13, (64, 128, 128)),
+                   (&#39;person&#39;, 14, 14, (192, 128, 128)),
+                   (&#39;pottedplant&#39;, 15, 15, (0, 64, 0)),
+                   (&#39;sheep&#39;, 16, 16, (128, 64, 0)),
+                   (&#39;sofa&#39;, 17, 17, (0, 192, 0)),
+                   (&#39;train&#39;, 18, 18, (128, 192, 0)),
+                   (&#39;tvmonitor&#39;, 19, 19, (0, 64, 128)),
+                   (&#39;background&#39;, 20, 20, (0, 0, 0)),
+                   (&#39;borderingregion&#39;, 255, 21, (224, 224, 192))]
+    
+    d_index_to_class = {v[2]:v[0] for v in CLASS_INFOS}
+    loader = lambda r, d_index_to_class=d_index_to_class: Scene(tags=[d_index_to_class[c] for c in r[&#39;classes&#39;]],  # scene category may not include all object categories
+                                                                           objects=[Detection(category=d_index_to_class[c], xmin=xmin, ymin=ymin, xmax=xmax, ymax=ymax) for (c, (xmin,ymin,xmax,ymax)) in zip(r[&#39;objects&#39;][&#39;classes&#39;], r[&#39;objects&#39;][&#39;bboxes&#39;])]).loader(Image.PIL_loader, r[&#39;image&#39;])
+    
+    return (Dataset(D[&#39;train&#39;], id=&#39;pascal_voc_2007:train&#39;, loader=loader),
+            Dataset(D[&#39;validation&#39;], id=&#39;pascal_voc_2007:val&#39;, loader=loader),
+            Dataset(D[&#39;test&#39;], id=&#39;pascal_voc_2007:test&#39;, loader=loader))
+    
+    
+def yfcc100m():
+    &#34;&#34;&#34;https://multimediacommons.wordpress.com/yfcc100m-core-dataset/
+    
+    This dataset loads a bytes array containing an image on each row.  Create a separate dataset that ignores the img column and replaces with the backing URL.  
+    This is useful for fast analysis of the dataset metadata.
+    &#34;&#34;&#34;
+
+    dataset = load_dataset(&#34;dalle-mini/YFCC100M_OpenAI_subset&#34;, trust_remote_code=True).select_columns([&#39;title_clean&#39;,&#39;description_clean&#39;,&#39;downloadurl&#39;,&#39;img&#39;])
+    
+    loader = lambda r: TaggedImage(caption=[r[&#39;title_clean&#39;],r[&#39;description_clean&#39;]], url=r[&#39;downloadurl&#39;]).loader(Image.bytes_array_loader, r[&#39;img&#39;])
+    loader_url = lambda r: TaggedImage(caption=[r[&#39;title_clean&#39;],r[&#39;description_clean&#39;]], url=r[&#39;downloadurl&#39;])
+    
+    return (Dataset(dataset[&#39;train&#39;], id=&#39;yfcc100m:train&#39;, loader=loader),
+            Dataset(dataset[&#39;train&#39;].remove_columns([&#39;img&#39;]), id=&#39;yfcc100m_url:train&#39;, loader=loader_url),  # faster loading for metadata analysis
+            Dataset(dataset[&#39;validation&#39;], id=&#39;yfcc100m:val&#39;, loader=loader),
+            Dataset(dataset[&#39;validation&#39;].remove_columns([&#39;img&#39;]), id=&#39;yfcc100m_url:val&#39;, loader=loader_url))                            
+
+def tiny_imagenet():
+    D = load_dataset(&#34;zh-plus/tiny-imagenet&#34;)
+    labels = readjson(os.path.join(os.path.dirname(os.path.realpath(__file__)), &#39;tiny_imagenet.json&#39;))    
+    d_idx_to_category = {k: [l.strip() for l in labels[&#39;wnid_to_category&#39;][wnid].split(&#39;,&#39;)]  for (k,wnid) in enumerate(labels[&#39;idx_to_wnid&#39;])}    
+    loader = lambda r, d_idx_to_category=d_idx_to_category: TaggedImage(tags=d_idx_to_category[int(r[&#39;label&#39;])]).loader(Image.PIL_loader, r[&#39;image&#39;])
+    return (Dataset(D[&#39;train&#39;], id=&#39;tiny_imagenet:train&#39;, loader=loader),
+            Dataset(D[&#39;valid&#39;], id=&#39;tiny_imagenet:val&#39;, loader=loader))
+
+
+def coyo300m(threshold=0.2):
+    &#34;&#34;&#34;https://huggingface.co/datasets/kakaobrain/coyo-labeled-300m  (Machine labeled)&#34;&#34;&#34;
+    dataset = load_dataset(&#34;kakaobrain/coyo-labeled-300m&#34;).select_columns([&#39;url&#39;,&#39;labels&#39;,&#39;label_probs&#39;])
+
+    labels = readjson(os.path.join(os.path.dirname(os.path.realpath(__file__)), &#39;coyo300m.json&#39;))    
+    d_idx_to_category = {k:[c.strip() for c in v.split(&#39;,&#39;)] for (k,v) in labels[&#39;class_description&#39;].items()}
+    d_idx_to_wnid = {v:k for (k,v) in labels[&#39;class_list&#39;].items()}
+    loader = lambda r, d_idx_to_wnid=d_idx_to_wnid, d_idx_to_category=d_idx_to_category, threshold=threshold: TaggedImage(url=r[&#39;url&#39;], 
+                                                                                                                                     tags=flatlist([d_idx_to_category[str(c)] for (c,p) in zip(r[&#39;labels&#39;], r[&#39;label_probs&#39;]) if float(p)&gt;threshold]),
+                                                                                                                                     attributes={&#39;wordnet&#39;:[d_idx_to_wnid[c] for (c,p) in zip(r[&#39;labels&#39;], r[&#39;label_probs&#39;]) if float(p)&gt;threshold]})
+    return Dataset(dataset[&#39;train&#39;], id=&#39;coyo300m&#39;, loader=loader)
+
+def coyo700m():
+    &#34;https://huggingface.co/datasets/kakaobrain/coyo-700m&#34;
+    dataset = load_dataset(&#34;kakaobrain/coyo-700m&#34;).select_columns([&#39;url&#39;,&#39;text&#39;])
+    loader = lambda r: TaggedImage(url=r[&#39;url&#39;], caption=r[&#39;text&#39;])
+    return Dataset(dataset[&#39;train&#39;], id=&#39;coyo700m&#39;, loader=loader)
+
+
+def laion2b():
+    &#34;&#34;&#34;https://huggingface.co/datasets/laion/relaion2B-en-research-safe&#34;&#34;&#34;
+    dataset = load_dataset(&#34;laion/relaion2B-en-research-safe&#34;).select_columns([&#39;url&#39;,&#39;caption&#39;])
+    loader = lambda r: TaggedImage(url=r[&#39;url&#39;], caption=r[&#39;caption&#39;])
+    return Dataset(dataset[&#39;train&#39;], id=&#39;laion2b&#39;, loader=loader)
+
+def datacomp_1b():
+    &#34;&#34;&#34;https://huggingface.co/datasets/mlfoundations/datacomp_1b&#34;&#34;&#34;
+    dataset = load_dataset(&#34;mlfoundations/datacomp_1b&#34;).select_columns([&#39;url&#39;,&#39;text&#39;])
+    loader = lambda r: TaggedImage(url=r[&#39;url&#39;], caption=r[&#39;text&#39;])
+    return Dataset(dataset[&#39;train&#39;], id=&#39;datacomp1b&#39;, loader=loader)
+
+
+def imageinwords():
+    &#34;&#34;&#34;https://huggingface.co/datasets/google/imageinwords&#34;&#34;&#34;
+    dataset = load_dataset(&#39;google/imageinwords&#39;, token=None, name=&#34;IIW-400&#34;, trust_remote_code=True)
+
+def docci():
+    &#34;&#34;&#34;https://huggingface.co/datasets/google/docci&#34;&#34;&#34;
+    dataset = load_dataset(&#34;google/docci&#34;)
+
+def as100m():
+    dataset = load_dataset(&#34;OpenGVLab/AS-100M&#34;)
+        
+def objects365():
+    raise ValueError(&#39;image data no longer available&#39;)
+
+    dataset = load_dataset(&#34;jxu124/objects365&#34;)
+    assert os.path.exists(tocache(&#39;objects365&#39;)), &#34;download image data from https://www.objects365.org to &#39;%s&#39;&#34; % cache() 
+    
+    loader = lambda r: Scene(filename=os.path.join(tocache(&#39;objects365&#39;), r[&#39;image_path&#39;]),
+                                        objects=[Detection(category=d[&#39;category&#39;], ulbr=d[&#39;bbox&#39;]) for d in r[&#39;anns_info&#39;]])
+    
+    return (Dataset(dataset[&#39;train&#39;], id=&#39;objects365:train&#39;, loader=loader),
+            Dataset(dataset[&#39;validation&#39;], id=&#39;objects365:val&#39;, loader=loader))
+            
+    </code></pre>
+</details>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+<h2 class="section-title" id="header-functions">Functions</h2>
+<dl>
+<dt id="vipy.data.hf.as100m"><code class="name flex">
+<span>def <span class="ident">as100m</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/f10b3f6aec0ef011e86ee11667579388379a8ac3/vipy/data/hf.py#L199-L200" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def as100m():
+    dataset = load_dataset(&#34;OpenGVLab/AS-100M&#34;)</code></pre>
+</details>
+</dd>
+<dt id="vipy.data.hf.cifar10"><code class="name flex">
+<span>def <span class="ident">cifar10</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Huggingface wrapper for cifar10, returns (train,test) tuple</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/f10b3f6aec0ef011e86ee11667579388379a8ac3/vipy/data/hf.py#L28-L38" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def cifar10():
+    &#34;&#34;&#34;Huggingface wrapper for cifar10, returns (train,test) tuple&#34;&#34;&#34;
+    
+    dataset = load_dataset(&#39;cifar10&#39;, trust_remote_code=True)
+    d_idx_to_category = {0:&#39;airplane&#39;, 1:&#39;automobile&#39;, 2:&#39;bird&#39;, 3:&#39;cat&#39;, 4:&#39;deer&#39;, 5:&#39;dog&#39;, 6:&#39;frog&#39;, 7:&#39;horse&#39;, 8:&#39;ship&#39;, 9:&#39;truck&#39;}
+    
+    loader = lambda r, category=d_idx_to_category: ImageCategory(category=category[r[&#39;label&#39;]]).loader(Image.PIL_loader, r[&#39;img&#39;])
+    trainset = Dataset(dataset[&#39;train&#39;], id=&#39;cifar10&#39;, loader=loader).load()
+    testset = Dataset(dataset[&#39;test&#39;], id=&#39;cifar10:test&#39;, loader=loader)
+    
+    return (trainset, testset)</code></pre>
+</details>
+</dd>
+<dt id="vipy.data.hf.cifar100"><code class="name flex">
+<span>def <span class="ident">cifar100</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Huggingface wrapper for cifar100 returns (train,test) tuple</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/f10b3f6aec0ef011e86ee11667579388379a8ac3/vipy/data/hf.py#L41-L51" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def cifar100():
+    &#34;&#34;&#34;Huggingface wrapper for cifar100 returns (train,test) tuple&#34;&#34;&#34;
+    
+    d_idx_to_fine = {int(k):v for (k,v) in json.loads(&#39;{&#34;0&#34;: &#34;apple&#34;, &#34;1&#34;: &#34;aquarium_fish&#34;, &#34;2&#34;: &#34;baby&#34;, &#34;3&#34;: &#34;bear&#34;, &#34;4&#34;: &#34;beaver&#34;, &#34;5&#34;: &#34;bed&#34;, &#34;6&#34;: &#34;bee&#34;, &#34;7&#34;: &#34;beetle&#34;, &#34;8&#34;: &#34;bicycle&#34;, &#34;9&#34;: &#34;bottle&#34;, &#34;10&#34;: &#34;bowl&#34;, &#34;11&#34;: &#34;boy&#34;, &#34;12&#34;: &#34;bridge&#34;, &#34;13&#34;: &#34;bus&#34;, &#34;14&#34;: &#34;butterfly&#34;, &#34;15&#34;: &#34;camel&#34;, &#34;16&#34;: &#34;can&#34;, &#34;17&#34;: &#34;castle&#34;, &#34;18&#34;: &#34;caterpillar&#34;, &#34;19&#34;: &#34;cattle&#34;, &#34;20&#34;: &#34;chair&#34;, &#34;21&#34;: &#34;chimpanzee&#34;, &#34;22&#34;: &#34;clock&#34;, &#34;23&#34;: &#34;cloud&#34;, &#34;24&#34;: &#34;cockroach&#34;, &#34;25&#34;: &#34;couch&#34;, &#34;26&#34;: &#34;crab&#34;, &#34;27&#34;: &#34;crocodile&#34;, &#34;28&#34;: &#34;cup&#34;, &#34;29&#34;: &#34;dinosaur&#34;, &#34;30&#34;: &#34;dolphin&#34;, &#34;31&#34;: &#34;elephant&#34;, &#34;32&#34;: &#34;flatfish&#34;, &#34;33&#34;: &#34;forest&#34;, &#34;34&#34;: &#34;fox&#34;, &#34;35&#34;: &#34;girl&#34;, &#34;36&#34;: &#34;hamster&#34;, &#34;37&#34;: &#34;house&#34;, &#34;38&#34;: &#34;kangaroo&#34;, &#34;39&#34;: &#34;keyboard&#34;, &#34;40&#34;: &#34;lamp&#34;, &#34;41&#34;: &#34;lawn_mower&#34;, &#34;42&#34;: &#34;leopard&#34;, &#34;43&#34;: &#34;lion&#34;, &#34;44&#34;: &#34;lizard&#34;, &#34;45&#34;: &#34;lobster&#34;, &#34;46&#34;: &#34;man&#34;, &#34;47&#34;: &#34;maple_tree&#34;, &#34;48&#34;: &#34;motorcycle&#34;, &#34;49&#34;: &#34;mountain&#34;, &#34;50&#34;: &#34;mouse&#34;, &#34;51&#34;: &#34;mushroom&#34;, &#34;52&#34;: &#34;oak_tree&#34;, &#34;53&#34;: &#34;orange&#34;, &#34;54&#34;: &#34;orchid&#34;, &#34;55&#34;: &#34;otter&#34;, &#34;56&#34;: &#34;palm_tree&#34;, &#34;57&#34;: &#34;pear&#34;, &#34;58&#34;: &#34;pickup_truck&#34;, &#34;59&#34;: &#34;pine_tree&#34;, &#34;60&#34;: &#34;plain&#34;, &#34;61&#34;: &#34;plate&#34;, &#34;62&#34;: &#34;poppy&#34;, &#34;63&#34;: &#34;porcupine&#34;, &#34;64&#34;: &#34;possum&#34;, &#34;65&#34;: &#34;rabbit&#34;, &#34;66&#34;: &#34;raccoon&#34;, &#34;67&#34;: &#34;ray&#34;, &#34;68&#34;: &#34;road&#34;, &#34;69&#34;: &#34;rocket&#34;, &#34;70&#34;: &#34;rose&#34;, &#34;71&#34;: &#34;sea&#34;, &#34;72&#34;: &#34;seal&#34;, &#34;73&#34;: &#34;shark&#34;, &#34;74&#34;: &#34;shrew&#34;, &#34;75&#34;: &#34;skunk&#34;, &#34;76&#34;: &#34;skyscraper&#34;, &#34;77&#34;: &#34;snail&#34;, &#34;78&#34;: &#34;snake&#34;, &#34;79&#34;: &#34;spider&#34;, &#34;80&#34;: &#34;squirrel&#34;, &#34;81&#34;: &#34;streetcar&#34;, &#34;82&#34;: &#34;sunflower&#34;, &#34;83&#34;: &#34;sweet_pepper&#34;, &#34;84&#34;: &#34;table&#34;, &#34;85&#34;: &#34;tank&#34;, &#34;86&#34;: &#34;telephone&#34;, &#34;87&#34;: &#34;television&#34;, &#34;88&#34;: &#34;tiger&#34;, &#34;89&#34;: &#34;tractor&#34;, &#34;90&#34;: &#34;train&#34;, &#34;91&#34;: &#34;trout&#34;, &#34;92&#34;: &#34;tulip&#34;, &#34;93&#34;: &#34;turtle&#34;, &#34;94&#34;: &#34;wardrobe&#34;, &#34;95&#34;: &#34;whale&#34;, &#34;96&#34;: &#34;willow_tree&#34;, &#34;97&#34;: &#34;wolf&#34;, &#34;98&#34;: &#34;woman&#34;, &#34;99&#34;: &#34;worm&#34;}&#39;).items()}
+
+    d_idx_to_coarse = {int(k):v for (k,v) in json.loads(&#39;{&#34;0&#34;: &#34;aquatic_mammals&#34;, &#34;1&#34;: &#34;fish&#34;, &#34;2&#34;: &#34;flowers&#34;, &#34;3&#34;: &#34;food_containers&#34;, &#34;4&#34;: &#34;fruit_and_vegetables&#34;, &#34;5&#34;: &#34;household_electrical_devices&#34;, &#34;6&#34;: &#34;household_furniture&#34;, &#34;7&#34;: &#34;insects&#34;, &#34;8&#34;: &#34;large_carnivores&#34;, &#34;9&#34;: &#34;large_man-made_outdoor_things&#34;, &#34;10&#34;: &#34;large_natural_outdoor_scenes&#34;, &#34;11&#34;: &#34;large_omnivores_and_herbivores&#34;, &#34;12&#34;: &#34;medium_mammals&#34;, &#34;13&#34;: &#34;non-insect_invertebrates&#34;, &#34;14&#34;: &#34;people&#34;, &#34;15&#34;: &#34;reptiles&#34;, &#34;16&#34;: &#34;small_mammals&#34;, &#34;17&#34;: &#34;trees&#34;, &#34;18&#34;: &#34;vehicles_1&#34;, &#34;19&#34;: &#34;vehicles_2&#34;}&#39;).items()}
+    
+    D = load_dataset(&#39;cifar100&#39;, trust_remote_code=True)
+    loader = lambda r, fine=d_idx_to_fine, coarse=d_idx_to_coarse: ImageCategory(category=fine[r[&#39;fine_label&#39;]], attributes={&#39;tags&#39;:coarse[r[&#39;coarse_label&#39;]]}).loader(Image.PIL_loader, r[&#39;img&#39;])
+    return (Dataset(D[&#39;train&#39;], id=&#39;cifar100&#39;, loader=loader), 
+            Dataset(D[&#39;test&#39;], id=&#39;cifar100:test&#39;, loader=loader))</code></pre>
+</details>
+</dd>
+<dt id="vipy.data.hf.coyo300m"><code class="name flex">
+<span>def <span class="ident">coyo300m</span></span>(<span>threshold=0.2)</span>
+</code></dt>
+<dd>
+<div class="desc"><p><a href="https://huggingface.co/datasets/kakaobrain/coyo-labeled-300m">https://huggingface.co/datasets/kakaobrain/coyo-labeled-300m</a>
+(Machine labeled)</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/f10b3f6aec0ef011e86ee11667579388379a8ac3/vipy/data/hf.py#L159-L169" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def coyo300m(threshold=0.2):
+    &#34;&#34;&#34;https://huggingface.co/datasets/kakaobrain/coyo-labeled-300m  (Machine labeled)&#34;&#34;&#34;
+    dataset = load_dataset(&#34;kakaobrain/coyo-labeled-300m&#34;).select_columns([&#39;url&#39;,&#39;labels&#39;,&#39;label_probs&#39;])
+
+    labels = readjson(os.path.join(os.path.dirname(os.path.realpath(__file__)), &#39;coyo300m.json&#39;))    
+    d_idx_to_category = {k:[c.strip() for c in v.split(&#39;,&#39;)] for (k,v) in labels[&#39;class_description&#39;].items()}
+    d_idx_to_wnid = {v:k for (k,v) in labels[&#39;class_list&#39;].items()}
+    loader = lambda r, d_idx_to_wnid=d_idx_to_wnid, d_idx_to_category=d_idx_to_category, threshold=threshold: TaggedImage(url=r[&#39;url&#39;], 
+                                                                                                                                     tags=flatlist([d_idx_to_category[str(c)] for (c,p) in zip(r[&#39;labels&#39;], r[&#39;label_probs&#39;]) if float(p)&gt;threshold]),
+                                                                                                                                     attributes={&#39;wordnet&#39;:[d_idx_to_wnid[c] for (c,p) in zip(r[&#39;labels&#39;], r[&#39;label_probs&#39;]) if float(p)&gt;threshold]})
+    return Dataset(dataset[&#39;train&#39;], id=&#39;coyo300m&#39;, loader=loader)</code></pre>
+</details>
+</dd>
+<dt id="vipy.data.hf.coyo700m"><code class="name flex">
+<span>def <span class="ident">coyo700m</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<div class="desc"><p><a href="https://huggingface.co/datasets/kakaobrain/coyo-700m">https://huggingface.co/datasets/kakaobrain/coyo-700m</a></p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/f10b3f6aec0ef011e86ee11667579388379a8ac3/vipy/data/hf.py#L171-L175" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def coyo700m():
+    &#34;https://huggingface.co/datasets/kakaobrain/coyo-700m&#34;
+    dataset = load_dataset(&#34;kakaobrain/coyo-700m&#34;).select_columns([&#39;url&#39;,&#39;text&#39;])
+    loader = lambda r: TaggedImage(url=r[&#39;url&#39;], caption=r[&#39;text&#39;])
+    return Dataset(dataset[&#39;train&#39;], id=&#39;coyo700m&#39;, loader=loader)</code></pre>
+</details>
+</dd>
+<dt id="vipy.data.hf.datacomp_1b"><code class="name flex">
+<span>def <span class="ident">datacomp_1b</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<div class="desc"><p><a href="https://huggingface.co/datasets/mlfoundations/datacomp_1b">https://huggingface.co/datasets/mlfoundations/datacomp_1b</a></p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/f10b3f6aec0ef011e86ee11667579388379a8ac3/vipy/data/hf.py#L184-L188" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def datacomp_1b():
+    &#34;&#34;&#34;https://huggingface.co/datasets/mlfoundations/datacomp_1b&#34;&#34;&#34;
+    dataset = load_dataset(&#34;mlfoundations/datacomp_1b&#34;).select_columns([&#39;url&#39;,&#39;text&#39;])
+    loader = lambda r: TaggedImage(url=r[&#39;url&#39;], caption=r[&#39;text&#39;])
+    return Dataset(dataset[&#39;train&#39;], id=&#39;datacomp1b&#39;, loader=loader)</code></pre>
+</details>
+</dd>
+<dt id="vipy.data.hf.docci"><code class="name flex">
+<span>def <span class="ident">docci</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<div class="desc"><p><a href="https://huggingface.co/datasets/google/docci">https://huggingface.co/datasets/google/docci</a></p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/f10b3f6aec0ef011e86ee11667579388379a8ac3/vipy/data/hf.py#L195-L197" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def docci():
+    &#34;&#34;&#34;https://huggingface.co/datasets/google/docci&#34;&#34;&#34;
+    dataset = load_dataset(&#34;google/docci&#34;)</code></pre>
+</details>
+</dd>
+<dt id="vipy.data.hf.flickr30k"><code class="name flex">
+<span>def <span class="ident">flickr30k</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<div class="desc"><p><a href="http://shannon.cs.illinois.edu/DenotationGraph/data/index.html">http://shannon.cs.illinois.edu/DenotationGraph/data/index.html</a></p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/f10b3f6aec0ef011e86ee11667579388379a8ac3/vipy/data/hf.py#L77-L81" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def flickr30k():
+    &#34;&#34;&#34;http://shannon.cs.illinois.edu/DenotationGraph/data/index.html&#34;&#34;&#34;
+    D = load_dataset(&#34;lmms-lab/flickr30k&#34;).cast_column(&#34;image&#34;, HFImage(decode=False))
+    loader = lambda r: TaggedImage(caption=r[&#39;caption&#39;], attributes={&#39;sentid&#39;:r[&#39;sentids&#39;]}).loader(Image.bytes_array_loader, r[&#34;image&#34;][&#34;bytes&#34;])
+    return Dataset(D[&#39;test&#39;], id=&#39;flickr30k&#39;, loader=loader)</code></pre>
+</details>
+</dd>
+<dt id="vipy.data.hf.imageinwords"><code class="name flex">
+<span>def <span class="ident">imageinwords</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<div class="desc"><p><a href="https://huggingface.co/datasets/google/imageinwords">https://huggingface.co/datasets/google/imageinwords</a></p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/f10b3f6aec0ef011e86ee11667579388379a8ac3/vipy/data/hf.py#L191-L193" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def imageinwords():
+    &#34;&#34;&#34;https://huggingface.co/datasets/google/imageinwords&#34;&#34;&#34;
+    dataset = load_dataset(&#39;google/imageinwords&#39;, token=None, name=&#34;IIW-400&#34;, trust_remote_code=True)</code></pre>
+</details>
+</dd>
+<dt id="vipy.data.hf.laion2b"><code class="name flex">
+<span>def <span class="ident">laion2b</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<div class="desc"><p><a href="https://huggingface.co/datasets/laion/relaion2B-en-research-safe">https://huggingface.co/datasets/laion/relaion2B-en-research-safe</a></p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/f10b3f6aec0ef011e86ee11667579388379a8ac3/vipy/data/hf.py#L178-L182" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def laion2b():
+    &#34;&#34;&#34;https://huggingface.co/datasets/laion/relaion2B-en-research-safe&#34;&#34;&#34;
+    dataset = load_dataset(&#34;laion/relaion2B-en-research-safe&#34;).select_columns([&#39;url&#39;,&#39;caption&#39;])
+    loader = lambda r: TaggedImage(url=r[&#39;url&#39;], caption=r[&#39;caption&#39;])
+    return Dataset(dataset[&#39;train&#39;], id=&#39;laion2b&#39;, loader=loader)</code></pre>
+</details>
+</dd>
+<dt id="vipy.data.hf.mnist"><code class="name flex">
+<span>def <span class="ident">mnist</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/f10b3f6aec0ef011e86ee11667579388379a8ac3/vipy/data/hf.py#L19-L25" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def mnist():
+    dataset = load_dataset(&#34;ylecun/mnist&#34;, trust_remote_code=True)
+
+    loader = lambda r: ImageCategory(category=str(r[&#39;label&#39;])).loader(Image.PIL_loader, r[&#39;image&#39;])
+    trainset = Dataset(dataset[&#39;train&#39;], id=&#39;mnist&#39;, loader=loader).load()  # metadata in arrow, slow if we need to access this multiple times, load it instead
+    testset = Dataset(dataset[&#39;test&#39;], id=&#39;mnist:test&#39;, loader=loader)
+    return (trainset, testset)</code></pre>
+</details>
+</dd>
+<dt id="vipy.data.hf.objects365"><code class="name flex">
+<span>def <span class="ident">objects365</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/f10b3f6aec0ef011e86ee11667579388379a8ac3/vipy/data/hf.py#L202-L212" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def objects365():
+    raise ValueError(&#39;image data no longer available&#39;)
+
+    dataset = load_dataset(&#34;jxu124/objects365&#34;)
+    assert os.path.exists(tocache(&#39;objects365&#39;)), &#34;download image data from https://www.objects365.org to &#39;%s&#39;&#34; % cache() 
+    
+    loader = lambda r: Scene(filename=os.path.join(tocache(&#39;objects365&#39;), r[&#39;image_path&#39;]),
+                                        objects=[Detection(category=d[&#39;category&#39;], ulbr=d[&#39;bbox&#39;]) for d in r[&#39;anns_info&#39;]])
+    
+    return (Dataset(dataset[&#39;train&#39;], id=&#39;objects365:train&#39;, loader=loader),
+            Dataset(dataset[&#39;validation&#39;], id=&#39;objects365:val&#39;, loader=loader))</code></pre>
+</details>
+</dd>
+<dt id="vipy.data.hf.oxford_fgvc_aircraft"><code class="name flex">
+<span>def <span class="ident">oxford_fgvc_aircraft</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<div class="desc"><p><a href="https://www.robots.ox.ac.uk/~vgg/data/fgvc-aircraft/">https://www.robots.ox.ac.uk/~vgg/data/fgvc-aircraft/</a></p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/f10b3f6aec0ef011e86ee11667579388379a8ac3/vipy/data/hf.py#L84-L93" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def oxford_fgvc_aircraft():
+    &#34;&#34;&#34;https://www.robots.ox.ac.uk/~vgg/data/fgvc-aircraft/&#34;&#34;&#34;
+    jsonfile = os.path.join(os.path.dirname(os.path.realpath(__file__)), &#39;oxford_fgvc_aircraft.json&#39;)
+    d_idx_to_category = readjson(jsonfile)
+    
+    D = load_dataset(&#34;HuggingFaceM4/FGVC-Aircraft&#34;, trust_remote_code=True)
+    loader = lambda r, d_idx_to_category=d_idx_to_category: ImageDetection(category=d_idx_to_category[&#39;family&#39;][str(r[&#39;family&#39;])],
+                                                                                      xmin=r[&#39;bbox&#39;][&#39;xmin&#39;], ymin=r[&#39;bbox&#39;][&#39;ymin&#39;], xmax=r[&#39;bbox&#39;][&#39;xmax&#39;], ymax=r[&#39;bbox&#39;][&#39;ymax&#39;],
+                                                                                      attributes={&#39;manufacturer&#39;:d_idx_to_category[&#39;manufacturer&#39;][str(r[&#39;manufacturer&#39;])], &#39;variant&#39;:d_idx_to_category[&#39;variant&#39;][str(r[&#39;variant&#39;])]}).loader(Image.PIL_loader, r[&#39;image&#39;])
+    return Dataset(D[&#39;train&#39;], id=&#39;oxford_fgvc_aircraft&#39;, loader=loader)</code></pre>
+</details>
+</dd>
+<dt id="vipy.data.hf.oxford_pets"><code class="name flex">
+<span>def <span class="ident">oxford_pets</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<div class="desc"><p><a href="https://www.robots.ox.ac.uk/~vgg/data/pets/">https://www.robots.ox.ac.uk/~vgg/data/pets/</a></p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/f10b3f6aec0ef011e86ee11667579388379a8ac3/vipy/data/hf.py#L54-L61" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def oxford_pets():
+    &#34;&#34;&#34;https://www.robots.ox.ac.uk/~vgg/data/pets/&#34;&#34;&#34;
+    D = load_dataset(&#34;visual-layer/oxford-iiit-pet-vl-enriched&#34;)
+    loader = lambda r: Scene(category=str(r[&#39;label_breed&#39;]),
+                                        objects=[Detection(xywh=d[&#39;bbox&#39;], category=d[&#39;label&#39;]) for d in r[&#39;label_bbox_enriched&#39;]] if &#39;label_bbox_enriched&#39; in r and r[&#39;label_bbox_enriched&#39;] is not None else [],
+                                        attributes={k:r[k] for k in (&#39;label_cat_dog&#39;, &#39;caption_enriched&#39;, &#39;image_id&#39;, &#39;issues&#39;)}).loader(Image.PIL_loader, r[&#39;image&#39;])
+    return (Dataset(D[&#39;train&#39;], id=&#39;oxford_pets&#39;, loader=loader),
+            Dataset(D[&#39;test&#39;], id=&#39;oxford_pets:test&#39;, loader=loader))</code></pre>
+</details>
+</dd>
+<dt id="vipy.data.hf.pascal_voc_2007"><code class="name flex">
+<span>def <span class="ident">pascal_voc_2007</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<div class="desc"><p><a href="http://host.robots.ox.ac.uk/pascal/VOC/">http://host.robots.ox.ac.uk/pascal/VOC/</a></p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/f10b3f6aec0ef011e86ee11667579388379a8ac3/vipy/data/hf.py#L96-L130" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def pascal_voc_2007():
+    &#34;&#34;&#34;http://host.robots.ox.ac.uk/pascal/VOC/&#34;&#34;&#34;
+    D = load_dataset(&#34;HuggingFaceM4/pascal_voc&#34;, &#39;voc2007_main&#39;, trust_remote_code=True)
+
+    # https://huggingface.co/datasets/HuggingFaceM4/pascal_voc/blob/main/pascal_voc.py
+    CLASS_INFOS = [(&#39;aeroplane&#39;, 0, 0, (128, 0, 0)),
+                   (&#39;bicycle&#39;, 1, 1, (0, 128, 0)),
+                   (&#39;bird&#39;, 2, 2, (128, 128, 0)),
+                   (&#39;boat&#39;, 3, 3, (0, 0, 128)),
+                   (&#39;bottle&#39;, 4, 4, (128, 0, 128)),
+                   (&#39;bus&#39;, 5, 5, (0, 128, 128)),
+                   (&#39;car&#39;, 6, 6, (128, 128, 128)),
+                   (&#39;cat&#39;, 7, 7, (64, 0, 0)),
+                   (&#39;chair&#39;, 8, 8, (192, 0, 0)),
+                   (&#39;cow&#39;, 9, 9, (64, 128, 0)),
+                   (&#39;diningtable&#39;, 10, 10, (192, 128, 0)),
+                   (&#39;dog&#39;, 11, 11, (64, 0, 128)),
+                   (&#39;horse&#39;, 12, 12, (192, 0, 128)),
+                   (&#39;motorbike&#39;, 13, 13, (64, 128, 128)),
+                   (&#39;person&#39;, 14, 14, (192, 128, 128)),
+                   (&#39;pottedplant&#39;, 15, 15, (0, 64, 0)),
+                   (&#39;sheep&#39;, 16, 16, (128, 64, 0)),
+                   (&#39;sofa&#39;, 17, 17, (0, 192, 0)),
+                   (&#39;train&#39;, 18, 18, (128, 192, 0)),
+                   (&#39;tvmonitor&#39;, 19, 19, (0, 64, 128)),
+                   (&#39;background&#39;, 20, 20, (0, 0, 0)),
+                   (&#39;borderingregion&#39;, 255, 21, (224, 224, 192))]
+    
+    d_index_to_class = {v[2]:v[0] for v in CLASS_INFOS}
+    loader = lambda r, d_index_to_class=d_index_to_class: Scene(tags=[d_index_to_class[c] for c in r[&#39;classes&#39;]],  # scene category may not include all object categories
+                                                                           objects=[Detection(category=d_index_to_class[c], xmin=xmin, ymin=ymin, xmax=xmax, ymax=ymax) for (c, (xmin,ymin,xmax,ymax)) in zip(r[&#39;objects&#39;][&#39;classes&#39;], r[&#39;objects&#39;][&#39;bboxes&#39;])]).loader(Image.PIL_loader, r[&#39;image&#39;])
+    
+    return (Dataset(D[&#39;train&#39;], id=&#39;pascal_voc_2007:train&#39;, loader=loader),
+            Dataset(D[&#39;validation&#39;], id=&#39;pascal_voc_2007:val&#39;, loader=loader),
+            Dataset(D[&#39;test&#39;], id=&#39;pascal_voc_2007:test&#39;, loader=loader))</code></pre>
+</details>
+</dd>
+<dt id="vipy.data.hf.sun397"><code class="name flex">
+<span>def <span class="ident">sun397</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Sun-397 dataset: <a href="https://vision.princeton.edu/projects/2010/SUN/">https://vision.princeton.edu/projects/2010/SUN/</a></p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/f10b3f6aec0ef011e86ee11667579388379a8ac3/vipy/data/hf.py#L64-L75" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def sun397():
+    &#34;&#34;&#34;Sun-397 dataset: https://vision.princeton.edu/projects/2010/SUN/&#34;&#34;&#34;
+
+    jsonfile = os.path.join(os.path.dirname(os.path.realpath(__file__)), &#39;sun397.json&#39;)
+    d_idx_to_category = {k:v.split(&#39;/&#39;) for (k,v) in readjson(jsonfile).items()}
+    
+    configs = [&#39;standard-part1-120k&#39;, &#39;standard-part2-120k&#39;, &#39;standard-part3-120k&#39;, &#39;standard-part4-120k&#39;, &#39;standard-part5-120k&#39;, &#39;standard-part6-120k&#39;, &#39;standard-part7-120k&#39;, &#39;standard-part8-120k&#39;, &#39;standard-part9-120k&#39;, &#39;standard-part10-120k&#39;]    
+    D = load_dataset(&#34;HuggingFaceM4/sun397&#34;, &#39;standard-part1-120k&#39;, trust_remote_code=True)
+    loader = lambda r, d_idx_to_category=d_idx_to_category: TaggedImage(tags=d_idx_to_category[str(r[&#39;label&#39;])]).loader(Image.PIL_loader, r[&#39;image&#39;])
+    return (Dataset(D[&#39;train&#39;], id=&#39;sun397:train&#39;, loader=loader), 
+            Dataset(D[&#39;test&#39;], id=&#39;sun397:test&#39;, loader=loader),
+            Dataset(D[&#39;other&#39;], id=&#39;sun397_other&#39;, loader=loader))            </code></pre>
+</details>
+</dd>
+<dt id="vipy.data.hf.tiny_imagenet"><code class="name flex">
+<span>def <span class="ident">tiny_imagenet</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/f10b3f6aec0ef011e86ee11667579388379a8ac3/vipy/data/hf.py#L150-L156" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def tiny_imagenet():
+    D = load_dataset(&#34;zh-plus/tiny-imagenet&#34;)
+    labels = readjson(os.path.join(os.path.dirname(os.path.realpath(__file__)), &#39;tiny_imagenet.json&#39;))    
+    d_idx_to_category = {k: [l.strip() for l in labels[&#39;wnid_to_category&#39;][wnid].split(&#39;,&#39;)]  for (k,wnid) in enumerate(labels[&#39;idx_to_wnid&#39;])}    
+    loader = lambda r, d_idx_to_category=d_idx_to_category: TaggedImage(tags=d_idx_to_category[int(r[&#39;label&#39;])]).loader(Image.PIL_loader, r[&#39;image&#39;])
+    return (Dataset(D[&#39;train&#39;], id=&#39;tiny_imagenet:train&#39;, loader=loader),
+            Dataset(D[&#39;valid&#39;], id=&#39;tiny_imagenet:val&#39;, loader=loader))</code></pre>
+</details>
+</dd>
+<dt id="vipy.data.hf.yfcc100m"><code class="name flex">
+<span>def <span class="ident">yfcc100m</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<div class="desc"><p><a href="https://multimediacommons.wordpress.com/yfcc100m-core-dataset/">https://multimediacommons.wordpress.com/yfcc100m-core-dataset/</a></p>
+<p>This dataset loads a bytes array containing an image on each row.
+Create a separate dataset that ignores the img column and replaces with the backing URL.<br>
+This is useful for fast analysis of the dataset metadata.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/f10b3f6aec0ef011e86ee11667579388379a8ac3/vipy/data/hf.py#L133-L148" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def yfcc100m():
+    &#34;&#34;&#34;https://multimediacommons.wordpress.com/yfcc100m-core-dataset/
+    
+    This dataset loads a bytes array containing an image on each row.  Create a separate dataset that ignores the img column and replaces with the backing URL.  
+    This is useful for fast analysis of the dataset metadata.
+    &#34;&#34;&#34;
+
+    dataset = load_dataset(&#34;dalle-mini/YFCC100M_OpenAI_subset&#34;, trust_remote_code=True).select_columns([&#39;title_clean&#39;,&#39;description_clean&#39;,&#39;downloadurl&#39;,&#39;img&#39;])
+    
+    loader = lambda r: TaggedImage(caption=[r[&#39;title_clean&#39;],r[&#39;description_clean&#39;]], url=r[&#39;downloadurl&#39;]).loader(Image.bytes_array_loader, r[&#39;img&#39;])
+    loader_url = lambda r: TaggedImage(caption=[r[&#39;title_clean&#39;],r[&#39;description_clean&#39;]], url=r[&#39;downloadurl&#39;])
+    
+    return (Dataset(dataset[&#39;train&#39;], id=&#39;yfcc100m:train&#39;, loader=loader),
+            Dataset(dataset[&#39;train&#39;].remove_columns([&#39;img&#39;]), id=&#39;yfcc100m_url:train&#39;, loader=loader_url),  # faster loading for metadata analysis
+            Dataset(dataset[&#39;validation&#39;], id=&#39;yfcc100m:val&#39;, loader=loader),
+            Dataset(dataset[&#39;validation&#39;].remove_columns([&#39;img&#39;]), id=&#39;yfcc100m_url:val&#39;, loader=loader_url))                            </code></pre>
+</details>
+</dd>
+</dl>
+</section>
+<section>
+</section>
+</article>
+<nav id="sidebar">
+<header>
+<a class="homelink" rel="home" title="VIPY" href="https://github.com/visym/vipy/">
+<img src="https://www.visym.com/labs/images/visym_logo_black_notext.png" alt="" width="60">
+</a>
+<h1 style="font-size:200%;"><b>VIPY:</b> Visual Dataset Transformation</h1>
+</header>
+<form>
+<input id="lunr-search" name="q" placeholder="🔎 Search ..." aria-label="Search"
+disabled minlength="2">
+</form>
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/tingle/0.15.3/tingle.min.css" integrity="sha512-j1u8eUJ4f23xPPxwOrLUPQaCD2dwzNqqmDDcWS4deWsMv2ohLqmXXuP3hU7g8TyzbMSakP/mMqoNBYWj8AEIFg==" crossorigin>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tingle/0.15.3/tingle.min.js" integrity="sha512-plGUER9JkeEWPPqQBE4sdLqBoQug5Ap+BCGMc7bJ8BXkm+VVj6QzkpBz5Yv2yPkkq+cqg9IpkBaGCas6uDbW8g==" crossorigin></script>
+<style>
+.modal-dialog iframe {
+width: 100vw;
+height: calc(100vh - 80px);
+}
+@media screen and (min-width: 700px) {
+.modal-dialog iframe {
+width: 70vw;
+height: 80vh;
+}
+}
+.modal-dialog .tingle-modal-box {width: auto;}
+.modal-dialog .tingle-modal-box__content {padding: 0;}
+</style>
+<script>
+const input = document.getElementById('lunr-search');
+input.disabled = false;
+input.form.addEventListener('submit', (ev) => {
+ev.preventDefault();
+const url = new URL(window.location);
+url.searchParams.set('q', input.value);
+history.replaceState({}, null, url.toString());
+search(input.value);
+});
+const query = new URL(window.location).searchParams.get('q');
+if (query)
+search(query);
+function search(query) {
+const url = '././doc-search.html#' + encodeURIComponent(query);
+new tingle.modal({
+cssClass: ['modal-dialog'],
+onClose: () => {
+const url = new URL(window.location);
+url.searchParams.delete('q');
+history.replaceState({}, null, url.toString());
+setTimeout(() => input.focus(), 100);
+}
+}).setContent('<iframe src="' + url + '"></iframe>').open();
+}
+</script>
+<h1>Index</h1>
+<div class="toc">
+<ul></ul>
+</div>
+<ul id="index">
+<li><h3>Super-module</h3>
+<ul>
+<li><code><a title="vipy.data" href="index.html">vipy.data</a></code></li>
+</ul>
+</li>
+<li><h3><a href="#header-functions">Functions</a></h3>
+<ul class="">
+<li><code><a title="vipy.data.hf.as100m" href="#vipy.data.hf.as100m">as100m</a></code></li>
+<li><code><a title="vipy.data.hf.cifar10" href="#vipy.data.hf.cifar10">cifar10</a></code></li>
+<li><code><a title="vipy.data.hf.cifar100" href="#vipy.data.hf.cifar100">cifar100</a></code></li>
+<li><code><a title="vipy.data.hf.coyo300m" href="#vipy.data.hf.coyo300m">coyo300m</a></code></li>
+<li><code><a title="vipy.data.hf.coyo700m" href="#vipy.data.hf.coyo700m">coyo700m</a></code></li>
+<li><code><a title="vipy.data.hf.datacomp_1b" href="#vipy.data.hf.datacomp_1b">datacomp_1b</a></code></li>
+<li><code><a title="vipy.data.hf.docci" href="#vipy.data.hf.docci">docci</a></code></li>
+<li><code><a title="vipy.data.hf.flickr30k" href="#vipy.data.hf.flickr30k">flickr30k</a></code></li>
+<li><code><a title="vipy.data.hf.imageinwords" href="#vipy.data.hf.imageinwords">imageinwords</a></code></li>
+<li><code><a title="vipy.data.hf.laion2b" href="#vipy.data.hf.laion2b">laion2b</a></code></li>
+<li><code><a title="vipy.data.hf.mnist" href="#vipy.data.hf.mnist">mnist</a></code></li>
+<li><code><a title="vipy.data.hf.objects365" href="#vipy.data.hf.objects365">objects365</a></code></li>
+<li><code><a title="vipy.data.hf.oxford_fgvc_aircraft" href="#vipy.data.hf.oxford_fgvc_aircraft">oxford_fgvc_aircraft</a></code></li>
+<li><code><a title="vipy.data.hf.oxford_pets" href="#vipy.data.hf.oxford_pets">oxford_pets</a></code></li>
+<li><code><a title="vipy.data.hf.pascal_voc_2007" href="#vipy.data.hf.pascal_voc_2007">pascal_voc_2007</a></code></li>
+<li><code><a title="vipy.data.hf.sun397" href="#vipy.data.hf.sun397">sun397</a></code></li>
+<li><code><a title="vipy.data.hf.tiny_imagenet" href="#vipy.data.hf.tiny_imagenet">tiny_imagenet</a></code></li>
+<li><code><a title="vipy.data.hf.yfcc100m" href="#vipy.data.hf.yfcc100m">yfcc100m</a></code></li>
+</ul>
+</li>
+</ul>
+</nav>
+</main>
+<footer id="footer">
+<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.11.6</a>.</p>
+</footer>
+</body>
+</html>

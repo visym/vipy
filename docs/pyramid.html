@@ -26,7 +26,7 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/pyramid.py#L1-L332" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/f10b3f6aec0ef011e86ee11667579388379a8ac3/vipy/pyramid.py#L1-L332" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">import vipy
 import numpy as np
@@ -380,7 +380,7 @@ class BatchSteerablePyramid():
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/pyramid.py#L234-L331" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/f10b3f6aec0ef011e86ee11667579388379a8ac3/vipy/pyramid.py#L234-L331" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class BatchSteerablePyramid():
     def __init__(self, height, width, channels, device=&#39;cpu&#39;, orientations=4):
@@ -489,7 +489,7 @@ class BatchSteerablePyramid():
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/pyramid.py#L264-L266" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/f10b3f6aec0ef011e86ee11667579388379a8ac3/vipy/pyramid.py#L264-L266" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">@property
 def num_channels(self):
@@ -502,7 +502,7 @@ def num_channels(self):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/pyramid.py#L260-L262" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/f10b3f6aec0ef011e86ee11667579388379a8ac3/vipy/pyramid.py#L260-L262" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">@property
 def num_orientations(self):
@@ -515,7 +515,7 @@ def num_orientations(self):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/pyramid.py#L256-L258" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/f10b3f6aec0ef011e86ee11667579388379a8ac3/vipy/pyramid.py#L256-L258" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">@property
 def num_scales(self):
@@ -533,7 +533,7 @@ def num_scales(self):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/pyramid.py#L294-L296" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/f10b3f6aec0ef011e86ee11667579388379a8ac3/vipy/pyramid.py#L294-L296" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def band(self, scale, orientation):
     assert scale &lt;= self.num_scales and orientation &lt;= self.num_orientations
@@ -548,7 +548,7 @@ def num_scales(self):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/pyramid.py#L249-L254" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/f10b3f6aec0ef011e86ee11667579388379a8ac3/vipy/pyramid.py#L249-L254" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def device(self, d=None):
     if d is not None:
@@ -566,7 +566,7 @@ def num_scales(self):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/pyramid.py#L271-L280" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/f10b3f6aec0ef011e86ee11667579388379a8ac3/vipy/pyramid.py#L271-L280" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def forward(self, x):
     assert (torch.is_tensor(x) and x.ndim == 4) or isinstance(x, vipy.image.Image) or (isinstance(x, (list, tuple)) and all([isinstance(im, vipy.image.Image) for im in x]))
@@ -588,7 +588,7 @@ def num_scales(self):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/pyramid.py#L282-L283" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/f10b3f6aec0ef011e86ee11667579388379a8ac3/vipy/pyramid.py#L282-L283" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def forwarded(self):
     return self._tensor is not None</code></pre>
@@ -602,7 +602,7 @@ def num_scales(self):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/pyramid.py#L298-L300" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/f10b3f6aec0ef011e86ee11667579388379a8ac3/vipy/pyramid.py#L298-L300" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def magnitude(self):
     &#34;&#34;&#34;return magnitude component of complex steerable pyramid&#34;&#34;&#34;
@@ -617,7 +617,7 @@ def num_scales(self):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/pyramid.py#L306-L313" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/f10b3f6aec0ef011e86ee11667579388379a8ac3/vipy/pyramid.py#L306-L313" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def montage(self, x):
     &#34;&#34;&#34;return a montage visualization of the pyramid, scales by row, orientations by col, channels merged back into color image, last row is highpass and lowpass&#34;&#34;&#34;
@@ -637,7 +637,7 @@ def num_scales(self):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/pyramid.py#L302-L304" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/f10b3f6aec0ef011e86ee11667579388379a8ac3/vipy/pyramid.py#L302-L304" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def phase(self):
     &#34;&#34;&#34;return phase component of complex steerable pyramid&#34;&#34;&#34;
@@ -652,7 +652,7 @@ def num_scales(self):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/pyramid.py#L325-L327" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/f10b3f6aec0ef011e86ee11667579388379a8ac3/vipy/pyramid.py#L325-L327" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def phase_congruency(self, eps=1E-6):
     (M,P) = (self.magnitude()[:,1:-1,:,:], self.phase()[:,1:-1,:,:])
@@ -667,7 +667,7 @@ def num_scales(self):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/pyramid.py#L316-L322" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/f10b3f6aec0ef011e86ee11667579388379a8ac3/vipy/pyramid.py#L316-L322" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def synthesis(self, x):
     &#34;&#34;&#34;Generate a synthesis of the multichannel tensor x&#34;&#34;&#34;
@@ -688,7 +688,7 @@ The first channel will be the residual highpass and the last will be the residua
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/pyramid.py#L285-L292" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/f10b3f6aec0ef011e86ee11667579388379a8ac3/vipy/pyramid.py#L285-L292" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def tensor(self):
     &#34;&#34;&#34;a pyramid tensor is an NxCxHxW tensor (same shape as the input), but with channels from complex (even, odd) pyramid coefficients
@@ -708,7 +708,7 @@ The first channel will be the residual highpass and the last will be the residua
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/pyramid.py#L268-L269" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/f10b3f6aec0ef011e86ee11667579388379a8ac3/vipy/pyramid.py#L268-L269" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def to(self, dev):
     return self.device(dev)    </code></pre>
@@ -722,7 +722,7 @@ The first channel will be the residual highpass and the last will be the residua
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/pyramid.py#L329-L331" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/f10b3f6aec0ef011e86ee11667579388379a8ac3/vipy/pyramid.py#L329-L331" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def zero_crossing(self, eps=1E-6):
     (M,P) = (self.magnitude()[:,1:-1,:,:], self.phase()[:,1:-1,:,:])
@@ -740,7 +740,7 @@ The first channel will be the residual highpass and the last will be the residua
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/pyramid.py#L137-L183" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/f10b3f6aec0ef011e86ee11667579388379a8ac3/vipy/pyramid.py#L137-L183" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Foveation(LaplacianPyramid):
     def __init__(self, im, mode=&#39;log-circle&#39;, s=None):        
@@ -804,7 +804,7 @@ The first channel will be the residual highpass and the last will be the residua
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/pyramid.py#L173-L175" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/f10b3f6aec0ef011e86ee11667579388379a8ac3/vipy/pyramid.py#L173-L175" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def foveate(self, tx=0, ty=0):
     &#34;&#34;&#34;Foveate the input image at location (tx, ty) in scaled image coordinates where (0,0) is the center and (1,1) is the upper left&#34;&#34;&#34;        
@@ -819,7 +819,7 @@ The first channel will be the residual highpass and the last will be the residua
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/pyramid.py#L177-L183" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/f10b3f6aec0ef011e86ee11667579388379a8ac3/vipy/pyramid.py#L177-L183" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def visualize(self):
     &#34;&#34;&#34;Show the fovea density&#34;&#34;&#34;
@@ -849,7 +849,7 @@ The first channel will be the residual highpass and the last will be the residua
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/pyramid.py#L11-L47" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/f10b3f6aec0ef011e86ee11667579388379a8ac3/vipy/pyramid.py#L11-L47" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class GaussianPyramid():
     &#34;&#34;&#34;vipy.pyramid.GaussianPyramid() class&#34;&#34;&#34;
@@ -899,7 +899,7 @@ The first channel will be the residual highpass and the last will be the residua
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/pyramid.py#L43-L44" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/f10b3f6aec0ef011e86ee11667579388379a8ac3/vipy/pyramid.py#L43-L44" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def band(self, k):
     return self[k]</code></pre>
@@ -913,7 +913,7 @@ The first channel will be the residual highpass and the last will be the residua
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/pyramid.py#L46-L47" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/f10b3f6aec0ef011e86ee11667579388379a8ac3/vipy/pyramid.py#L46-L47" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def show(self, mindim=256):
     return vipy.visualize.montage([im.maxsquare() for im in self], mindim, mindim).show()</code></pre>
@@ -930,7 +930,7 @@ The first channel will be the residual highpass and the last will be the residua
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/pyramid.py#L50-L134" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/f10b3f6aec0ef011e86ee11667579388379a8ac3/vipy/pyramid.py#L50-L134" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class LaplacianPyramid():
     &#34;&#34;&#34;vipy.pyramid.LaplacianPyramid() class&#34;&#34;&#34;    
@@ -1032,7 +1032,7 @@ The first channel will be the residual highpass and the last will be the residua
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/pyramid.py#L129-L134" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/f10b3f6aec0ef011e86ee11667579388379a8ac3/vipy/pyramid.py#L129-L134" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">@staticmethod
 def fromtensor(bands):
@@ -1053,7 +1053,7 @@ def fromtensor(bands):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/pyramid.py#L100-L101" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/f10b3f6aec0ef011e86ee11667579388379a8ac3/vipy/pyramid.py#L100-L101" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def band(self, k):
     return self[k]</code></pre>
@@ -1067,7 +1067,7 @@ def fromtensor(bands):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/pyramid.py#L121-L122" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/f10b3f6aec0ef011e86ee11667579388379a8ac3/vipy/pyramid.py#L121-L122" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def channels(self):
     return self._im.channels()</code></pre>
@@ -1081,7 +1081,7 @@ def fromtensor(bands):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/pyramid.py#L117-L118" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/f10b3f6aec0ef011e86ee11667579388379a8ac3/vipy/pyramid.py#L117-L118" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def height(self):
     return self._im.height()</code></pre>
@@ -1095,7 +1095,7 @@ def fromtensor(bands):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/pyramid.py#L103-L112" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/f10b3f6aec0ef011e86ee11667579388379a8ac3/vipy/pyramid.py#L103-L112" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def reconstruct(self):
     x = self._band[-1]
@@ -1117,7 +1117,7 @@ def fromtensor(bands):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/pyramid.py#L123-L124" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/f10b3f6aec0ef011e86ee11667579388379a8ac3/vipy/pyramid.py#L123-L124" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def scales(self):
     return len(self)</code></pre>
@@ -1131,7 +1131,7 @@ def fromtensor(bands):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/pyramid.py#L114-L115" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/f10b3f6aec0ef011e86ee11667579388379a8ac3/vipy/pyramid.py#L114-L115" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def show(self, mindim=256):
     return vipy.visualize.montage([im.maxsquare().resize(mindim, mindim, interp=&#39;nearest&#39;) for im in self], mindim, mindim).show()</code></pre>
@@ -1145,7 +1145,7 @@ def fromtensor(bands):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/pyramid.py#L126-L127" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/f10b3f6aec0ef011e86ee11667579388379a8ac3/vipy/pyramid.py#L126-L127" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def tensor(self, interp=&#39;nearest&#39;):
     return torch.stack([im.resize(self.height(), self.width(), interp=interp).torch(order=&#39;CHW&#39;) for im in self])  # scales() x channels() x height() x width()</code></pre>
@@ -1159,7 +1159,7 @@ def fromtensor(bands):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/pyramid.py#L119-L120" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/f10b3f6aec0ef011e86ee11667579388379a8ac3/vipy/pyramid.py#L119-L120" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def width(self):
     return self._im.width()</code></pre>
@@ -1176,7 +1176,7 @@ def fromtensor(bands):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/pyramid.py#L186-L230" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/f10b3f6aec0ef011e86ee11667579388379a8ac3/vipy/pyramid.py#L186-L230" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class SteerablePyramid():
     def __init__(self, im):
@@ -1232,7 +1232,7 @@ def fromtensor(bands):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/pyramid.py#L203-L205" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/f10b3f6aec0ef011e86ee11667579388379a8ac3/vipy/pyramid.py#L203-L205" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">@property
 def num_channels(self):
@@ -1245,7 +1245,7 @@ def num_channels(self):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/pyramid.py#L199-L201" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/f10b3f6aec0ef011e86ee11667579388379a8ac3/vipy/pyramid.py#L199-L201" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">@property
 def num_orientations(self):
@@ -1258,7 +1258,7 @@ def num_orientations(self):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/pyramid.py#L195-L197" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/f10b3f6aec0ef011e86ee11667579388379a8ac3/vipy/pyramid.py#L195-L197" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">@property
 def num_scales(self):
@@ -1276,7 +1276,7 @@ def num_scales(self):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/pyramid.py#L207-L208" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/f10b3f6aec0ef011e86ee11667579388379a8ac3/vipy/pyramid.py#L207-L208" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def bandpass(self, channel):
     return [self._channels[channel].pyr_coeffs[(s,o)] for s in range(self.num_scales) for o in range(self.num_orientations)]</code></pre>
@@ -1290,7 +1290,7 @@ def num_scales(self):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/pyramid.py#L213-L214" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/f10b3f6aec0ef011e86ee11667579388379a8ac3/vipy/pyramid.py#L213-L214" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def highpass(self, channel):
     return self._channels[channel].pyr_coeffs[&#39;residual_highpass&#39;]        </code></pre>
@@ -1304,7 +1304,7 @@ def num_scales(self):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/pyramid.py#L210-L211" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/f10b3f6aec0ef011e86ee11667579388379a8ac3/vipy/pyramid.py#L210-L211" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def lowpass(self, channel):
     return self._channels[channel].pyr_coeffs[&#39;residual_lowpass&#39;]</code></pre>
@@ -1318,7 +1318,7 @@ def num_scales(self):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/pyramid.py#L225-L230" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/f10b3f6aec0ef011e86ee11667579388379a8ac3/vipy/pyramid.py#L225-L230" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def montage(self):
     &#34;&#34;&#34;scales by row, orientations by col, channels merged back into color image, last image is lowpass&#34;&#34;&#34;
@@ -1337,7 +1337,7 @@ Coefficients are resized using bilinear interpolation.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/pyramid.py#L219-L223" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/f10b3f6aec0ef011e86ee11667579388379a8ac3/vipy/pyramid.py#L219-L223" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def multichannel(self):
     &#34;&#34;&#34;a multichannel image is an image of the same shape as the input, but with channels from pyramid decomposition.  Coefficients are resized using bilinear interpolation.&#34;&#34;&#34;
@@ -1354,7 +1354,7 @@ Coefficients are resized using bilinear interpolation.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/pyramid.py#L216-L217" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/f10b3f6aec0ef011e86ee11667579388379a8ac3/vipy/pyramid.py#L216-L217" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def synthesis(self):        
     return vipy.image.Image(array=np.stack([pyr.recon_pyr() for pyr in self._channels], axis=2).astype(np.float32)).mat2gray()</code></pre>
