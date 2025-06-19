@@ -413,17 +413,17 @@ On a remote machine (e.g. the cluster machine you have accessed via ssh), run:
 ```python
 remote>>> vipy.util.scpsave(vipy.image.owl())
 [vipy.util.scpsave]: On a local machine where you have public key ssh access to this remote machine run:
->>> V = vipy.util.scpload('scp://hostname:/var/folders/sn/6n34qjp513742_5y3lvmhnlw0000gn/T/c4237a25a99b776f.pkl')
+>>> V = vipy.util.scpload('scp://hostname:/var/folders/sn/6n34qjp513742_5y3lvmhnlw0000gn/T/c4237a25a99b776f.json')
 ```
 
 Then, on your local machine (e.g. your laptop), run the command output above:
 
 ```python
-local>>> print(vipy.util.scpload('scp://hostname:/var/folders/sn/6n34qjp513742_5y3lvmhnlw0000gn/T/c4237a25a99b776f.pkl'))
-<vipy.image.scene: height=640, width=512, color=rgb, filename="/Users/jebyrne/.vipy/1920px-Bubo_virginianus_06.jpg", url=https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Bubo_virginianus_06.jpg/1920px-Bubo_virginianus_06.jpg, category="Nature", objects=1>
+local>>> print(vipy.util.scpload('scp://hostname:/var/folders/sn/6n34qjp513742_5y3lvmhnlw0000gn/T/c4237a25a99b776f.json'))
+<vipy.image.scene: height=640, width=512, color=rgb, filename="/tmp/.vipy/1920px-Bubo_virginianus_06.jpg", url=https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Bubo_virginianus_06.jpg/1920px-Bubo_virginianus_06.jpg, category="Nature", objects=1>
 ```
 
-The method `vipy.util.scpsave` will save a list of vipy objects to a temporary pickle file, such that the URL of each object is prepended with "scp://".  When calling `vipy.util.scpload` on the local machine, this will fetch the pickle file from the remote machine via scp using the default public key.  Then, when each vipy object is accessed, it will fetch the URL of the media object via scp from the remote machine.  This provides an on-demand fetching of each image from a data storage behind a SSH server without any port forwarding, and uses public key scp.  This allows for visualization of datasets that cannot be copied locally, but can be reduced on the local machine which are then fetched for visualization.
+The method `vipy.util.scpsave` will save a list of vipy objects to a temporary archive file, such that the URL of each object is prepended with "scp://".  When calling `vipy.util.scpload` on the local machine, this will fetch the pickle file from the remote machine via scp using the default public key.  Then, when each vipy object is accessed, it will fetch the URL of the media object via scp from the remote machine.  This provides an on-demand fetching of each image from a data storage behind a SSH server without any port forwarding, and uses public key scp.  This allows for visualization of datasets that cannot be copied locally, but can be reduced on the local machine which are then fetched for visualization.
 
 
 ### Visualization behind AWS S3 
