@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
-<meta name="generator" content="pdoc 0.10.0" />
+<meta name="generator" content="pdoc 0.11.6" />
 <meta name="google-site-verification" content="aB8LkQegj94_TJPdrcJm2ldIRWyXY82Jp24Gtkdgyn0" />
 <title>vipy.data.cifar API documentation</title>
 <meta name="description" content="" />
@@ -26,12 +26,13 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/data/cifar.py#L1-L115" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/data/cifar.py#L1-L127" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">import os
 import numpy as np
 import vipy
 import pickle
+from vipy.util import tocache
 
 
 CIFAR10_URL = &#39;https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz&#39;
@@ -49,11 +50,14 @@ class CIFAR10():
 
     &#34;&#34;&#34;
     
-    def __init__(self, outdir, name=&#39;cifar10&#39;, url=CIFAR10_URL, md5=CIFAR10_MD5):        
+    def __init__(self, datadir=None, name=&#39;cifar10&#39;, url=CIFAR10_URL, md5=CIFAR10_MD5, redownload=False):
+
+        outdir = tocache(&#39;cifar10&#39;) if datadir is None else datadir
+        
         self._datadir = vipy.util.remkdir(outdir)
 
         self._subdir = &#39;cifar-10-batches-py&#39;
-        if not os.path.exists(os.path.join(outdir, self._subdir, &#39;data_batch_1&#39;)):
+        if redownload or not os.path.exists(os.path.join(self._datadir, &#39;.complete&#39;)):
             print(&#39;[vipy.data.cifar10]: downloading CIFAR-10 to &#34;%s&#34;&#39; % self._datadir)
             vipy.downloader.download_and_unpack(url, self._datadir, md5=md5)
 
@@ -71,6 +75,8 @@ class CIFAR10():
 
         self._name = name
 
+        open(os.path.join(self._datadir, &#39;.complete&#39;), &#39;a&#39;).close()
+
     def __repr__(self):
         return &#39;&lt;vipy.data.%s: %s&gt;&#39; % (self._name, self._datadir)
     
@@ -78,10 +84,12 @@ class CIFAR10():
         return self._classes
 
     def trainset(self):
-        return vipy.dataset.Dataset([vipy.image.ImageCategory(category=self._classes[y], array=x, colorspace=&#39;rgb&#39;) for (x,y) in zip(self._trainset, self._trainlabels)], &#39;%s_train&#39; % self._name)
+        loader = lambda x, classes=self._classes: vipy.image.ImageCategory(array=x[0], category=classes[x[1]], colorspace=&#39;rgb&#39;)
+        return vipy.dataset.Dataset(tuple((x,y) for (x,y) in zip(self._trainset, self._trainlabels)), &#39;%s_train&#39; % self._name, loader=loader)
     
     def testset(self):
-        return vipy.dataset.Dataset([vipy.image.ImageCategory(category=self._classes[y], array=x, colorspace=&#39;rgb&#39;) for (x,y) in zip(self._testset, self._testlabels)], &#39;%s_test&#39; % self._name)
+        loader = lambda x, classes=self._classes: vipy.image.ImageCategory(array=x[0], category=classes[x[1]], colorspace=&#39;rgb&#39;)
+        return vipy.dataset.Dataset(tuple((x,y) for (x,y) in zip(self._testset, self._testlabels)), &#39;%s_test&#39; % self._name, loader=loader)        
     
     def _trainset(self, labelkey=b&#39;labels&#39;):
         (data, labels) = ([], [])
@@ -113,12 +121,14 @@ class CIFAR10():
             
             
 class CIFAR100(CIFAR10):
-    def __init__(self, datadir, name=&#39;cifar100&#39;, url=CIFAR100_URL, md5=CIFAR100_MD5):        
+    def __init__(self, datadir=None, name=&#39;cifar100&#39;, url=CIFAR100_URL, md5=CIFAR100_MD5, redownload=False):
+
+        datadir = tocache(&#39;cifar100&#39;) if datadir is None else datadir        
 
         self._name = name
         self._datadir = vipy.util.remkdir(datadir)
         self._subdir = &#39;cifar-100-python&#39;
-        if not os.path.exists(os.path.join(datadir, self._subdir, &#39;train&#39;)):
+        if redownload or not os.path.exists(os.path.join(self._datadir, &#39;.complete&#39;)):
             print(&#39;[vipy.data.cifar10]: downloading CIFAR-100 to &#34;%s&#34;&#39; % self._datadir)
             vipy.downloader.download_and_unpack(url, self._datadir, md5=md5)
 
@@ -134,6 +144,8 @@ class CIFAR100(CIFAR10):
 
         self._trainset()
         self._testset()
+
+        open(os.path.join(self._datadir, &#39;.complete&#39;), &#39;a&#39;).close()
         
     def _trainset(self):
         return super()._trainset(labelkey=b&#39;fine_labels&#39;)
@@ -156,7 +168,7 @@ class CIFAR100(CIFAR10):
 <dl>
 <dt id="vipy.data.cifar.CIFAR10"><code class="flex name class">
 <span>class <span class="ident">CIFAR10</span></span>
-<span>(</span><span>outdir, name='cifar10', url='https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz', md5='c58f30108f718f92721af3b95e74349a')</span>
+<span>(</span><span>datadir=None, name='cifar10', url='https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz', md5='c58f30108f718f92721af3b95e74349a', redownload=False)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>vipy.data.cifar.CIFAR10 class</p>
@@ -167,7 +179,7 @@ class CIFAR100(CIFAR10):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/data/cifar.py#L13-L82" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/data/cifar.py#L14-L90" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class CIFAR10():
     &#34;&#34;&#34;vipy.data.cifar.CIFAR10 class
@@ -178,11 +190,14 @@ class CIFAR100(CIFAR10):
 
     &#34;&#34;&#34;
     
-    def __init__(self, outdir, name=&#39;cifar10&#39;, url=CIFAR10_URL, md5=CIFAR10_MD5):        
+    def __init__(self, datadir=None, name=&#39;cifar10&#39;, url=CIFAR10_URL, md5=CIFAR10_MD5, redownload=False):
+
+        outdir = tocache(&#39;cifar10&#39;) if datadir is None else datadir
+        
         self._datadir = vipy.util.remkdir(outdir)
 
         self._subdir = &#39;cifar-10-batches-py&#39;
-        if not os.path.exists(os.path.join(outdir, self._subdir, &#39;data_batch_1&#39;)):
+        if redownload or not os.path.exists(os.path.join(self._datadir, &#39;.complete&#39;)):
             print(&#39;[vipy.data.cifar10]: downloading CIFAR-10 to &#34;%s&#34;&#39; % self._datadir)
             vipy.downloader.download_and_unpack(url, self._datadir, md5=md5)
 
@@ -200,6 +215,8 @@ class CIFAR100(CIFAR10):
 
         self._name = name
 
+        open(os.path.join(self._datadir, &#39;.complete&#39;), &#39;a&#39;).close()
+
     def __repr__(self):
         return &#39;&lt;vipy.data.%s: %s&gt;&#39; % (self._name, self._datadir)
     
@@ -207,10 +224,12 @@ class CIFAR100(CIFAR10):
         return self._classes
 
     def trainset(self):
-        return vipy.dataset.Dataset([vipy.image.ImageCategory(category=self._classes[y], array=x, colorspace=&#39;rgb&#39;) for (x,y) in zip(self._trainset, self._trainlabels)], &#39;%s_train&#39; % self._name)
+        loader = lambda x, classes=self._classes: vipy.image.ImageCategory(array=x[0], category=classes[x[1]], colorspace=&#39;rgb&#39;)
+        return vipy.dataset.Dataset(tuple((x,y) for (x,y) in zip(self._trainset, self._trainlabels)), &#39;%s_train&#39; % self._name, loader=loader)
     
     def testset(self):
-        return vipy.dataset.Dataset([vipy.image.ImageCategory(category=self._classes[y], array=x, colorspace=&#39;rgb&#39;) for (x,y) in zip(self._testset, self._testlabels)], &#39;%s_test&#39; % self._name)
+        loader = lambda x, classes=self._classes: vipy.image.ImageCategory(array=x[0], category=classes[x[1]], colorspace=&#39;rgb&#39;)
+        return vipy.dataset.Dataset(tuple((x,y) for (x,y) in zip(self._testset, self._testlabels)), &#39;%s_test&#39; % self._name, loader=loader)        
     
     def _trainset(self, labelkey=b&#39;labels&#39;):
         (data, labels) = ([], [])
@@ -254,7 +273,7 @@ class CIFAR100(CIFAR10):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/data/cifar.py#L47-L48" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/data/cifar.py#L53-L54" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def classes(self):
     return self._classes</code></pre>
@@ -268,10 +287,11 @@ class CIFAR100(CIFAR10):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/data/cifar.py#L53-L54" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/data/cifar.py#L60-L62" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def testset(self):
-    return vipy.dataset.Dataset([vipy.image.ImageCategory(category=self._classes[y], array=x, colorspace=&#39;rgb&#39;) for (x,y) in zip(self._testset, self._testlabels)], &#39;%s_test&#39; % self._name)</code></pre>
+    loader = lambda x, classes=self._classes: vipy.image.ImageCategory(array=x[0], category=classes[x[1]], colorspace=&#39;rgb&#39;)
+    return vipy.dataset.Dataset(tuple((x,y) for (x,y) in zip(self._testset, self._testlabels)), &#39;%s_test&#39; % self._name, loader=loader)        </code></pre>
 </details>
 </dd>
 <dt id="vipy.data.cifar.CIFAR10.trainset"><code class="name flex">
@@ -282,17 +302,18 @@ class CIFAR100(CIFAR10):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/data/cifar.py#L50-L51" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/data/cifar.py#L56-L58" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def trainset(self):
-    return vipy.dataset.Dataset([vipy.image.ImageCategory(category=self._classes[y], array=x, colorspace=&#39;rgb&#39;) for (x,y) in zip(self._trainset, self._trainlabels)], &#39;%s_train&#39; % self._name)</code></pre>
+    loader = lambda x, classes=self._classes: vipy.image.ImageCategory(array=x[0], category=classes[x[1]], colorspace=&#39;rgb&#39;)
+    return vipy.dataset.Dataset(tuple((x,y) for (x,y) in zip(self._trainset, self._trainlabels)), &#39;%s_train&#39; % self._name, loader=loader)</code></pre>
 </details>
 </dd>
 </dl>
 </dd>
 <dt id="vipy.data.cifar.CIFAR100"><code class="flex name class">
 <span>class <span class="ident">CIFAR100</span></span>
-<span>(</span><span>datadir, name='cifar100', url='https://www.cs.toronto.edu/~kriz/cifar-100-python.tar.gz', md5='eb9058c3a382ffc7106e4002c42a8d85')</span>
+<span>(</span><span>datadir=None, name='cifar100', url='https://www.cs.toronto.edu/~kriz/cifar-100-python.tar.gz', md5='eb9058c3a382ffc7106e4002c42a8d85', redownload=False)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>vipy.data.cifar.CIFAR10 class</p>
@@ -303,15 +324,17 @@ class CIFAR100(CIFAR10):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/data/cifar.py#L85-L112" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/data/cifar.py#L93-L124" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class CIFAR100(CIFAR10):
-    def __init__(self, datadir, name=&#39;cifar100&#39;, url=CIFAR100_URL, md5=CIFAR100_MD5):        
+    def __init__(self, datadir=None, name=&#39;cifar100&#39;, url=CIFAR100_URL, md5=CIFAR100_MD5, redownload=False):
+
+        datadir = tocache(&#39;cifar100&#39;) if datadir is None else datadir        
 
         self._name = name
         self._datadir = vipy.util.remkdir(datadir)
         self._subdir = &#39;cifar-100-python&#39;
-        if not os.path.exists(os.path.join(datadir, self._subdir, &#39;train&#39;)):
+        if redownload or not os.path.exists(os.path.join(self._datadir, &#39;.complete&#39;)):
             print(&#39;[vipy.data.cifar10]: downloading CIFAR-100 to &#34;%s&#34;&#39; % self._datadir)
             vipy.downloader.download_and_unpack(url, self._datadir, md5=md5)
 
@@ -327,6 +350,8 @@ class CIFAR100(CIFAR10):
 
         self._trainset()
         self._testset()
+
+        open(os.path.join(self._datadir, &#39;.complete&#39;), &#39;a&#39;).close()
         
     def _trainset(self):
         return super()._trainset(labelkey=b&#39;fine_labels&#39;)
@@ -424,7 +449,7 @@ setTimeout(() => input.focus(), 100);
 </nav>
 </main>
 <footer id="footer">
-<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.10.0</a>.</p>
+<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.11.6</a>.</p>
 </footer>
 </body>
 </html>

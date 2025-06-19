@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
-<meta name="generator" content="pdoc 0.10.0" />
+<meta name="generator" content="pdoc 0.11.6" />
 <meta name="google-site-verification" content="aB8LkQegj94_TJPdrcJm2ldIRWyXY82Jp24Gtkdgyn0" />
 <title>vipy.data.ava API documentation</title>
 <meta name="description" content="" />
@@ -26,7 +26,7 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/data/ava.py#L1-L130" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/data/ava.py#L1-L114" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">import os
 import vipy.util
@@ -34,8 +34,9 @@ from vipy.util import filetail, remkdir, readjson, groupbyasdict, filefull, read
 import vipy.downloader
 from vipy.video import VideoCategory, Video, Scene
 import numpy as np
-from vipy.object import Track, BoundingBox
+from vipy.object import Track, BoundingBox, Detection
 from vipy.activity import Activity
+from vipy.dataset import Dataset
 
 
 # https://research.google.com/ava/download.html#ava_actions_download
@@ -55,14 +56,14 @@ class AVA(object):
 
     def download(self):
         zipfile = os.path.join(self.datadir, filetail(URL))
-        vipy.downloader.download(URL, zipfile)
-        vipy.downloader.unpack(zipfile, self.datadir)
+        vipy.downloader.download(URL, zipfile, verbose=False)
+        vipy.downloader.unpack(zipfile, self.datadir, verbose=False)
         return self
 
     def _isdownloaded(self):
         return os.path.exists(os.path.join(self.datadir, &#39;ava_train_v2.2.csv&#39;))
     
-    def _dataset(self, csvfile, downloaded=False):
+    def _dataset(self, csvfile, downloaded=False, verbose=False):
         # AVA csv format: video_id, middle_frame_timestamp, scaled_person_box (xmin, ymin, xmax, ymax), action_id, person_id
 
         # video_id: YouTube identifier
@@ -79,61 +80,44 @@ class AVA(object):
         d_category_to_index = self.categories()
         d_index_to_category = {v:k for (k,v) in d_category_to_index.items()}
 
-        # Parallel download
-        #
-        # &gt;&gt;&gt; D = vipy.data.ava.AVA(&#39;/path/to&#39;)
-        # &gt;&gt;&gt; with vipy.globals.parallel(8):
-        # &gt;&gt;&gt;     V = D.valset()
-        #  
-        videos = [vipy.video.Scene(url=&#39;https://www.youtube.com/watch?v=%s&#39; % video_id, filename=os.path.join(self.datadir, video_id)) for (k_video, (video_id, rowlist)) in enumerate(d_videoid_to_rows.items())]
-        d = {filebase(f):f for f in vipy.util.findvideo(self.datadir)}  # already downloaded, youtube videos are tricky since we don&#39;t know the extension until it is downloaded...
-        videos = [v.filename(d[filebase(v.filename())]) if filebase(v.filename()) in d else v for v in videos]
-        videos = ([v.filename(d[filebase(v.filename())]) if filebase(v.filename()) in d else None for v in videos] if downloaded else   # only the videos that have been downloaded so far
-                  vipy.batch.Batch(videos, warnme=False).map(lambda v: v.download(ignoreErrors=True) if not v.isdownloaded() else v).result())
-                    
+        videos = [vipy.video.Scene(url=&#39;https://www.youtube.com/watch?v=%s&#39; % video_id, framerate=None, 
+                                   filename=os.path.join(self.datadir, video_id)) for (k_video, (video_id, rowlist)) in enumerate(d_videoid_to_rows.items())]                    
         for (k_video, (video_id, rowlist)) in enumerate(d_videoid_to_rows.items()):
             v = videos[k_video]
-            if v is None:
-                continue
-            
-            print(&#39;[vipy.data.ava][%d/%d]: Parsing &#34;%s&#34; with %d activities&#39; % (k_video, len(d_videoid_to_rows), v.url(), len(rowlist)))            
 
-            # Download or skip
-            if not v.isdownloaded():
-                print(&#39;[vipy.data.ava][%d/%d]: Download failed - SKIPPING&#39; % (k_video, len(d_videoid_to_rows)))
-                continue
-
-            framerate = v.framerate_of_videofile()
-            startframe = max(0, framerate*(min([float(x[1]) for x in rowlist])-1.5))
-            endframe = framerate*(max([float(x[1]) for x in rowlist])+1.5)            
-            v = v.framerate(framerate).clip(startframe, endframe)
-            (height, width) = v.shape() 
+            if verbose:
+                print(&#39;[vipy.data.ava][%d/%d]: Parsing &#34;%s&#34; with %d activities&#39; % (k_video, len(d_videoid_to_rows), v.url(), len(rowlist)))            
+            dummy_framerate = 30  # placeholder, don&#39;t know the true framerate until the video is downloaded
 
             # Tracks are &#34;actor_id&#34; across the video
             tracks = groupbyasdict(rowlist, lambda x: x[7])
             d_tracknum_to_track = {}
-            for (tracknum, tracklist) in tracks.items():
-                (keyframes, boxes) = zip(*[((float(x[1])*framerate)-startframe, BoundingBox(xmin=width*float(x[2]), ymin=height*float(x[3]), xmax=width*float(x[4]), ymax=height*float(x[5]))) for x in tracklist])
-                t = Track(keyframes=keyframes, boxes=boxes, category=tracknum, framerate=framerate)
-                d_tracknum_to_track[tracknum] = t
-                v.add(t)
 
+            for (k,(tracknum, tracklist)) in enumerate(tracks.items()):
+                (keyframes, boxes) = zip(*[(((float(x[1]))*dummy_framerate), Detection(xmin=float(x[2]), ymin=float(x[3]), xmax=float(x[4]), ymax=float(x[5]), normalized_coordinates=True)) for x in tracklist])
+                t = Track(keyframes=keyframes, boxes=boxes, category=tracknum, framerate=dummy_framerate, id=k)
+                d_tracknum_to_track[tracknum] = t
+                v.add_object(t, rangecheck=False)
+                
             # Every row is a separate three second long activity centered at startsec involving one actor
-            for (video_id, startsec, xmin, ymin, xmax, ymax, activity_id, actor_id) in rowlist:
+            for (k,(video_id, startsec, xmin, ymin, xmax, ymax, activity_id, actor_id)) in enumerate(rowlist):
                 t = d_tracknum_to_track[actor_id]
-                act_startframe = (float(startsec)*framerate)-startframe
                 try:
-                    a = Activity(startframe=max(0, int(np.round((act_startframe-1.5*framerate)))), endframe=int(np.round((act_startframe+1.5*framerate))),
+                    a = Activity(startframe=max(0, int(np.round(((float(startsec)-1.5)*dummy_framerate)))), endframe=int(np.round(((float(startsec)+1.5)*dummy_framerate))),
                                  category=d_index_to_category[int(activity_id)],
-                                 tracks={t.id():t}, framerate=framerate)
-                    v.add(a)
+                                 tracks={t.id():t}, framerate=dummy_framerate, id=k)
+                    v.add_object(a, rangecheck=False)
 
                 except KeyboardInterrupt:
                     raise
                 
                 except Exception as e:
                     print(&#39;[vipy.data.ava]: actor_id=%s, activity_id=%s, video_id=%s - SKIPPING with error &#34;%s&#34;&#39; % (actor_id, activity_id, video_id, str(e)))                   
-                
+                    raise
+
+            start = float(max(0, (min([float(x[1]) for x in rowlist])-1.5)))
+            end = float(max([float(x[1]) for x in rowlist])+1.5)
+            v = v.clip(start, end)                
             vidlist.append(v)
         return vidlist
 
@@ -152,10 +136,10 @@ class AVA(object):
         return d_category_to_index
 
     def trainset(self):
-        return self._dataset(os.path.join(self.datadir, &#39;ava_train_v2.2.csv&#39;))
+        return Dataset(self._dataset(os.path.join(self.datadir, &#39;ava_train_v2.2.csv&#39;)), id=&#39;ava:train&#39;)
 
     def valset(self):
-        return self._dataset(os.path.join(self.datadir, &#39;ava_val_v2.2.csv&#39;))
+        return Dataset(self._dataset(os.path.join(self.datadir, &#39;ava_val_v2.2.csv&#39;)), id=&#39;ava:val&#39;)
 
     </code></pre>
 </details>
@@ -178,7 +162,7 @@ class AVA(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/data/ava.py#L15-L128" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/data/ava.py#L16-L112" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class AVA(object):
     def __init__(self, datadir):
@@ -193,14 +177,14 @@ class AVA(object):
 
     def download(self):
         zipfile = os.path.join(self.datadir, filetail(URL))
-        vipy.downloader.download(URL, zipfile)
-        vipy.downloader.unpack(zipfile, self.datadir)
+        vipy.downloader.download(URL, zipfile, verbose=False)
+        vipy.downloader.unpack(zipfile, self.datadir, verbose=False)
         return self
 
     def _isdownloaded(self):
         return os.path.exists(os.path.join(self.datadir, &#39;ava_train_v2.2.csv&#39;))
     
-    def _dataset(self, csvfile, downloaded=False):
+    def _dataset(self, csvfile, downloaded=False, verbose=False):
         # AVA csv format: video_id, middle_frame_timestamp, scaled_person_box (xmin, ymin, xmax, ymax), action_id, person_id
 
         # video_id: YouTube identifier
@@ -217,61 +201,44 @@ class AVA(object):
         d_category_to_index = self.categories()
         d_index_to_category = {v:k for (k,v) in d_category_to_index.items()}
 
-        # Parallel download
-        #
-        # &gt;&gt;&gt; D = vipy.data.ava.AVA(&#39;/path/to&#39;)
-        # &gt;&gt;&gt; with vipy.globals.parallel(8):
-        # &gt;&gt;&gt;     V = D.valset()
-        #  
-        videos = [vipy.video.Scene(url=&#39;https://www.youtube.com/watch?v=%s&#39; % video_id, filename=os.path.join(self.datadir, video_id)) for (k_video, (video_id, rowlist)) in enumerate(d_videoid_to_rows.items())]
-        d = {filebase(f):f for f in vipy.util.findvideo(self.datadir)}  # already downloaded, youtube videos are tricky since we don&#39;t know the extension until it is downloaded...
-        videos = [v.filename(d[filebase(v.filename())]) if filebase(v.filename()) in d else v for v in videos]
-        videos = ([v.filename(d[filebase(v.filename())]) if filebase(v.filename()) in d else None for v in videos] if downloaded else   # only the videos that have been downloaded so far
-                  vipy.batch.Batch(videos, warnme=False).map(lambda v: v.download(ignoreErrors=True) if not v.isdownloaded() else v).result())
-                    
+        videos = [vipy.video.Scene(url=&#39;https://www.youtube.com/watch?v=%s&#39; % video_id, framerate=None, 
+                                   filename=os.path.join(self.datadir, video_id)) for (k_video, (video_id, rowlist)) in enumerate(d_videoid_to_rows.items())]                    
         for (k_video, (video_id, rowlist)) in enumerate(d_videoid_to_rows.items()):
             v = videos[k_video]
-            if v is None:
-                continue
-            
-            print(&#39;[vipy.data.ava][%d/%d]: Parsing &#34;%s&#34; with %d activities&#39; % (k_video, len(d_videoid_to_rows), v.url(), len(rowlist)))            
 
-            # Download or skip
-            if not v.isdownloaded():
-                print(&#39;[vipy.data.ava][%d/%d]: Download failed - SKIPPING&#39; % (k_video, len(d_videoid_to_rows)))
-                continue
-
-            framerate = v.framerate_of_videofile()
-            startframe = max(0, framerate*(min([float(x[1]) for x in rowlist])-1.5))
-            endframe = framerate*(max([float(x[1]) for x in rowlist])+1.5)            
-            v = v.framerate(framerate).clip(startframe, endframe)
-            (height, width) = v.shape() 
+            if verbose:
+                print(&#39;[vipy.data.ava][%d/%d]: Parsing &#34;%s&#34; with %d activities&#39; % (k_video, len(d_videoid_to_rows), v.url(), len(rowlist)))            
+            dummy_framerate = 30  # placeholder, don&#39;t know the true framerate until the video is downloaded
 
             # Tracks are &#34;actor_id&#34; across the video
             tracks = groupbyasdict(rowlist, lambda x: x[7])
             d_tracknum_to_track = {}
-            for (tracknum, tracklist) in tracks.items():
-                (keyframes, boxes) = zip(*[((float(x[1])*framerate)-startframe, BoundingBox(xmin=width*float(x[2]), ymin=height*float(x[3]), xmax=width*float(x[4]), ymax=height*float(x[5]))) for x in tracklist])
-                t = Track(keyframes=keyframes, boxes=boxes, category=tracknum, framerate=framerate)
-                d_tracknum_to_track[tracknum] = t
-                v.add(t)
 
+            for (k,(tracknum, tracklist)) in enumerate(tracks.items()):
+                (keyframes, boxes) = zip(*[(((float(x[1]))*dummy_framerate), Detection(xmin=float(x[2]), ymin=float(x[3]), xmax=float(x[4]), ymax=float(x[5]), normalized_coordinates=True)) for x in tracklist])
+                t = Track(keyframes=keyframes, boxes=boxes, category=tracknum, framerate=dummy_framerate, id=k)
+                d_tracknum_to_track[tracknum] = t
+                v.add_object(t, rangecheck=False)
+                
             # Every row is a separate three second long activity centered at startsec involving one actor
-            for (video_id, startsec, xmin, ymin, xmax, ymax, activity_id, actor_id) in rowlist:
+            for (k,(video_id, startsec, xmin, ymin, xmax, ymax, activity_id, actor_id)) in enumerate(rowlist):
                 t = d_tracknum_to_track[actor_id]
-                act_startframe = (float(startsec)*framerate)-startframe
                 try:
-                    a = Activity(startframe=max(0, int(np.round((act_startframe-1.5*framerate)))), endframe=int(np.round((act_startframe+1.5*framerate))),
+                    a = Activity(startframe=max(0, int(np.round(((float(startsec)-1.5)*dummy_framerate)))), endframe=int(np.round(((float(startsec)+1.5)*dummy_framerate))),
                                  category=d_index_to_category[int(activity_id)],
-                                 tracks={t.id():t}, framerate=framerate)
-                    v.add(a)
+                                 tracks={t.id():t}, framerate=dummy_framerate, id=k)
+                    v.add_object(a, rangecheck=False)
 
                 except KeyboardInterrupt:
                     raise
                 
                 except Exception as e:
                     print(&#39;[vipy.data.ava]: actor_id=%s, activity_id=%s, video_id=%s - SKIPPING with error &#34;%s&#34;&#39; % (actor_id, activity_id, video_id, str(e)))                   
-                
+                    raise
+
+            start = float(max(0, (min([float(x[1]) for x in rowlist])-1.5)))
+            end = float(max([float(x[1]) for x in rowlist])+1.5)
+            v = v.clip(start, end)                
             vidlist.append(v)
         return vidlist
 
@@ -290,10 +257,10 @@ class AVA(object):
         return d_category_to_index
 
     def trainset(self):
-        return self._dataset(os.path.join(self.datadir, &#39;ava_train_v2.2.csv&#39;))
+        return Dataset(self._dataset(os.path.join(self.datadir, &#39;ava_train_v2.2.csv&#39;)), id=&#39;ava:train&#39;)
 
     def valset(self):
-        return self._dataset(os.path.join(self.datadir, &#39;ava_val_v2.2.csv&#39;))</code></pre>
+        return Dataset(self._dataset(os.path.join(self.datadir, &#39;ava_val_v2.2.csv&#39;)), id=&#39;ava:val&#39;)</code></pre>
 </details>
 <h3>Methods</h3>
 <dl>
@@ -305,7 +272,7 @@ class AVA(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/data/ava.py#L110-L122" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/data/ava.py#L94-L106" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def categories(self):
     rowlist = readlist(os.path.join(self.datadir, &#39;ava_action_list_v2.2.pbtxt&#39;))
@@ -330,12 +297,12 @@ class AVA(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/data/ava.py#L26-L30" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/data/ava.py#L27-L31" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def download(self):
     zipfile = os.path.join(self.datadir, filetail(URL))
-    vipy.downloader.download(URL, zipfile)
-    vipy.downloader.unpack(zipfile, self.datadir)
+    vipy.downloader.download(URL, zipfile, verbose=False)
+    vipy.downloader.unpack(zipfile, self.datadir, verbose=False)
     return self</code></pre>
 </details>
 </dd>
@@ -347,10 +314,10 @@ class AVA(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/data/ava.py#L124-L125" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/data/ava.py#L108-L109" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def trainset(self):
-    return self._dataset(os.path.join(self.datadir, &#39;ava_train_v2.2.csv&#39;))</code></pre>
+    return Dataset(self._dataset(os.path.join(self.datadir, &#39;ava_train_v2.2.csv&#39;)), id=&#39;ava:train&#39;)</code></pre>
 </details>
 </dd>
 <dt id="vipy.data.ava.AVA.valset"><code class="name flex">
@@ -361,10 +328,10 @@ class AVA(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/data/ava.py#L127-L128" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/data/ava.py#L111-L112" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def valset(self):
-    return self._dataset(os.path.join(self.datadir, &#39;ava_val_v2.2.csv&#39;))</code></pre>
+    return Dataset(self._dataset(os.path.join(self.datadir, &#39;ava_val_v2.2.csv&#39;)), id=&#39;ava:val&#39;)</code></pre>
 </details>
 </dd>
 </dl>
@@ -452,7 +419,7 @@ setTimeout(() => input.focus(), 100);
 </nav>
 </main>
 <footer id="footer">
-<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.10.0</a>.</p>
+<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.11.6</a>.</p>
 </footer>
 </body>
 </html>

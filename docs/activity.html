@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
-<meta name="generator" content="pdoc 0.10.0" />
+<meta name="generator" content="pdoc 0.11.6" />
 <meta name="google-site-verification" content="aB8LkQegj94_TJPdrcJm2ldIRWyXY82Jp24Gtkdgyn0" />
 <title>vipy.activity API documentation</title>
 <meta name="description" content="" />
@@ -26,11 +26,11 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/activity.py#L1-L409" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/activity.py#L1-L400" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">import numpy as np
 from vipy.geometry import BoundingBox
-from vipy.util import isstring, tolist
+from vipy.util import isstring, tolist, shortuuid
 import uuid
 import copy
 from vipy.object import Track
@@ -40,7 +40,6 @@ try:
 except ImportError:
     import json
 
-ACTIVITY_GUID = int(uuid.uuid4().hex[0:8], 16)  
 
 class Activity(object):
     &#34;&#34;&#34;vipy.object.Activity class
@@ -49,19 +48,23 @@ class Activity(object):
     The activity occurs at a given (startframe, endframe), where these frame indexes are extracted at the provided framerate.
     All objects are passed by reference with a globally unique track ID, for the tracks involved with the activity.  This 
     is done since tracks can exist after an activity completes, and that tracks should update the spatial transformation of boxes.
-    The shortlabel defines the string shown on the visualization video.
-
+        
     Valid constructors
 
     ```python 
-    t = vipy.object.Track(category=&#39;Person&#39;).add(...))
-    a = vipy.object.Activity(startframe=0, endframe=10, category=&#39;Walking&#39;, tracks={t.id():t})
+    t = vipy.object.Track(category=&#39;Person&#39;)
+    a = vipy.object.Activity(startframe=0, endframe=10, category=&#39;Walking&#39;, tracks=t.id())
+    a = vipy.object.Activity(startframe=0, endframe=10, category=&#39;Walking&#39;, tracks=t)    
     ```
 
+    Note.. shortlabel is kepy for backwards compatibility and will be deprecated
+    
     &#34;&#34;&#34;
-    def __init__(self, startframe, endframe, framerate=None, label=None, shortlabel=None, category=None, tracks=None, attributes=None, actorid=None, confidence=None, id=None):
+    __slots__ = [&#39;_id&#39;, &#39;_startframe&#39;, &#39;_endframe&#39;, &#39;_framerate&#39;, &#39;_label&#39;, &#39;_trackid&#39;, &#39;_actorid&#39;, &#39;attributes&#39;]
+    def __init__(self, startframe, endframe, framerate=30, label=None, category=None, tracks=None, attributes=None, actorid=None, confidence=None, id=None, shortlabel=None):
         assert not (label is not None and category is not None), &#34;Activity() Constructor requires either label or category kwargs, not both&#34;
         assert startframe &lt;= endframe, &#34;Start frame must be less than or equal to end frame&#34;
+        assert framerate is not None, &#34;initial framerate is required for framerate conversion&#34;
         if tracks:
             tracks = [v for (k,v) in tracks.items()] if isinstance(tracks, dict) else tracks  # backwards compatible, track dictionary input
             assert (all([isstring(t) for t in tracks]) or all([isinstance(t, Track) for t in tracks])), &#34;Invalid track input&#34;
@@ -73,15 +76,11 @@ class Activity(object):
         if tracks is not None and actorid is not None and actorid not in trackid:
             trackid.add(actorid)
 
-        if id is None:
-            global ACTIVITY_GUID; self._id = hex(int(ACTIVITY_GUID))[2:];  ACTIVITY_GUID = ACTIVITY_GUID + 1;  # faster, increment package level UUID4 initialized GUID
-        else:
-            self._id = id  # use provided
+        self._id = shortuuid() if id is None else id  # use provided
         self._startframe = int(startframe)
         self._endframe = int(endframe)
-        self._framerate = float(framerate) if framerate is not None else framerate
+        self._framerate = float(framerate)
         self._label = category if category is not None else label        
-        self._shortlabel = self._label if shortlabel is None else shortlabel
         self._trackid = trackid
         self._actorid = actorid
 
@@ -105,12 +104,11 @@ class Activity(object):
         d = {k.lstrip(&#39;_&#39;):v for (k,v) in d.items()}  # prettyjson (remove &#34;_&#34; prefix to attributes)                                        
         return obj(startframe=int(d[&#39;startframe&#39;]),
                    endframe=int(d[&#39;endframe&#39;]),
-                   framerate=d[&#39;framerate&#39;],
-                   category=d[&#39;label&#39;],
-                   shortlabel=d[&#39;shortlabel&#39;] if &#39;shortlabel&#39; in d else None,
-                   tracks=d[&#39;trackid&#39;],
+                   framerate=d[&#39;framerate&#39;] if &#39;framerate&#39; in d else None,
+                   category=d[&#39;label&#39;] if &#39;label&#39; in d else None,
+                   tracks=d[&#39;trackid&#39;] if &#39;trackid&#39; in d else None,
                    attributes=d[&#39;attributes&#39;] if &#39;attributes&#39; in d else None,
-                   actorid=d[&#39;actorid&#39;],
+                   actorid=d[&#39;actorid&#39;] if &#39;actorid&#39; in d else None,
                    id=d[&#39;id&#39;] if &#39;id&#39; in d else None)
                 
     def __len__(self):
@@ -136,7 +134,7 @@ class Activity(object):
                     self.truncate(startframe=self.middleframe()-int(np.ceil(s*self.framerate())//2), endframe=self.middleframe()+int(np.ceil(s*self.framerate())//2)))
         
     def __repr__(self):
-        return str(&#39;&lt;vipy.activity: category=&#34;%s&#34;, frames=(%d,%d), tracks=%s%s&gt;&#39; % (self.category(), self.startframe(), self.endframe(), len(self.trackids()), &#39;&#39; if self.confidence() is None else &#39;, confidence=%1.2f&#39; % self.confidence()))
+        return str(&#39;&lt;vipy.activity.Activity: category=&#34;%s&#34;, frames=(%d,%d), tracks=%s%s&gt;&#39; % (self.category(), self.startframe(), self.endframe(), len(self.trackids()), &#39;&#39; if self.confidence() is None else &#39;, confidence=%1.2f&#39; % self.confidence()))
 
     def dict(self):
         &#34;&#34;&#34;Return a python dictionary containing the relevant serialized attributes suitable for JSON encoding&#34;&#34;&#34;
@@ -147,11 +145,8 @@ class Activity(object):
         return self.json(encode=True)
     
     def json(self, encode=True):
-        d = {k:v for (k,v) in self.__dict__.items() if not ((k == &#39;_shortlabel&#39; and v is None) or
-                                                            (k == &#39;attributes&#39; and (v is None or isinstance(v, dict) and len(v)==0)) or
-                                                            (k == &#39;_id&#39; and v is None))}  # don&#39;t bother to store None values
-        d = {k:v if k != &#39;_trackid&#39; else tuple(v) for (k,v) in d.items()}  # sets are non-serializable
-        d = {k.lstrip(&#39;_&#39;):v for (k,v) in d.items()}  # prettyjson (remove &#34;_&#34; prefix to attributes)                                                
+        d = {k.lstrip(&#39;_&#39;):getattr(self, k) for k in Activity.__slots__ if getattr(self, k) is not None}  # prettyjson (remove &#34;_&#34; prefix to attributes)          
+        d = {k:v if k != &#39;trackid&#39; else tuple(v) for (k,v) in d.items()}  # sets are non-serializable
         return json.dumps(d) if encode else d
     
     def actorid(self, actorid=None):
@@ -202,11 +197,11 @@ class Activity(object):
             self._framerate = float(fps)
             return self
     
-    def category(self, label=None, shortlabel=None):
-        &#34;&#34;&#34;Change the label (and shortlabel) to the new label (and shortlabel)&#34;&#34;&#34;
+    def category(self, label=None):
+        &#34;&#34;&#34;Change the label to the new label &#34;&#34;&#34;
         if label is not None:
             self._label = label
-            return self.shortlabel(shortlabel) if shortlabel is not None else self
+            return self
         else:
             return self._label
 
@@ -230,20 +225,12 @@ class Activity(object):
             for (k,v) in ifcategory.items():
                 self.categoryif(k, v)
         elif self.category() == ifcategory:
-            self.category(tocategory, shortlabel=None)
+            self.category(tocategory)
         return self
 
-    def label(self, label=None, shortlabel=None):
+    def label(self, label=None):
         &#34;&#34;&#34;Alias for category&#34;&#34;&#34;
-        return self.category(label, shortlabel=shortlabel)
-
-    def shortlabel(self, label=None):
-        &#34;&#34;&#34;A optional shorter label string to show in the visualizations&#34;&#34;&#34;                
-        if label is not None:
-            self._shortlabel = label
-            return self
-        else:
-            return self._shortlabel
+        return self.category(label)
 
     def add(self, track):
         &#34;&#34;&#34;Add the track id for the track to this activity, so that if the track is changed externally it is reflected here&#34;&#34;&#34;
@@ -376,12 +363,16 @@ class Activity(object):
         return (t_intersection / t_union) if t_intersection &gt; 0 else 0
     
     def offset(self, dt):
+        dt = dt if isinstance(dt, int) else int(np.round(dt*self.framerate()))
         self._startframe = int(self._startframe + dt)
         self._endframe = int(self._endframe + dt)
         return self
 
-    def truncate(self, startframe=None, endframe=None):
-        &#34;&#34;&#34;Truncate the activity so that it is between startframe and endframe&#34;&#34;&#34;
+    def truncate(self, start=None, end=None):
+        &#34;&#34;&#34;Truncate the activity so that it is between start and end&#34;&#34;&#34;
+        startframe = int(np.round(start*self.framerate())) if isinstance(start, float) else start
+        endframe = int(np.round(end*self.framerate())) if isinstance(end, float) else end        
+        
         self._startframe = self._startframe if startframe is None else max(self._startframe, startframe)
         self._endframe = self._endframe if endframe is None else min(self._endframe, endframe)
         self._endframe = self._endframe if self._endframe &gt; self._startframe else self._startframe  # degenerate truncation
@@ -398,7 +389,7 @@ class Activity(object):
         #a = copy.deepcopy(self)
         a = Activity.from_json(self.json(encode=False))
         if rekey:
-            global ACTIVITY_GUID; a.id(newid=hex(int(ACTIVITY_GUID))[2:]);  ACTIVITY_GUID = ACTIVITY_GUID + 1;  # faster, increment package level UUID4 initialized GUID
+            a.id(newid=shortuuid())
         return a
     
     def temporalpad(self, df):
@@ -450,7 +441,7 @@ class Activity(object):
 <dl>
 <dt id="vipy.activity.Activity"><code class="flex name class">
 <span>class <span class="ident">Activity</span></span>
-<span>(</span><span>startframe, endframe, framerate=None, label=None, shortlabel=None, category=None, tracks=None, attributes=None, actorid=None, confidence=None, id=None)</span>
+<span>(</span><span>startframe, endframe, framerate=30, label=None, category=None, tracks=None, attributes=None, actorid=None, confidence=None, id=None, shortlabel=None)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>vipy.object.Activity class</p>
@@ -458,16 +449,17 @@ class Activity(object):
 The activity occurs at a given (startframe, endframe), where these frame indexes are extracted at the provided framerate.
 All objects are passed by reference with a globally unique track ID, for the tracks involved with the activity.
 This
-is done since tracks can exist after an activity completes, and that tracks should update the spatial transformation of boxes.
-The shortlabel defines the string shown on the visualization video.</p>
+is done since tracks can exist after an activity completes, and that tracks should update the spatial transformation of boxes.</p>
 <p>Valid constructors</p>
-<pre><code class="language-python">t = vipy.object.Track(category='Person').add(...))
-a = vipy.object.Activity(startframe=0, endframe=10, category='Walking', tracks={t.id():t})
-</code></pre></div>
+<pre><code class="language-python">t = vipy.object.Track(category='Person')
+a = vipy.object.Activity(startframe=0, endframe=10, category='Walking', tracks=t.id())
+a = vipy.object.Activity(startframe=0, endframe=10, category='Walking', tracks=t)    
+</code></pre>
+<p>Note.. shortlabel is kepy for backwards compatibility and will be deprecated</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/activity.py#L15-L408" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/activity.py#L14-L399" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Activity(object):
     &#34;&#34;&#34;vipy.object.Activity class
@@ -476,19 +468,23 @@ a = vipy.object.Activity(startframe=0, endframe=10, category='Walking', tracks={
     The activity occurs at a given (startframe, endframe), where these frame indexes are extracted at the provided framerate.
     All objects are passed by reference with a globally unique track ID, for the tracks involved with the activity.  This 
     is done since tracks can exist after an activity completes, and that tracks should update the spatial transformation of boxes.
-    The shortlabel defines the string shown on the visualization video.
-
+        
     Valid constructors
 
     ```python 
-    t = vipy.object.Track(category=&#39;Person&#39;).add(...))
-    a = vipy.object.Activity(startframe=0, endframe=10, category=&#39;Walking&#39;, tracks={t.id():t})
+    t = vipy.object.Track(category=&#39;Person&#39;)
+    a = vipy.object.Activity(startframe=0, endframe=10, category=&#39;Walking&#39;, tracks=t.id())
+    a = vipy.object.Activity(startframe=0, endframe=10, category=&#39;Walking&#39;, tracks=t)    
     ```
 
+    Note.. shortlabel is kepy for backwards compatibility and will be deprecated
+    
     &#34;&#34;&#34;
-    def __init__(self, startframe, endframe, framerate=None, label=None, shortlabel=None, category=None, tracks=None, attributes=None, actorid=None, confidence=None, id=None):
+    __slots__ = [&#39;_id&#39;, &#39;_startframe&#39;, &#39;_endframe&#39;, &#39;_framerate&#39;, &#39;_label&#39;, &#39;_trackid&#39;, &#39;_actorid&#39;, &#39;attributes&#39;]
+    def __init__(self, startframe, endframe, framerate=30, label=None, category=None, tracks=None, attributes=None, actorid=None, confidence=None, id=None, shortlabel=None):
         assert not (label is not None and category is not None), &#34;Activity() Constructor requires either label or category kwargs, not both&#34;
         assert startframe &lt;= endframe, &#34;Start frame must be less than or equal to end frame&#34;
+        assert framerate is not None, &#34;initial framerate is required for framerate conversion&#34;
         if tracks:
             tracks = [v for (k,v) in tracks.items()] if isinstance(tracks, dict) else tracks  # backwards compatible, track dictionary input
             assert (all([isstring(t) for t in tracks]) or all([isinstance(t, Track) for t in tracks])), &#34;Invalid track input&#34;
@@ -500,15 +496,11 @@ a = vipy.object.Activity(startframe=0, endframe=10, category='Walking', tracks={
         if tracks is not None and actorid is not None and actorid not in trackid:
             trackid.add(actorid)
 
-        if id is None:
-            global ACTIVITY_GUID; self._id = hex(int(ACTIVITY_GUID))[2:];  ACTIVITY_GUID = ACTIVITY_GUID + 1;  # faster, increment package level UUID4 initialized GUID
-        else:
-            self._id = id  # use provided
+        self._id = shortuuid() if id is None else id  # use provided
         self._startframe = int(startframe)
         self._endframe = int(endframe)
-        self._framerate = float(framerate) if framerate is not None else framerate
+        self._framerate = float(framerate)
         self._label = category if category is not None else label        
-        self._shortlabel = self._label if shortlabel is None else shortlabel
         self._trackid = trackid
         self._actorid = actorid
 
@@ -532,12 +524,11 @@ a = vipy.object.Activity(startframe=0, endframe=10, category='Walking', tracks={
         d = {k.lstrip(&#39;_&#39;):v for (k,v) in d.items()}  # prettyjson (remove &#34;_&#34; prefix to attributes)                                        
         return obj(startframe=int(d[&#39;startframe&#39;]),
                    endframe=int(d[&#39;endframe&#39;]),
-                   framerate=d[&#39;framerate&#39;],
-                   category=d[&#39;label&#39;],
-                   shortlabel=d[&#39;shortlabel&#39;] if &#39;shortlabel&#39; in d else None,
-                   tracks=d[&#39;trackid&#39;],
+                   framerate=d[&#39;framerate&#39;] if &#39;framerate&#39; in d else None,
+                   category=d[&#39;label&#39;] if &#39;label&#39; in d else None,
+                   tracks=d[&#39;trackid&#39;] if &#39;trackid&#39; in d else None,
                    attributes=d[&#39;attributes&#39;] if &#39;attributes&#39; in d else None,
-                   actorid=d[&#39;actorid&#39;],
+                   actorid=d[&#39;actorid&#39;] if &#39;actorid&#39; in d else None,
                    id=d[&#39;id&#39;] if &#39;id&#39; in d else None)
                 
     def __len__(self):
@@ -563,7 +554,7 @@ a = vipy.object.Activity(startframe=0, endframe=10, category='Walking', tracks={
                     self.truncate(startframe=self.middleframe()-int(np.ceil(s*self.framerate())//2), endframe=self.middleframe()+int(np.ceil(s*self.framerate())//2)))
         
     def __repr__(self):
-        return str(&#39;&lt;vipy.activity: category=&#34;%s&#34;, frames=(%d,%d), tracks=%s%s&gt;&#39; % (self.category(), self.startframe(), self.endframe(), len(self.trackids()), &#39;&#39; if self.confidence() is None else &#39;, confidence=%1.2f&#39; % self.confidence()))
+        return str(&#39;&lt;vipy.activity.Activity: category=&#34;%s&#34;, frames=(%d,%d), tracks=%s%s&gt;&#39; % (self.category(), self.startframe(), self.endframe(), len(self.trackids()), &#39;&#39; if self.confidence() is None else &#39;, confidence=%1.2f&#39; % self.confidence()))
 
     def dict(self):
         &#34;&#34;&#34;Return a python dictionary containing the relevant serialized attributes suitable for JSON encoding&#34;&#34;&#34;
@@ -574,11 +565,8 @@ a = vipy.object.Activity(startframe=0, endframe=10, category='Walking', tracks={
         return self.json(encode=True)
     
     def json(self, encode=True):
-        d = {k:v for (k,v) in self.__dict__.items() if not ((k == &#39;_shortlabel&#39; and v is None) or
-                                                            (k == &#39;attributes&#39; and (v is None or isinstance(v, dict) and len(v)==0)) or
-                                                            (k == &#39;_id&#39; and v is None))}  # don&#39;t bother to store None values
-        d = {k:v if k != &#39;_trackid&#39; else tuple(v) for (k,v) in d.items()}  # sets are non-serializable
-        d = {k.lstrip(&#39;_&#39;):v for (k,v) in d.items()}  # prettyjson (remove &#34;_&#34; prefix to attributes)                                                
+        d = {k.lstrip(&#39;_&#39;):getattr(self, k) for k in Activity.__slots__ if getattr(self, k) is not None}  # prettyjson (remove &#34;_&#34; prefix to attributes)          
+        d = {k:v if k != &#39;trackid&#39; else tuple(v) for (k,v) in d.items()}  # sets are non-serializable
         return json.dumps(d) if encode else d
     
     def actorid(self, actorid=None):
@@ -629,11 +617,11 @@ a = vipy.object.Activity(startframe=0, endframe=10, category='Walking', tracks={
             self._framerate = float(fps)
             return self
     
-    def category(self, label=None, shortlabel=None):
-        &#34;&#34;&#34;Change the label (and shortlabel) to the new label (and shortlabel)&#34;&#34;&#34;
+    def category(self, label=None):
+        &#34;&#34;&#34;Change the label to the new label &#34;&#34;&#34;
         if label is not None:
             self._label = label
-            return self.shortlabel(shortlabel) if shortlabel is not None else self
+            return self
         else:
             return self._label
 
@@ -657,20 +645,12 @@ a = vipy.object.Activity(startframe=0, endframe=10, category='Walking', tracks={
             for (k,v) in ifcategory.items():
                 self.categoryif(k, v)
         elif self.category() == ifcategory:
-            self.category(tocategory, shortlabel=None)
+            self.category(tocategory)
         return self
 
-    def label(self, label=None, shortlabel=None):
+    def label(self, label=None):
         &#34;&#34;&#34;Alias for category&#34;&#34;&#34;
-        return self.category(label, shortlabel=shortlabel)
-
-    def shortlabel(self, label=None):
-        &#34;&#34;&#34;A optional shorter label string to show in the visualizations&#34;&#34;&#34;                
-        if label is not None:
-            self._shortlabel = label
-            return self
-        else:
-            return self._shortlabel
+        return self.category(label)
 
     def add(self, track):
         &#34;&#34;&#34;Add the track id for the track to this activity, so that if the track is changed externally it is reflected here&#34;&#34;&#34;
@@ -803,12 +783,16 @@ a = vipy.object.Activity(startframe=0, endframe=10, category='Walking', tracks={
         return (t_intersection / t_union) if t_intersection &gt; 0 else 0
     
     def offset(self, dt):
+        dt = dt if isinstance(dt, int) else int(np.round(dt*self.framerate()))
         self._startframe = int(self._startframe + dt)
         self._endframe = int(self._endframe + dt)
         return self
 
-    def truncate(self, startframe=None, endframe=None):
-        &#34;&#34;&#34;Truncate the activity so that it is between startframe and endframe&#34;&#34;&#34;
+    def truncate(self, start=None, end=None):
+        &#34;&#34;&#34;Truncate the activity so that it is between start and end&#34;&#34;&#34;
+        startframe = int(np.round(start*self.framerate())) if isinstance(start, float) else start
+        endframe = int(np.round(end*self.framerate())) if isinstance(end, float) else end        
+        
         self._startframe = self._startframe if startframe is None else max(self._startframe, startframe)
         self._endframe = self._endframe if endframe is None else min(self._endframe, endframe)
         self._endframe = self._endframe if self._endframe &gt; self._startframe else self._startframe  # degenerate truncation
@@ -825,7 +809,7 @@ a = vipy.object.Activity(startframe=0, endframe=10, category='Walking', tracks={
         #a = copy.deepcopy(self)
         a = Activity.from_json(self.json(encode=False))
         if rekey:
-            global ACTIVITY_GUID; a.id(newid=hex(int(ACTIVITY_GUID))[2:]);  ACTIVITY_GUID = ACTIVITY_GUID + 1;  # faster, increment package level UUID4 initialized GUID
+            a.id(newid=shortuuid())
         return a
     
     def temporalpad(self, df):
@@ -871,24 +855,404 @@ a = vipy.object.Activity(startframe=0, endframe=10, category='Walking', tracks={
 </code></dt>
 <dd>
 <div class="desc"></div>
+</dd>
+</dl>
+<h3>Instance variables</h3>
+<dl>
+<dt id="vipy.activity.Activity.attributes"><code class="name">var <span class="ident">attributes</span></code></dt>
+<dd>
+<div class="desc"></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/activity.py#L72-L84" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/activity.py#L14-L399" class="git-link">Browse git</a>
 </summary>
-<pre><code class="python">@classmethod
-def from_json(obj, s):
-    d = json.loads(s) if not isinstance(s, dict) else s
-    d = {k.lstrip(&#39;_&#39;):v for (k,v) in d.items()}  # prettyjson (remove &#34;_&#34; prefix to attributes)                                        
-    return obj(startframe=int(d[&#39;startframe&#39;]),
-               endframe=int(d[&#39;endframe&#39;]),
-               framerate=d[&#39;framerate&#39;],
-               category=d[&#39;label&#39;],
-               shortlabel=d[&#39;shortlabel&#39;] if &#39;shortlabel&#39; in d else None,
-               tracks=d[&#39;trackid&#39;],
-               attributes=d[&#39;attributes&#39;] if &#39;attributes&#39; in d else None,
-               actorid=d[&#39;actorid&#39;],
-               id=d[&#39;id&#39;] if &#39;id&#39; in d else None)</code></pre>
+<pre><code class="python">class Activity(object):
+    &#34;&#34;&#34;vipy.object.Activity class
+    
+    An activity is a grouping of one or more tracks involved in an activity within a given startframe and endframe.
+    The activity occurs at a given (startframe, endframe), where these frame indexes are extracted at the provided framerate.
+    All objects are passed by reference with a globally unique track ID, for the tracks involved with the activity.  This 
+    is done since tracks can exist after an activity completes, and that tracks should update the spatial transformation of boxes.
+        
+    Valid constructors
+
+    ```python 
+    t = vipy.object.Track(category=&#39;Person&#39;)
+    a = vipy.object.Activity(startframe=0, endframe=10, category=&#39;Walking&#39;, tracks=t.id())
+    a = vipy.object.Activity(startframe=0, endframe=10, category=&#39;Walking&#39;, tracks=t)    
+    ```
+
+    Note.. shortlabel is kepy for backwards compatibility and will be deprecated
+    
+    &#34;&#34;&#34;
+    __slots__ = [&#39;_id&#39;, &#39;_startframe&#39;, &#39;_endframe&#39;, &#39;_framerate&#39;, &#39;_label&#39;, &#39;_trackid&#39;, &#39;_actorid&#39;, &#39;attributes&#39;]
+    def __init__(self, startframe, endframe, framerate=30, label=None, category=None, tracks=None, attributes=None, actorid=None, confidence=None, id=None, shortlabel=None):
+        assert not (label is not None and category is not None), &#34;Activity() Constructor requires either label or category kwargs, not both&#34;
+        assert startframe &lt;= endframe, &#34;Start frame must be less than or equal to end frame&#34;
+        assert framerate is not None, &#34;initial framerate is required for framerate conversion&#34;
+        if tracks:
+            tracks = [v for (k,v) in tracks.items()] if isinstance(tracks, dict) else tracks  # backwards compatible, track dictionary input
+            assert (all([isstring(t) for t in tracks]) or all([isinstance(t, Track) for t in tracks])), &#34;Invalid track input&#34;
+            if all([isinstance(t, Track) for t in tracks]):
+                assert any([any([t.during(f) for f in range(startframe, endframe)]) for t in tracks]), &#34;At least one track must be be present in at least one frame when this activity occurs&#34;
+                tracks = [t.id() for t in tracks]  
+        trackid = set(tracks) if tracks is not None else (set([actorid]) if actorid is not None else set([]))  # only store IDs, not tracks
+        
+        if tracks is not None and actorid is not None and actorid not in trackid:
+            trackid.add(actorid)
+
+        self._id = shortuuid() if id is None else id  # use provided
+        self._startframe = int(startframe)
+        self._endframe = int(endframe)
+        self._framerate = float(framerate)
+        self._label = category if category is not None else label        
+        self._trackid = trackid
+        self._actorid = actorid
+
+        self.attributes = attributes.copy() if attributes is not None else {}  # shallow copy
+        if confidence is not None:
+            self.attributes[&#39;confidence&#39;] = float(confidence)
+
+    def hasattribute(self, k):
+        return k in self.attributes
+
+    def confidence(self, c=None):
+        if c is not None:
+            self.attributes[&#39;confidence&#39;] = float(c)
+            return self
+        else:
+            return self.attributes[&#39;confidence&#39;] if &#39;confidence&#39; in self.attributes else None
+    
+    @classmethod
+    def from_json(obj, s):
+        d = json.loads(s) if not isinstance(s, dict) else s
+        d = {k.lstrip(&#39;_&#39;):v for (k,v) in d.items()}  # prettyjson (remove &#34;_&#34; prefix to attributes)                                        
+        return obj(startframe=int(d[&#39;startframe&#39;]),
+                   endframe=int(d[&#39;endframe&#39;]),
+                   framerate=d[&#39;framerate&#39;] if &#39;framerate&#39; in d else None,
+                   category=d[&#39;label&#39;] if &#39;label&#39; in d else None,
+                   tracks=d[&#39;trackid&#39;] if &#39;trackid&#39; in d else None,
+                   attributes=d[&#39;attributes&#39;] if &#39;attributes&#39; in d else None,
+                   actorid=d[&#39;actorid&#39;] if &#39;actorid&#39; in d else None,
+                   id=d[&#39;id&#39;] if &#39;id&#39; in d else None)
+                
+    def __len__(self):
+        &#34;&#34;&#34;Return activity length in frames, or zero if degenerate&#34;&#34;&#34;
+        return max(0, self.endframe() - self.startframe())
+
+    def duration(self, s=None, centered=False):
+        &#34;&#34;&#34;The length of the activity in seconds.
+
+        Args:
+            s: [float] The number of seconds for this activity, starting at the startframe
+            centered: [bool] If true, then set the duration centered on the middle frame
+
+        Returns:
+            The duration in seconds of this activity object (if s=None)
+            This activity object with the requested duration (if s!=None)
+        &#34;&#34;&#34;
+        assert self.framerate() is not None, &#34;Framerate must be set in constructor&#34;
+        if s is None:
+            return len(self) / float(self.framerate())
+        else:
+            return (self.endframe(self.startframe() + int(round(s*self.framerate()))) if not centered else 
+                    self.truncate(startframe=self.middleframe()-int(np.ceil(s*self.framerate())//2), endframe=self.middleframe()+int(np.ceil(s*self.framerate())//2)))
+        
+    def __repr__(self):
+        return str(&#39;&lt;vipy.activity.Activity: category=&#34;%s&#34;, frames=(%d,%d), tracks=%s%s&gt;&#39; % (self.category(), self.startframe(), self.endframe(), len(self.trackids()), &#39;&#39; if self.confidence() is None else &#39;, confidence=%1.2f&#39; % self.confidence()))
+
+    def dict(self):
+        &#34;&#34;&#34;Return a python dictionary containing the relevant serialized attributes suitable for JSON encoding&#34;&#34;&#34;
+        return self.json(s=None, encode=False)
+
+    def __json__(self):
+        &#34;&#34;&#34;Serialization method for json package&#34;&#34;&#34;
+        return self.json(encode=True)
+    
+    def json(self, encode=True):
+        d = {k.lstrip(&#39;_&#39;):getattr(self, k) for k in Activity.__slots__ if getattr(self, k) is not None}  # prettyjson (remove &#34;_&#34; prefix to attributes)          
+        d = {k:v if k != &#39;trackid&#39; else tuple(v) for (k,v) in d.items()}  # sets are non-serializable
+        return json.dumps(d) if encode else d
+    
+    def actorid(self, actorid=None):
+        if actorid is None:
+            return self._actorid
+        else:
+            self._actorid = actorid
+            if actorid not in self._trackid:
+                self._trackid.add(actorid) if isinstance(self._trackid, set) else self._trackid.append(actorid)                    
+            return self
+
+    def startframe(self, f=None):
+        if f is None:
+            return self._startframe
+        else:
+            self._startframe = f
+            return self
+    
+    def endframe(self, f=None):
+        if f is None:
+            return self._endframe
+        else:
+            self._endframe = int(f)
+            return self
+
+    def middleframe(self):
+        &#34;&#34;&#34;Return the middle frame number of the activity&#34;&#34;&#34;
+        return int(np.round((self._endframe - self._startframe) / 2.0)) + self._startframe
+
+    def _set_framerate(self, fps):
+        &#34;&#34;&#34;Override framerate conversion and just set the framerate attribute.  This should really be set only in constructor.  Use with caution!&#34;&#34;&#34;
+        self._framerate = float(fps)
+        return self
+
+    def framerate(self, fps=None, speed=None):
+        &#34;&#34;&#34;Resample (startframe, endframe) from known original framerate set by constructor to be new framerate fps&#34;&#34;&#34;        
+        if fps is None and speed is None:
+            return self._framerate
+        else:
+            assert fps is not None or speed is not None, &#34;Invalid input&#34;
+            assert not (fps is not None and speed is not None), &#34;Invalid input&#34;
+            assert speed is None or speed &gt; 0, &#34;Invalid speed, must specify speed multiplier s=1, s=2 for 2x faster, s=0.5 for half slower&#34;                    
+            assert fps is None or fps &gt; 0, &#34;Invalid framerate&#34;
+            assert self._framerate is not None, &#34;Framerate conversion requires that the framerate is known for current activities.  This must be provided to the vipy.object.Activity() constructor.&#34;
+
+            fps = float(fps) if fps is not None else (1.0/speed)*self._framerate            
+            (self._startframe, self._endframe) = [int(np.round(f*(fps/float(self._framerate)))) for f in (self._startframe, self._endframe)]
+            self._framerate = float(fps)
+            return self
+    
+    def category(self, label=None):
+        &#34;&#34;&#34;Change the label to the new label &#34;&#34;&#34;
+        if label is not None:
+            self._label = label
+            return self
+        else:
+            return self._label
+
+    def categoryif(self, ifcategory, tocategory=None):
+        &#34;&#34;&#34;If the current category is equal to ifcategory, then change it to newcategory.
+
+        Args:
+            
+            ifcategory [dict, str]: May be a dictionary {ifcategory:tocategory}, or just an ifcategory
+            tocategory [str]:  the target category 
+
+        Returns:
+        
+            this object with the category changed.
+
+        .. note:: This is useful for converting synonyms such as self.categoryif(&#39;person_sits&#39;, &#39;person_sitting&#39;)
+        &#34;&#34;&#34;
+        assert (isinstance(ifcategory, dict) and tocategory is None) or tocategory is not None
+
+        if isinstance(ifcategory, dict):
+            for (k,v) in ifcategory.items():
+                self.categoryif(k, v)
+        elif self.category() == ifcategory:
+            self.category(tocategory)
+        return self
+
+    def label(self, label=None):
+        &#34;&#34;&#34;Alias for category&#34;&#34;&#34;
+        return self.category(label)
+
+    def add(self, track):
+        &#34;&#34;&#34;Add the track id for the track to this activity, so that if the track is changed externally it is reflected here&#34;&#34;&#34;
+        assert isinstance(track, Track), &#34;Invalid input - must be vipy.object.Track&#34;
+        assert self.during_interval(track.startframe(), track.endframe()), &#34;The track must be present during the activity&#34;
+        if track.id() not in self._trackid:
+            self._trackid = list(self._trackid)
+            self._trackid.append(track.id())
+        return self
+
+    def addid(self, trackid):
+        &#34;&#34;&#34;Add the track id for the track to this activity, so that if the track is changed externally it is reflected here&#34;&#34;&#34;
+        if trackid not in self._trackid:
+            self._trackid = list(self._trackid)
+            self._trackid.append(trackid)
+        return self
+    
+    def tracks(self):
+        &#34;&#34;&#34;alias for trackids&#34;&#34;&#34;
+        return self.trackids()
+
+    def cleartracks(self):
+        &#34;&#34;&#34;Remove all track IDs from this activity&#34;&#34;&#34;
+        self._trackid = []
+        return self
+
+    def trackids(self):
+        &#34;&#34;&#34;Return a set of track IDs associated with this activity&#34;&#34;&#34;
+        return set(self._trackid)
+
+    def hasoverlap(self, other, threshold=0):
+        &#34;&#34;&#34;Return true if the temporal_iou is greater than the provided threshold between self and other Track or other Activity&#34;&#34;&#34;
+        assert isinstance(other, Activity) or isinstance(other, Track), &#34;Invalid input&#34;
+        assert threshold &gt;= 0 and threshold &lt;= 1, &#34;Invalid temporal IOU threshold&#34;
+        return (((min(self._endframe, other.endframe()) - max(self._startframe, other.startframe())) &gt; 0) if threshold == 0 else
+                self.temporal_iou(other) &gt; threshold)
+        
+    def isneighbor(self, other, framegate=10):
+        return self.temporal_iou(other.clone().temporalpad(framegate)) &gt; 0 
+
+    def hastrack(self, track):
+        &#34;&#34;&#34;Is the track part of the activity?&#34;&#34;&#34;
+        assert isstring(track) or isinstance(track, Track), &#34;Invalid input - Must be a vipy.object.Track().id() or vipy.object.Track()&#34;
+        trackid = track.id() if isinstance(track, Track) else track
+        return trackid in self._trackid
+
+    def hastrackoverlap(self, track):
+        &#34;&#34;&#34;is the activity occurring during the interval when the track is occurring and is this track assigned to the activity?&#34;&#34;&#34;
+        assert isinstance(track, Track)
+        return self.hastrack(track) and self.temporal_iou(track) &gt; 0
+
+    def append(self, newtrack):
+        &#34;&#34;&#34;Append newtrack to this activity and set as actorid()&#34;&#34;&#34;
+        assert isinstance(newtrack, Track), &#34;Invalid input - must be vipy.object.Track&#34;
+        self._trackid.add(newtrack.id()) if isinstance(self._trackid, set) else self._trackid.append(newtrack.id())
+        self.actorid(newtrack.id())
+        return self
+
+    def trackfilter(self, f):
+        &#34;&#34;&#34;Remove all tracks such that the lambda function f(trackid) resolves to False&#34;&#34;&#34;
+        assert callable(f)
+        self._trackid = [tid for tid in self._trackid if f(tid)]
+        if self.actorid() not in self._trackid:
+            self._actorid = None
+        return self
+
+    def replace(self, oldtrack, newtrack):
+        &#34;&#34;&#34;Replace oldtrack with newtrack if present in self._tracks.  Pass in a trackdict to share reference to track, so that track owner can modify the track and this object observes the change&#34;&#34;&#34;
+        assert isinstance(oldtrack, Track) and isinstance(newtrack, Track), &#34;Invalid input - must be vipy.object.Track&#34;
+        if self.hastrack(oldtrack):
+            self._trackid.discard(oldtrack.id())
+            self._trackid.add(newtrack.id())
+            if self.actorid() == oldtrack.id():
+                self.actorid(newtrack.id())
+        return self    
+
+    def replaceid(self, oldtrackid, newtrackid):
+        &#34;&#34;&#34;Replace oldtrack with newtrack if present in self._tracks.  Pass in a trackdict to share reference to track, so that track owner can modify the track and this object observes the change&#34;&#34;&#34;
+        if self.hastrack(oldtrackid):
+            ti = set(self._trackid)
+            ti.discard(oldtrackid)
+            ti.add(newtrackid)
+            if self.actorid() == oldtrackid:
+                self.actorid(newtrackid)
+            self._trackid = list(ti)
+        return self    
+    
+    def during(self, frame):
+        &#34;&#34;&#34;Is frame during the time interval (startframe, endframe) inclusive?&#34;&#34;&#34;
+        return int(frame) &gt;= self._startframe and int(frame) &lt;= self._endframe
+
+    def during_interval(self, startframe, endframe, inclusive=False):
+        &#34;&#34;&#34;Is the activity occurring for any frames within the interval [startframe, endframe) (non-inclusive of endframe)?&#34;&#34;&#34;
+        ef = endframe+(0 if not inclusive else 1)
+        return (startframe &gt;= self._startframe and startframe &lt;= self._endframe) or (ef &gt;= self._startframe and ef &lt;= self._endframe) or (startframe &lt;= self._startframe and ef &gt;= self._endframe)
+
+    
+    def union(self, other, confweight=0.5, maxconf=False):
+        &#34;&#34;&#34;Compute the union of the new activity other to this activity by updating the start and end times and computing the mean confidence.
+        
+           -Note: other must have the same category and track IDs as self
+           -confweight [0,1]:  the convex combinatiopn weight applied to the new activity 
+        &#34;&#34;&#34;
+        assert isinstance(other, Activity), &#34;Invalid input&#34;
+        assert self._actorid == other._actorid, &#34;Actor ID must be the same&#34;
+        assert self._label == other._label, &#34;Assigned activity is a different category&#34;
+        assert self._framerate == other._framerate, &#34;Invalid input&#34;
+        assert confweight &gt;= 0 and confweight &lt;= 1, &#34;Confidence weight must be [0,1]&#34;
+
+        self.startframe(min(other._startframe, self._startframe))
+        self.endframe(max(other._endframe, self._endframe))
+        if other.confidence() is not None and self.confidence() is not None:
+            self.confidence(float((1.0-confweight)*self.confidence() + confweight*other.confidence()) if not maxconf else float(max(self.confidence(), other.confidence())))  # running mean confidence or max
+        return self
+        
+    def temporal_iou(self, other):
+        &#34;&#34;&#34;Return the temporal intersection over union of two activities or this activity and a track&#34;&#34;&#34;
+        assert isinstance(other, Activity) or isinstance(other, Track), &#34;Invalid input - must be vipy.activity.Activity or vipy.object.Track&#34;
+        assert self._framerate == other._framerate, &#34;invalid input - framerate must match&#34;
+        (sf, ef) = (other._startframe, other._endframe) if isinstance(other, Activity) else (other.startframe(), other.endframe())  # attribute access is faster than methods
+        
+        t_start = min(self._startframe, sf)
+        t_end = max(self._endframe, ef)
+        t_union = float(t_end - t_start)
+        
+        t_start = max(self._startframe, sf)
+        t_end = min(self._endframe, ef)
+        t_intersection = float(t_end - t_start)
+        
+        return (t_intersection / t_union) if t_intersection &gt; 0 else 0
+    
+    def offset(self, dt):
+        dt = dt if isinstance(dt, int) else int(np.round(dt*self.framerate()))
+        self._startframe = int(self._startframe + dt)
+        self._endframe = int(self._endframe + dt)
+        return self
+
+    def truncate(self, start=None, end=None):
+        &#34;&#34;&#34;Truncate the activity so that it is between start and end&#34;&#34;&#34;
+        startframe = int(np.round(start*self.framerate())) if isinstance(start, float) else start
+        endframe = int(np.round(end*self.framerate())) if isinstance(end, float) else end        
+        
+        self._startframe = self._startframe if startframe is None else max(self._startframe, startframe)
+        self._endframe = self._endframe if endframe is None else min(self._endframe, endframe)
+        self._endframe = self._endframe if self._endframe &gt; self._startframe else self._startframe  # degenerate truncation
+        return self
+            
+    def id(self, newid=None):
+        if newid is None:
+            return self._id
+        else:
+            self._id = newid
+            return self
+
+    def clone(self, rekey=False):
+        #a = copy.deepcopy(self)
+        a = Activity.from_json(self.json(encode=False))
+        if rekey:
+            a.id(newid=shortuuid())
+        return a
+    
+    def temporalpad(self, df):
+        &#34;&#34;&#34;Add a temporal pad of df=(before frames, after frames) or df=pad frames to the start and end of the activity.  The padded start frame may be negative.&#34;&#34;&#34;
+        df = (df, df) if not isinstance(df, tuple) else df
+        self._startframe -= int(df[0])
+        self._endframe += int(df[1])
+        return self  
+
+    def padto(self, t):
+        &#34;&#34;&#34;Add a symmetric temporal pad so that the activity is at least t seconds long&#34;&#34;&#34;
+        return self.temporalpad(int(np.ceil(self.framerate()*((t - self.duration())/2.0)))) if t &gt; self.duration() else self
+
+    def disjoint(self, other, strict=False):
+        &#34;&#34;&#34;Enforce disjoint activities with other by shifting the endframe or startframe of self to not overlap if they share the same tracks.
+           Other may be an Activity() or list of Activity()
+           if strict=True, then throw an exception if other or self is fully contained with the other, resulting in degenerate activity after disjoint
+        &#34;&#34;&#34;
+        for o in tolist(other):
+            assert isinstance(o, Activity), &#34;Invalid input - must be vipy.activity.Activity() or list of activities&#34;       
+            if strict:
+                assert not (o.during(self.startframe()) and o.during(self.endframe())), &#34;Self cannot fully overlap other&#34;
+                assert not (self.during(o.startframe()) and self.during(o.endframe())), &#34;Other cannot fully overlap self&#34;
+            if o.trackids() == self.trackids() and o.during(self.endframe()):
+                self.endframe(o.startframe()-1)
+            if o.trackids() == self.trackids() and o.during(self.startframe()):
+                self.startframe(o.endframe()+1)
+        return self  # may be zero length now
+
+    def temporal_distance(self, other):
+        &#34;&#34;&#34;Return the temporal distance in frames between self and other which is the minimum frame difference between the end of one to the start of the other, or zero if they overlap&#34;&#34;&#34;
+        assert isinstance(other, Activity), &#34;Invalid input - must be vipy.activity.Activity()&#34;
+        return (max(self.startframe(), other.startframe()) - min(self.endframe(), other.endframe())) if self.temporal_iou(other) == 0 else 0
+
+    def within(self, startframe, endframe):
+        &#34;&#34;&#34;Is the activity within the frame rate (startframe, endframe)?&#34;&#34;&#34;
+        return self.startframe() &gt;= startframe and self.endframe() &lt;= endframe</code></pre>
 </details>
 </dd>
 </dl>
@@ -902,7 +1266,7 @@ def from_json(obj, s):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/activity.py#L127-L134" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/activity.py#L122-L129" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def actorid(self, actorid=None):
     if actorid is None:
@@ -922,7 +1286,7 @@ def from_json(obj, s):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/activity.py#L218-L225" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/activity.py#L205-L212" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def add(self, track):
     &#34;&#34;&#34;Add the track id for the track to this activity, so that if the track is changed externally it is reflected here&#34;&#34;&#34;
@@ -942,7 +1306,7 @@ def from_json(obj, s):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/activity.py#L227-L232" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/activity.py#L214-L219" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def addid(self, trackid):
     &#34;&#34;&#34;Add the track id for the track to this activity, so that if the track is changed externally it is reflected here&#34;&#34;&#34;
@@ -960,7 +1324,7 @@ def from_json(obj, s):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/activity.py#L268-L273" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/activity.py#L255-L260" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def append(self, newtrack):
     &#34;&#34;&#34;Append newtrack to this activity and set as actorid()&#34;&#34;&#34;
@@ -971,20 +1335,20 @@ def from_json(obj, s):
 </details>
 </dd>
 <dt id="vipy.activity.Activity.category"><code class="name flex">
-<span>def <span class="ident">category</span></span>(<span>self, label=None, shortlabel=None)</span>
+<span>def <span class="ident">category</span></span>(<span>self, label=None)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Change the label (and shortlabel) to the new label (and shortlabel)</p></div>
+<div class="desc"><p>Change the label to the new label</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/activity.py#L175-L181" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/activity.py#L170-L176" class="git-link">Browse git</a>
 </summary>
-<pre><code class="python">def category(self, label=None, shortlabel=None):
-    &#34;&#34;&#34;Change the label (and shortlabel) to the new label (and shortlabel)&#34;&#34;&#34;
+<pre><code class="python">def category(self, label=None):
+    &#34;&#34;&#34;Change the label to the new label &#34;&#34;&#34;
     if label is not None:
         self._label = label
-        return self.shortlabel(shortlabel) if shortlabel is not None else self
+        return self
     else:
         return self._label</code></pre>
 </details>
@@ -1006,7 +1370,7 @@ the target category </p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/activity.py#L183-L204" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/activity.py#L178-L199" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def categoryif(self, ifcategory, tocategory=None):
     &#34;&#34;&#34;If the current category is equal to ifcategory, then change it to newcategory.
@@ -1028,7 +1392,7 @@ the target category </p>
         for (k,v) in ifcategory.items():
             self.categoryif(k, v)
     elif self.category() == ifcategory:
-        self.category(tocategory, shortlabel=None)
+        self.category(tocategory)
     return self</code></pre>
 </details>
 </dd>
@@ -1040,7 +1404,7 @@ the target category </p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/activity.py#L238-L241" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/activity.py#L225-L228" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def cleartracks(self):
     &#34;&#34;&#34;Remove all track IDs from this activity&#34;&#34;&#34;
@@ -1056,13 +1420,13 @@ the target category </p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/activity.py#L367-L372" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/activity.py#L358-L363" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def clone(self, rekey=False):
     #a = copy.deepcopy(self)
     a = Activity.from_json(self.json(encode=False))
     if rekey:
-        global ACTIVITY_GUID; a.id(newid=hex(int(ACTIVITY_GUID))[2:]);  ACTIVITY_GUID = ACTIVITY_GUID + 1;  # faster, increment package level UUID4 initialized GUID
+        a.id(newid=shortuuid())
     return a</code></pre>
 </details>
 </dd>
@@ -1074,7 +1438,7 @@ the target category </p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/activity.py#L65-L70" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/activity.py#L64-L69" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def confidence(self, c=None):
     if c is not None:
@@ -1092,7 +1456,7 @@ the target category </p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/activity.py#L111-L113" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/activity.py#L109-L111" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def dict(self):
     &#34;&#34;&#34;Return a python dictionary containing the relevant serialized attributes suitable for JSON encoding&#34;&#34;&#34;
@@ -1109,7 +1473,7 @@ if strict=True, then throw an exception if other or self is fully contained with
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/activity.py#L385-L399" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/activity.py#L376-L390" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def disjoint(self, other, strict=False):
     &#34;&#34;&#34;Enforce disjoint activities with other by shifting the endframe or startframe of self to not overlap if they share the same tracks.
@@ -1146,7 +1510,7 @@ This activity object with the requested duration (if s!=None)</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/activity.py#L90-L106" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/activity.py#L88-L104" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def duration(self, s=None, centered=False):
     &#34;&#34;&#34;The length of the activity in seconds.
@@ -1175,7 +1539,7 @@ This activity object with the requested duration (if s!=None)</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/activity.py#L304-L306" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/activity.py#L291-L293" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def during(self, frame):
     &#34;&#34;&#34;Is frame during the time interval (startframe, endframe) inclusive?&#34;&#34;&#34;
@@ -1190,7 +1554,7 @@ This activity object with the requested duration (if s!=None)</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/activity.py#L308-L311" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/activity.py#L295-L298" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def during_interval(self, startframe, endframe, inclusive=False):
     &#34;&#34;&#34;Is the activity occurring for any frames within the interval [startframe, endframe) (non-inclusive of endframe)?&#34;&#34;&#34;
@@ -1206,7 +1570,7 @@ This activity object with the requested duration (if s!=None)</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/activity.py#L143-L148" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/activity.py#L138-L143" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def endframe(self, f=None):
     if f is None:
@@ -1224,7 +1588,7 @@ This activity object with the requested duration (if s!=None)</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/activity.py#L159-L173" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/activity.py#L154-L168" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def framerate(self, fps=None, speed=None):
     &#34;&#34;&#34;Resample (startframe, endframe) from known original framerate set by constructor to be new framerate fps&#34;&#34;&#34;        
@@ -1251,7 +1615,7 @@ This activity object with the requested duration (if s!=None)</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/activity.py#L62-L63" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/activity.py#L61-L62" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def hasattribute(self, k):
     return k in self.attributes</code></pre>
@@ -1265,7 +1629,7 @@ This activity object with the requested duration (if s!=None)</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/activity.py#L247-L252" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/activity.py#L234-L239" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def hasoverlap(self, other, threshold=0):
     &#34;&#34;&#34;Return true if the temporal_iou is greater than the provided threshold between self and other Track or other Activity&#34;&#34;&#34;
@@ -1283,7 +1647,7 @@ This activity object with the requested duration (if s!=None)</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/activity.py#L257-L261" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/activity.py#L244-L248" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def hastrack(self, track):
     &#34;&#34;&#34;Is the track part of the activity?&#34;&#34;&#34;
@@ -1300,7 +1664,7 @@ This activity object with the requested duration (if s!=None)</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/activity.py#L263-L266" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/activity.py#L250-L253" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def hastrackoverlap(self, track):
     &#34;&#34;&#34;is the activity occurring during the interval when the track is occurring and is this track assigned to the activity?&#34;&#34;&#34;
@@ -1316,7 +1680,7 @@ This activity object with the requested duration (if s!=None)</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/activity.py#L360-L365" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/activity.py#L351-L356" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def id(self, newid=None):
     if newid is None:
@@ -1334,7 +1698,7 @@ This activity object with the requested duration (if s!=None)</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/activity.py#L254-L255" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/activity.py#L241-L242" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def isneighbor(self, other, framegate=10):
     return self.temporal_iou(other.clone().temporalpad(framegate)) &gt; 0 </code></pre>
@@ -1348,30 +1712,27 @@ This activity object with the requested duration (if s!=None)</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/activity.py#L119-L125" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/activity.py#L117-L120" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def json(self, encode=True):
-    d = {k:v for (k,v) in self.__dict__.items() if not ((k == &#39;_shortlabel&#39; and v is None) or
-                                                        (k == &#39;attributes&#39; and (v is None or isinstance(v, dict) and len(v)==0)) or
-                                                        (k == &#39;_id&#39; and v is None))}  # don&#39;t bother to store None values
-    d = {k:v if k != &#39;_trackid&#39; else tuple(v) for (k,v) in d.items()}  # sets are non-serializable
-    d = {k.lstrip(&#39;_&#39;):v for (k,v) in d.items()}  # prettyjson (remove &#34;_&#34; prefix to attributes)                                                
+    d = {k.lstrip(&#39;_&#39;):getattr(self, k) for k in Activity.__slots__ if getattr(self, k) is not None}  # prettyjson (remove &#34;_&#34; prefix to attributes)          
+    d = {k:v if k != &#39;trackid&#39; else tuple(v) for (k,v) in d.items()}  # sets are non-serializable
     return json.dumps(d) if encode else d</code></pre>
 </details>
 </dd>
 <dt id="vipy.activity.Activity.label"><code class="name flex">
-<span>def <span class="ident">label</span></span>(<span>self, label=None, shortlabel=None)</span>
+<span>def <span class="ident">label</span></span>(<span>self, label=None)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Alias for category</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/activity.py#L206-L208" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/activity.py#L201-L203" class="git-link">Browse git</a>
 </summary>
-<pre><code class="python">def label(self, label=None, shortlabel=None):
+<pre><code class="python">def label(self, label=None):
     &#34;&#34;&#34;Alias for category&#34;&#34;&#34;
-    return self.category(label, shortlabel=shortlabel)</code></pre>
+    return self.category(label)</code></pre>
 </details>
 </dd>
 <dt id="vipy.activity.Activity.middleframe"><code class="name flex">
@@ -1382,7 +1743,7 @@ This activity object with the requested duration (if s!=None)</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/activity.py#L150-L152" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/activity.py#L145-L147" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def middleframe(self):
     &#34;&#34;&#34;Return the middle frame number of the activity&#34;&#34;&#34;
@@ -1397,9 +1758,10 @@ This activity object with the requested duration (if s!=None)</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/activity.py#L348-L351" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/activity.py#L335-L339" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def offset(self, dt):
+    dt = dt if isinstance(dt, int) else int(np.round(dt*self.framerate()))
     self._startframe = int(self._startframe + dt)
     self._endframe = int(self._endframe + dt)
     return self</code></pre>
@@ -1413,7 +1775,7 @@ This activity object with the requested duration (if s!=None)</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/activity.py#L381-L383" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/activity.py#L372-L374" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def padto(self, t):
     &#34;&#34;&#34;Add a symmetric temporal pad so that the activity is at least t seconds long&#34;&#34;&#34;
@@ -1429,7 +1791,7 @@ Pass in a trackdict to share reference to track, so that track owner can modify 
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/activity.py#L283-L291" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/activity.py#L270-L278" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def replace(self, oldtrack, newtrack):
     &#34;&#34;&#34;Replace oldtrack with newtrack if present in self._tracks.  Pass in a trackdict to share reference to track, so that track owner can modify the track and this object observes the change&#34;&#34;&#34;
@@ -1451,7 +1813,7 @@ Pass in a trackdict to share reference to track, so that track owner can modify 
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/activity.py#L293-L302" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/activity.py#L280-L289" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def replaceid(self, oldtrackid, newtrackid):
     &#34;&#34;&#34;Replace oldtrack with newtrack if present in self._tracks.  Pass in a trackdict to share reference to track, so that track owner can modify the track and this object observes the change&#34;&#34;&#34;
@@ -1465,25 +1827,6 @@ Pass in a trackdict to share reference to track, so that track owner can modify 
     return self    </code></pre>
 </details>
 </dd>
-<dt id="vipy.activity.Activity.shortlabel"><code class="name flex">
-<span>def <span class="ident">shortlabel</span></span>(<span>self, label=None)</span>
-</code></dt>
-<dd>
-<div class="desc"><p>A optional shorter label string to show in the visualizations</p></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/activity.py#L210-L216" class="git-link">Browse git</a>
-</summary>
-<pre><code class="python">def shortlabel(self, label=None):
-    &#34;&#34;&#34;A optional shorter label string to show in the visualizations&#34;&#34;&#34;                
-    if label is not None:
-        self._shortlabel = label
-        return self
-    else:
-        return self._shortlabel</code></pre>
-</details>
-</dd>
 <dt id="vipy.activity.Activity.startframe"><code class="name flex">
 <span>def <span class="ident">startframe</span></span>(<span>self, f=None)</span>
 </code></dt>
@@ -1492,7 +1835,7 @@ Pass in a trackdict to share reference to track, so that track owner can modify 
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/activity.py#L136-L141" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/activity.py#L131-L136" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def startframe(self, f=None):
     if f is None:
@@ -1510,7 +1853,7 @@ Pass in a trackdict to share reference to track, so that track owner can modify 
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/activity.py#L401-L404" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/activity.py#L392-L395" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def temporal_distance(self, other):
     &#34;&#34;&#34;Return the temporal distance in frames between self and other which is the minimum frame difference between the end of one to the start of the other, or zero if they overlap&#34;&#34;&#34;
@@ -1526,7 +1869,7 @@ Pass in a trackdict to share reference to track, so that track owner can modify 
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/activity.py#L332-L346" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/activity.py#L319-L333" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def temporal_iou(self, other):
     &#34;&#34;&#34;Return the temporal intersection over union of two activities or this activity and a track&#34;&#34;&#34;
@@ -1554,7 +1897,7 @@ The padded start frame may be negative.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/activity.py#L374-L379" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/activity.py#L365-L370" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def temporalpad(self, df):
     &#34;&#34;&#34;Add a temporal pad of df=(before frames, after frames) or df=pad frames to the start and end of the activity.  The padded start frame may be negative.&#34;&#34;&#34;
@@ -1572,7 +1915,7 @@ The padded start frame may be negative.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/activity.py#L275-L281" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/activity.py#L262-L268" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def trackfilter(self, f):
     &#34;&#34;&#34;Remove all tracks such that the lambda function f(trackid) resolves to False&#34;&#34;&#34;
@@ -1591,7 +1934,7 @@ The padded start frame may be negative.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/activity.py#L243-L245" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/activity.py#L230-L232" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def trackids(self):
     &#34;&#34;&#34;Return a set of track IDs associated with this activity&#34;&#34;&#34;
@@ -1606,7 +1949,7 @@ The padded start frame may be negative.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/activity.py#L234-L236" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/activity.py#L221-L223" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def tracks(self):
     &#34;&#34;&#34;alias for trackids&#34;&#34;&#34;
@@ -1614,17 +1957,20 @@ The padded start frame may be negative.</p></div>
 </details>
 </dd>
 <dt id="vipy.activity.Activity.truncate"><code class="name flex">
-<span>def <span class="ident">truncate</span></span>(<span>self, startframe=None, endframe=None)</span>
+<span>def <span class="ident">truncate</span></span>(<span>self, start=None, end=None)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Truncate the activity so that it is between startframe and endframe</p></div>
+<div class="desc"><p>Truncate the activity so that it is between start and end</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/activity.py#L353-L358" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/activity.py#L341-L349" class="git-link">Browse git</a>
 </summary>
-<pre><code class="python">def truncate(self, startframe=None, endframe=None):
-    &#34;&#34;&#34;Truncate the activity so that it is between startframe and endframe&#34;&#34;&#34;
+<pre><code class="python">def truncate(self, start=None, end=None):
+    &#34;&#34;&#34;Truncate the activity so that it is between start and end&#34;&#34;&#34;
+    startframe = int(np.round(start*self.framerate())) if isinstance(start, float) else start
+    endframe = int(np.round(end*self.framerate())) if isinstance(end, float) else end        
+    
     self._startframe = self._startframe if startframe is None else max(self._startframe, startframe)
     self._endframe = self._endframe if endframe is None else min(self._endframe, endframe)
     self._endframe = self._endframe if self._endframe &gt; self._startframe else self._startframe  # degenerate truncation
@@ -1642,7 +1988,7 @@ the convex combinatiopn weight applied to the new activity</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/activity.py#L314-L330" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/activity.py#L301-L317" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def union(self, other, confweight=0.5, maxconf=False):
     &#34;&#34;&#34;Compute the union of the new activity other to this activity by updating the start and end times and computing the mean confidence.
@@ -1671,7 +2017,7 @@ the convex combinatiopn weight applied to the new activity</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/activity.py#L406-L408" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/activity.py#L397-L399" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def within(self, startframe, endframe):
     &#34;&#34;&#34;Is the activity within the frame rate (startframe, endframe)?&#34;&#34;&#34;
@@ -1755,6 +2101,7 @@ setTimeout(() => input.focus(), 100);
 <li><code><a title="vipy.activity.Activity.add" href="#vipy.activity.Activity.add">add</a></code></li>
 <li><code><a title="vipy.activity.Activity.addid" href="#vipy.activity.Activity.addid">addid</a></code></li>
 <li><code><a title="vipy.activity.Activity.append" href="#vipy.activity.Activity.append">append</a></code></li>
+<li><code><a title="vipy.activity.Activity.attributes" href="#vipy.activity.Activity.attributes">attributes</a></code></li>
 <li><code><a title="vipy.activity.Activity.category" href="#vipy.activity.Activity.category">category</a></code></li>
 <li><code><a title="vipy.activity.Activity.categoryif" href="#vipy.activity.Activity.categoryif">categoryif</a></code></li>
 <li><code><a title="vipy.activity.Activity.cleartracks" href="#vipy.activity.Activity.cleartracks">cleartracks</a></code></li>
@@ -1781,7 +2128,6 @@ setTimeout(() => input.focus(), 100);
 <li><code><a title="vipy.activity.Activity.padto" href="#vipy.activity.Activity.padto">padto</a></code></li>
 <li><code><a title="vipy.activity.Activity.replace" href="#vipy.activity.Activity.replace">replace</a></code></li>
 <li><code><a title="vipy.activity.Activity.replaceid" href="#vipy.activity.Activity.replaceid">replaceid</a></code></li>
-<li><code><a title="vipy.activity.Activity.shortlabel" href="#vipy.activity.Activity.shortlabel">shortlabel</a></code></li>
 <li><code><a title="vipy.activity.Activity.startframe" href="#vipy.activity.Activity.startframe">startframe</a></code></li>
 <li><code><a title="vipy.activity.Activity.temporal_distance" href="#vipy.activity.Activity.temporal_distance">temporal_distance</a></code></li>
 <li><code><a title="vipy.activity.Activity.temporal_iou" href="#vipy.activity.Activity.temporal_iou">temporal_iou</a></code></li>
@@ -1800,7 +2146,7 @@ setTimeout(() => input.focus(), 100);
 </nav>
 </main>
 <footer id="footer">
-<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.10.0</a>.</p>
+<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.11.6</a>.</p>
 </footer>
 </body>
 </html>

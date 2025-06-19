@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
-<meta name="generator" content="pdoc 0.10.0" />
+<meta name="generator" content="pdoc 0.11.6" />
 <meta name="google-site-verification" content="aB8LkQegj94_TJPdrcJm2ldIRWyXY82Jp24Gtkdgyn0" />
 <title>vipy.visualize API documentation</title>
 <meta name="description" content="" />
@@ -26,17 +26,19 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/visualize.py#L1-L657" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/visualize.py#L1-L741" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">import os
+import vipy
 import numpy as np
 import shutil
-from vipy.globals import print
-from vipy.util import remkdir, imlist, filetail, istuple, islist, isnumpy, filebase, temphtml, isurl, fileext, tolist, iswebp, isimage, chunklistbysize, ishtml
+from vipy.globals import log
+from vipy.util import remkdir, imlist, filetail, filebase, temphtml, isurl, fileext, tolist, iswebp, isimage, chunklistbysize, ishtml, escape_string_for_innerHTML
 from vipy.image import Image
 from vipy.show import savefig
 from collections import defaultdict
 from datetime import datetime
+from vipy.metrics import ascii_bar_chart
 import time
 import PIL
 import vipy.video
@@ -45,7 +47,88 @@ import pathlib
 import html
 import urllib
 import warnings
+from pathlib import Path
+import hashlib
+import matplotlib
+import warnings
+import json
+import html
 
+
+def scene_explorer(im, outfile=None, width=1024, title=&#39;Scene Explorer&#39;, previewurl=None, keypoint_alpha=0.7, popup_alpha=0.8, embed=True, open_in_browser=False,
+                   tag_formatter=lambda im: &#34;&lt;strong&gt;Image Tags&lt;/strong&gt;&lt;br&gt;&lt;br&gt;%s&#34; % (&#39;&lt;br&gt;&#39;.join(im.tags()) if not im.has_confidences() else ascii_bar_chart(zip(im.tags(),im.confidences()), 64)),
+                   attribute_formatter=lambda im: &#34;&lt;strong&gt;Image Attributes&lt;/strong&gt;&lt;br&gt;&lt;br&gt;%s&#34; % json.dumps(im.clone().flush().json(encode=False), indent=2),
+                   description_formatter=lambda im: &#34;&lt;strong&gt;Image Description&lt;/strong&gt;&lt;br&gt;&lt;br&gt;%s&#34; % &#39;None&#39;):                   
+    
+    &#34;&#34;&#34;Generate a standalone scene_explorer visualization.
+
+    A scene_explorer visualization is a standalone HTML file that shows a single `vipy.image.Scene` object with an interactive search and visualization of all objects, attributes, captions and tags
+
+    Args:
+        im: a `vipy.image.Scene` object for visualization
+        outfile: an html output file, if None a temp file with an html extension will be used 
+        title [str]: the title of the html file
+        previewurl [str]: A url containing an image thumbnail of what the html file contains.  Useful for previewing the file contents if shared on social media
+        keypoint_alpha [float]: the keypoint transparency in the range (0,1)
+        popup_alpha [float]: the popup window transparency in the range (0,1)
+        embed [bool]: If true, embed the image as base64 encoded image.  If false, use the provided url in the image
+        open_in_browser [bool]: If true, open the html file in the default browser on the current system
+        tag_formatter [lambda]:  A lambda function with a single argument equal to the input image that returns a HTML string for display in the tag popup.  This can be any valid html.
+        attribute_formatter [lambda]:  A lambda function with a single argument equal to the input image that returns a HTML string for display in the attribute popup.  This can be any valid html
+        description_formatter [lambda]:  A lambda function with a single argument equal to the input image that returns a HTML string for display in the description popup.  This can be any valid html    
+
+    Returns:
+        outfile
+
+    Current support for `vipy.object.Keypoint2d` only, `vipy.object.Detection` are ignored
+    
+    &#34;&#34;&#34;
+    assert isinstance(im, vipy.image.Scene)
+    assert outfile is None or ishtml(outfile)
+    assert previewurl is None or isurl(previewurl)
+    assert keypoint_alpha &gt;=0 and keypoint_alpha &lt;=1
+    assert popup_alpha &gt;=0 and popup_alpha &lt;=1
+    assert embed or im.has_url()
+    if not all([isinstance(o, vipy.object.Keypoint2d) for o in im.objects()]):
+        warnings.warn(&#39;Scene explorer supports vipy.object.Keypoint2d only - all other vipy.object elements ignored&#39;)
+
+    imc = im.clone()
+    img = (&#39;data:image/jpeg;charset=utf-8;base64,%s&#39; % imc.load().resize(width=width).base64().decode(&#39;ascii&#39;)) if embed else imc.flush().url()
+    colors = [matplotlib.colors.to_hex(c) for c in vipy.show.colorlist()]
+    keypoints = [o for o in imc.objects() if isinstance(o, vipy.object.Keypoint2d)]
+    d_category_to_color = {o.category():colors[int(hashlib.sha1(o.category().split(&#39; &#39;)[-1].encode(&#39;utf-8&#39;)).hexdigest(), 16) % len(colors)] for o in keypoints}   # consistent color mapping by category suffix (space separated)
+    
+    html = Path(Path(__file__).parent.resolve() / &#39;visualize_scene_explorer.html&#39;).read_text()
+    keywords = {&#39;${TITLE}&#39;: title,
+                &#39;${META_OG_IMAGE}&#39;: (&#39;&lt;meta property=&#34;og:image&#34; content=&#34;%s&#34;&gt;&#39; % previewurl) if previewurl is not None else &#39;&#39;,  # useful to show as a preview of the HTML contents for shared links
+                &#39;${IMG_WIDTH}&#39;:str(imc.width()),
+                &#39;${IMG_HEIGHT}&#39;:str(imc.height()),
+                &#39;${IMG}&#39;:img,
+                &#39;${IMG_ATTRIBUTES}&#39;:escape_string_for_innerHTML(attribute_formatter(im)),
+                &#39;${IMG_DESCRIPTION}&#39;: escape_string_for_innerHTML(description_formatter(im)),
+                &#39;${IMG_TAGS}&#39;: escape_string_for_innerHTML(tag_formatter(im)),
+                &#39;${SEARCHBOX_WIDTH}&#39;:str(width // 4),
+                &#39;${POPUP_ALPHA}&#39;: str(popup_alpha),
+                &#39;${CLASSLIST}&#39;:str(sorted(set([o.category() for o in keypoints]))),  # assumes that shared class prefix encodes grouping
+                &#39;${KP_X}&#39;:str([o.x for o in keypoints]),
+                &#39;${KP_Y}&#39;:str([o.y for o in keypoints]),
+                &#39;${KP_R}&#39;:str([o.r for o in keypoints]),
+                &#39;${KP_ALPHA_HEX}&#39;:str(format(int(keypoint_alpha*255), &#39;02x&#39;)),  # keypoint face alpha = [0,255] -&gt; [00, FF]
+                &#39;${KP_CLASSLIST}&#39;:str([o.category() for o in keypoints]),
+                &#39;${KP_ATTRIBUTELIST}&#39;:str([o.json() for o in keypoints]),
+                &#39;${KP_COLORLIST}&#39;:str([d_category_to_color[o.category()] for o in keypoints])}    
+    for (k,v) in keywords.items():
+        html = html.replace(k,v)
+
+    filename = outfile if outfile is not None else temphtml()        
+    with open(filename, &#39;w&#39;) as f:
+        f.write(html)
+
+    if open_in_browser:
+        os.system(&#39;open %s&#39; % filename)
+        
+    return filename
+    
 
 def hoverpixel(urls, outfile=None, pixelsize=32, sortby=&#39;color&#39;, loupe=True, hoversize=512, ultext=None, display=False, ultextcolor=&#39;white&#39;, ultextsize=&#39;large&#39;, aspectratio=2560/1440, ultextoffset=(16,16)):
     &#34;&#34;&#34;Generate a standalone hoverpixel visualization.
@@ -189,7 +272,7 @@ def hoverpixel(urls, outfile=None, pixelsize=32, sortby=&#39;color&#39;, loupe=T
         f.write(&#39;&lt;/html&gt;\n&#39;)
 
     if display:
-        print(&#39;[vipy.visualize.hoverpixel]: Opening &#34;%s&#34; in default browser&#39; % filename)
+        log.info(&#39;[vipy.visualize.hoverpixel]: Opening &#34;%s&#34; in default browser&#39; % filename)
         webbrowser.open(&#39;file://%s&#39; % filename)
 
     return filename
@@ -257,7 +340,7 @@ def hoverpixel_selector(htmllist, legendlist, outfile=None, display=False, offse
         f.write(&#39;&lt;/html&gt;\n&#39;)
 
     if display:
-        print(&#39;[vipy.visualize.hoverpixel_selector]: Opening &#34;%s&#34; in default browser&#39; % filename)
+        log.info(&#39;[vipy.visualize.hoverpixel_selector]: Opening &#34;%s&#34; in default browser&#39; % filename)
         webbrowser.open(&#39;file://%s&#39; % filename)
 
     return filename
@@ -298,13 +381,13 @@ def videomosaic(videos, gridrows=None, gridcols=None):
     return vipy.video.Video(frames=list(mosaic(videos, gridrows=gridrows, gridcols=gridcols)), framerate=videos[0].framerate())
 
 
-def montage(imlist, imgheight=256, imgwidth=256, gridrows=None, gridcols=None, aspectratio=1, crop=False, skip=True, border=1, border_bgr=(128,128,128), do_flush=False, verbose=False):
+def montage(imlist, imgheight=256, imgwidth=256, gridrows=None, gridcols=None, aspectratio=1, crop=False, skip=True, border=1, border_rgb=(128,128,128), do_flush=False, verbose=False):
     &#34;&#34;&#34;Create a montage image from the of provided list of `vipy.image.Image` objects.
 
     &gt;&gt;&gt; vipy.visualize.montage([[im.crop() for im in vipy.image.vehicles()]]).show()
 
     Args:
-        imlist: [list, tuple] iterable of `vipy.image.Image` objects which is used to montage rowwise, or a list of lists such that each element defines `vipy.image.Image` objects on a grid row.
+        imlist: [list, tuple, vipy.dataset.Dataset] iterable of `vipy.image.Image` objects which is used to montage rowwise, or a list of lists such that each element defines `vipy.image.Image` objects on a grid row.
         imgheight: [int] The height of each individual image in the grid, defaults to 256 px
         imgwidth: [int] the width of each individual image in the grid, defaults to 256 px, use centersquare() for isotropic scaling
         gridrows: [int]  The number of images per row, and number of images per column.  This defines the montage shape.
@@ -312,8 +395,8 @@ def montage(imlist, imgheight=256, imgwidth=256, gridrows=None, gridcols=None, a
         aspectratio: [float].  This is an optional parameter which defines the shape of the montage as (gridcols/gridrows) without specifying the gridrows, gridcols input
         crop: [bool]  If true, the vipy.image.Image objects should call crop(), which will trigger a load
         skip: [bool]  Whether images should be skipped on failure to load(), useful for lazy downloading
-        border: [int]  a border of size in pixels surrounding each image in the grid
-        border_bgr [tuple (r,g,b)]:  the border color in a bgr color tuple (b, g, r) in [0,255], uint8
+        border: [int], (leftright, topbottom)  a border of size in pixels surrounding each image in the grid, may be a tuple specifying top/bottom border and left/right border
+        border_rgb [tuple (r,g,b)]:  the border color in a rgb color tuple (r,g,b) in [0,255], uint8
         do_flush: [bool]  flush the loaded images as garbage collection for large montages
         verbose: [bool]  display optional verbose messages
 
@@ -321,12 +404,13 @@ def montage(imlist, imgheight=256, imgwidth=256, gridrows=None, gridcols=None, a
         Return a `vipy.image.Image` montage which is of size (gridrows*(imgheight + 2*border), gridcols*(imgwidth+2*border))
         
     &#34;&#34;&#34;
-    assert (isinstance(imlist, list) or isinstance(imlist, tuple)) and len(imlist)&gt;0
+    assert isinstance(imlist, (list, tuple, vipy.dataset.Dataset)) and len(imlist)&gt;0 and all([isinstance(im, vipy.image.Image) for im in imlist])
     
-    (rows, cols) = (gridrows, gridcols) if isinstance(imlist[0], vipy.image.Image) else (len(imlist), max([len(r) for r in imlist]))
+    (rows, cols) = (gridrows, gridcols) if isinstance(imlist[0], vipy.image.Image) else (len(imlist), max([len(r) if isinstance(r, list) or isinstance(r, tuple) else 1  for r in imlist]))
     imlist = vipy.util.flatlist(imlist)
     (n,m) = (imgheight, imgwidth)
-
+    (ud, lr) = (border) if isinstance(border, (tuple, list)) and len(border)==2 else (border, border)
+    
     n_imgs = len(imlist)
     M = int(np.ceil(np.sqrt(n_imgs)))
     N = int(np.ceil(n_imgs/M))
@@ -337,21 +421,21 @@ def montage(imlist, imgheight=256, imgwidth=256, gridrows=None, gridcols=None, a
     elif rows is not None and cols is not None:
         N = rows
         M = cols
-    size = (M * m + ((M + 1) * border), N * n + ((N + 1) * border))
-    bc = border_bgr
+    size = (M * m + ((M + 1) * ud), N * n + ((N + 1) * lr))
+    bc = border_rgb
     img_montage = np.array(PIL.Image.new(mode=&#39;RGB&#39;, size=size, color=bc))
     k = 0
     for j in range(N):
         for i in range(M):
             if k &gt;= n_imgs:
                 break
-            sliceM, sliceN = i * (m + border) + border, j * (n + border) + border
+            sliceM, sliceN = i * (m + ud) + ud, j * (n + lr) + lr
             try:
                 if crop:
                     if imlist[k].bbox.valid() is False:
-                        print(&#39;[vipy.visualize.montage] invalid bounding box &#34;%s&#34; &#39; % str(imlist[k].bbox))
+                        log.warning(&#39;[vipy.visualize.montage] invalid bounding box &#34;%s&#34; &#39; % str(imlist[k].bbox))
                         if skip is False:
-                            print(&#39;[vipy.visualize.montage] using original image&#39;)
+                            log.warning(&#39;[vipy.visualize.montage] using original image&#39;)
                             im = imlist[k].rgb().resize(n,m).array()
                         else:
                             raise
@@ -365,26 +449,26 @@ def montage(imlist, imgheight=256, imgwidth=256, gridrows=None, gridcols=None, a
             except KeyboardInterrupt:
                 raise
             except Exception as exception:
-                print(&#39;[vipy.visualize.montage][%d/%d]: skipping &#34;%s&#34;&#39; % (k+1, len(imlist), str(imlist[k])))
+                log.warning(&#39;[vipy.visualize.montage][%d/%d]: skipping &#34;%s&#34;&#39; % (k+1, len(imlist), str(imlist[k])))
                 if skip:
-                    print(&#39;[vipy.visualize.montage][%d/%d]: &#34;%s&#34;&#39; % (k+1, len(imlist), str(exception)))
+                    log.warning(&#39;[vipy.visualize.montage][%d/%d]: &#34;%s&#34;&#39; % (k+1, len(imlist), str(exception)))
                 else:
                     raise
 
             if do_flush:
                 imlist[k].flush()  # clear memory
             if verbose and ((k % 100) == 0):
-                print(&#39;[vipy.visualize.montage][%d/%d] processing...&#39; % (k, n_imgs))
+                log.info(&#39;[vipy.visualize.montage][%d/%d] processing...&#39; % (k, n_imgs))
 
             k += 1
 
     if k == 0:
-        print(&#39;[vipy.visualize.montage] Warning: No images were processed&#39;)
+        log.warning(&#39;[vipy.visualize.montage] No images were processed&#39;)
 
     return Image(array=img_montage)
 
 
-def videomontage(vidlist, imgheight, imgwidth, gridrows=None, gridcols=None, aspectratio=1, crop=False, skip=True, border=1, border_bgr=(128,128,128), do_flush=False, verbose=True, framerate=30.0, max_duration=None):
+def videomontage(vidlist, imgheight, imgwidth, gridrows=None, gridcols=None, aspectratio=1, crop=False, skip=True, border=1, border_rgb=(128,128,128), do_flush=False, verbose=True, framerate=30.0, max_duration=None):
     &#34;&#34;&#34;Generate a video montage for the provided videos by creating a image montage for every frame.  
 
     Args:
@@ -404,20 +488,20 @@ def videomontage(vidlist, imgheight, imgwidth, gridrows=None, gridcols=None, asp
     assert framerate &gt; 0
 
     if verbose:
-        print(&#39;[vipy.visualize.videomontage]: Loading %d videos&#39; % len(vidlist))
+        log.info(&#39;[vipy.visualize.videomontage]: Loading %d videos&#39; % len(vidlist))
 
     vidlist = [v.framerate(framerate) for v in vidlist]  # resample to a common framerate, this must occur prior to load
     vidlist = [v.load() for v in vidlist]  # triggers load, make sure that the vidlist videos have a reasonably small frames
     max_length = max([len(v) for v in vidlist]) if max_duration is None else int(round(max_duration * framerate))   
     
     if verbose:
-        print(&#39;[vipy.visualize.videomontage]: Maximum video length (frames) = %d&#39; % (max_length))
+        log.info(&#39;[vipy.visualize.videomontage]: Maximum video length (frames) = %d&#39; % (max_length))
 
     # FIXME: use stream here:
     # with Video(outfile).stream(write=True) as s:
     #     s.write(montage(...))
     
-    montagelist = [montage([v[k % len(v)].mindim(max(imgheight, imgwidth)).centercrop(imgheight, imgwidth) for v in vidlist], imgheight, imgwidth, gridrows, gridcols, aspectratio, crop, skip, border, border_bgr, do_flush, verbose=False)
+    montagelist = [montage([v[k % len(v)].mindim(max(imgheight, imgwidth)).centercrop(imgheight, imgwidth) for v in vidlist], imgheight, imgwidth, gridrows, gridcols, aspectratio, crop, skip, border, border_rgb, do_flush, verbose=False)
                    for k in range(0, max_length)]
     return vipy.video.Video(array=np.stack([im.array() for im in montagelist]), colorspace=&#39;rgb&#39;, framerate=framerate)
 
@@ -474,7 +558,7 @@ def urls(urllist, title=&#39;URL Visualization&#39;, imagewidth=1024, outfile=No
     # Display?
     if display:
         url = pathlib.Path(filename).as_uri()
-        print(&#39;[vipy.visualize.urls]: Opening &#34;%s&#34; in default browser&#39; % url)
+        log.info(&#39;[vipy.visualize.urls]: Opening &#34;%s&#34; in default browser&#39; % url)
         webbrowser.open(url)
         
     return filename
@@ -544,7 +628,7 @@ def tohtml(imlist, imdict=None, title=&#39;Image Visualization&#39;, mindim=1024
     # Display?
     if display:
         url = pathlib.Path(filename).as_uri()
-        print(&#39;[vipy.visualize.tohtml]: Opening &#34;%s&#34; in default browser&#39; % url)
+        log.info(&#39;[vipy.visualize.tohtml]: Opening &#34;%s&#34; in default browser&#39; % url)
         webbrowser.open(url)
         
     return filename
@@ -585,7 +669,7 @@ def videolist(vidlist, viddict=None, title=&#39;Video Visualization&#39;, outfil
     # Display?
     if display:
         url = pathlib.Path(filename).as_uri()
-        print(&#39;[vipy.visualize.videolist]: Opening &#34;%s&#34; in default browser&#39; % url)
+        log.info(&#39;[vipy.visualize.videolist]: Opening &#34;%s&#34; in default browser&#39; % url)
         webbrowser.open(url)
         
     return filename
@@ -747,7 +831,7 @@ if None, nothing is displayed</dd>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/visualize.py#L20-L165" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/visualize.py#L103-L248" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def hoverpixel(urls, outfile=None, pixelsize=32, sortby=&#39;color&#39;, loupe=True, hoversize=512, ultext=None, display=False, ultextcolor=&#39;white&#39;, ultextsize=&#39;large&#39;, aspectratio=2560/1440, ultextoffset=(16,16)):
     &#34;&#34;&#34;Generate a standalone hoverpixel visualization.
@@ -891,7 +975,7 @@ if None, nothing is displayed</dd>
         f.write(&#39;&lt;/html&gt;\n&#39;)
 
     if display:
-        print(&#39;[vipy.visualize.hoverpixel]: Opening &#34;%s&#34; in default browser&#39; % filename)
+        log.info(&#39;[vipy.visualize.hoverpixel]: Opening &#34;%s&#34; in default browser&#39; % filename)
         webbrowser.open(&#39;file://%s&#39; % filename)
 
     return filename</code></pre>
@@ -921,7 +1005,7 @@ Be sure to add allowfullscreen to the iframe.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/visualize.py#L168-L233" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/visualize.py#L251-L316" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def hoverpixel_selector(htmllist, legendlist, outfile=None, display=False, offset=(60, 80), fullscreen=True, ultext=None, ultextcolor=&#39;white&#39;, ultextsize=&#39;large&#39;, ultextoffset=(16,16)):
     &#34;&#34;&#34;Create a dropdown selector of hoverpixel visualizations by legend.
@@ -985,7 +1069,7 @@ Be sure to add allowfullscreen to the iframe.</p>
         f.write(&#39;&lt;/html&gt;\n&#39;)
 
     if display:
-        print(&#39;[vipy.visualize.hoverpixel_selector]: Opening &#34;%s&#34; in default browser&#39; % filename)
+        log.info(&#39;[vipy.visualize.hoverpixel_selector]: Opening &#34;%s&#34; in default browser&#39; % filename)
         webbrowser.open(&#39;file://%s&#39; % filename)
 
     return filename</code></pre>
@@ -999,7 +1083,7 @@ Be sure to add allowfullscreen to the iframe.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/visualize.py#L565-L610" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/visualize.py#L649-L694" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def imagelist(list_of_image_files, outdir, title=&#39;Image Visualization&#39;, imagewidth=64, maxwidth=2400):
     &#34;&#34;&#34;Given a list of image filenames wth absolute paths, copy to outdir, and create an index.html file that visualizes each.    
@@ -1057,7 +1141,7 @@ Be sure to add allowfullscreen to the iframe.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/visualize.py#L613-L657" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/visualize.py#L697-L741" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def imagetuplelist(list_of_tuples_of_image_files, outdir, title=&#39;Image Visualization&#39;, imagewidth=64):
     &#34;&#34;&#34;Imagelist but put tuples on same row&#34;&#34;&#34;
@@ -1107,7 +1191,7 @@ Be sure to add allowfullscreen to the iframe.</p>
 </details>
 </dd>
 <dt id="vipy.visualize.montage"><code class="name flex">
-<span>def <span class="ident">montage</span></span>(<span>imlist, imgheight=256, imgwidth=256, gridrows=None, gridcols=None, aspectratio=1, crop=False, skip=True, border=1, border_bgr=(128, 128, 128), do_flush=False, verbose=False)</span>
+<span>def <span class="ident">montage</span></span>(<span>imlist, imgheight=256, imgwidth=256, gridrows=None, gridcols=None, aspectratio=1, crop=False, skip=True, border=1, border_rgb=(128, 128, 128), do_flush=False, verbose=False)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Create a montage image from the of provided list of <code><a title="vipy.image.Image" href="image.html#vipy.image.Image">Image</a></code> objects.</p>
@@ -1116,7 +1200,7 @@ Be sure to add allowfullscreen to the iframe.</p>
 <h2 id="args">Args</h2>
 <dl>
 <dt><strong><code>imlist</code></strong></dt>
-<dd>[list, tuple] iterable of <code><a title="vipy.image.Image" href="image.html#vipy.image.Image">Image</a></code> objects which is used to montage rowwise, or a list of lists such that each element defines <code><a title="vipy.image.Image" href="image.html#vipy.image.Image">Image</a></code> objects on a grid row.</dd>
+<dd>[list, tuple, vipy.dataset.Dataset] iterable of <code><a title="vipy.image.Image" href="image.html#vipy.image.Image">Image</a></code> objects which is used to montage rowwise, or a list of lists such that each element defines <code><a title="vipy.image.Image" href="image.html#vipy.image.Image">Image</a></code> objects on a grid row.</dd>
 <dt><strong><code>imgheight</code></strong></dt>
 <dd>[int] The height of each individual image in the grid, defaults to 256 px</dd>
 <dt><strong><code>imgwidth</code></strong></dt>
@@ -1139,10 +1223,10 @@ If true, the vipy.image.Image objects should call crop(), which will trigger a l
 <dd>[bool]
 Whether images should be skipped on failure to load(), useful for lazy downloading</dd>
 <dt><strong><code>border</code></strong></dt>
-<dd>[int]
-a border of size in pixels surrounding each image in the grid</dd>
-<dt>border_bgr [tuple (r,g,b)]:
-the border color in a bgr color tuple (b, g, r) in [0,255], uint8</dt>
+<dd>[int], (leftright, topbottom)
+a border of size in pixels surrounding each image in the grid, may be a tuple specifying top/bottom border and left/right border</dd>
+<dt>border_rgb [tuple (r,g,b)]:
+the border color in a rgb color tuple (r,g,b) in [0,255], uint8</dt>
 <dt><strong><code>do_flush</code></strong></dt>
 <dd>[bool]
 flush the loaded images as garbage collection for large montages</dd>
@@ -1155,15 +1239,15 @@ display optional verbose messages</dd>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/visualize.py#L271-L354" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/visualize.py#L354-L438" class="git-link">Browse git</a>
 </summary>
-<pre><code class="python">def montage(imlist, imgheight=256, imgwidth=256, gridrows=None, gridcols=None, aspectratio=1, crop=False, skip=True, border=1, border_bgr=(128,128,128), do_flush=False, verbose=False):
+<pre><code class="python">def montage(imlist, imgheight=256, imgwidth=256, gridrows=None, gridcols=None, aspectratio=1, crop=False, skip=True, border=1, border_rgb=(128,128,128), do_flush=False, verbose=False):
     &#34;&#34;&#34;Create a montage image from the of provided list of `vipy.image.Image` objects.
 
     &gt;&gt;&gt; vipy.visualize.montage([[im.crop() for im in vipy.image.vehicles()]]).show()
 
     Args:
-        imlist: [list, tuple] iterable of `vipy.image.Image` objects which is used to montage rowwise, or a list of lists such that each element defines `vipy.image.Image` objects on a grid row.
+        imlist: [list, tuple, vipy.dataset.Dataset] iterable of `vipy.image.Image` objects which is used to montage rowwise, or a list of lists such that each element defines `vipy.image.Image` objects on a grid row.
         imgheight: [int] The height of each individual image in the grid, defaults to 256 px
         imgwidth: [int] the width of each individual image in the grid, defaults to 256 px, use centersquare() for isotropic scaling
         gridrows: [int]  The number of images per row, and number of images per column.  This defines the montage shape.
@@ -1171,8 +1255,8 @@ display optional verbose messages</dd>
         aspectratio: [float].  This is an optional parameter which defines the shape of the montage as (gridcols/gridrows) without specifying the gridrows, gridcols input
         crop: [bool]  If true, the vipy.image.Image objects should call crop(), which will trigger a load
         skip: [bool]  Whether images should be skipped on failure to load(), useful for lazy downloading
-        border: [int]  a border of size in pixels surrounding each image in the grid
-        border_bgr [tuple (r,g,b)]:  the border color in a bgr color tuple (b, g, r) in [0,255], uint8
+        border: [int], (leftright, topbottom)  a border of size in pixels surrounding each image in the grid, may be a tuple specifying top/bottom border and left/right border
+        border_rgb [tuple (r,g,b)]:  the border color in a rgb color tuple (r,g,b) in [0,255], uint8
         do_flush: [bool]  flush the loaded images as garbage collection for large montages
         verbose: [bool]  display optional verbose messages
 
@@ -1180,12 +1264,13 @@ display optional verbose messages</dd>
         Return a `vipy.image.Image` montage which is of size (gridrows*(imgheight + 2*border), gridcols*(imgwidth+2*border))
         
     &#34;&#34;&#34;
-    assert (isinstance(imlist, list) or isinstance(imlist, tuple)) and len(imlist)&gt;0
+    assert isinstance(imlist, (list, tuple, vipy.dataset.Dataset)) and len(imlist)&gt;0 and all([isinstance(im, vipy.image.Image) for im in imlist])
     
-    (rows, cols) = (gridrows, gridcols) if isinstance(imlist[0], vipy.image.Image) else (len(imlist), max([len(r) for r in imlist]))
+    (rows, cols) = (gridrows, gridcols) if isinstance(imlist[0], vipy.image.Image) else (len(imlist), max([len(r) if isinstance(r, list) or isinstance(r, tuple) else 1  for r in imlist]))
     imlist = vipy.util.flatlist(imlist)
     (n,m) = (imgheight, imgwidth)
-
+    (ud, lr) = (border) if isinstance(border, (tuple, list)) and len(border)==2 else (border, border)
+    
     n_imgs = len(imlist)
     M = int(np.ceil(np.sqrt(n_imgs)))
     N = int(np.ceil(n_imgs/M))
@@ -1196,21 +1281,21 @@ display optional verbose messages</dd>
     elif rows is not None and cols is not None:
         N = rows
         M = cols
-    size = (M * m + ((M + 1) * border), N * n + ((N + 1) * border))
-    bc = border_bgr
+    size = (M * m + ((M + 1) * ud), N * n + ((N + 1) * lr))
+    bc = border_rgb
     img_montage = np.array(PIL.Image.new(mode=&#39;RGB&#39;, size=size, color=bc))
     k = 0
     for j in range(N):
         for i in range(M):
             if k &gt;= n_imgs:
                 break
-            sliceM, sliceN = i * (m + border) + border, j * (n + border) + border
+            sliceM, sliceN = i * (m + ud) + ud, j * (n + lr) + lr
             try:
                 if crop:
                     if imlist[k].bbox.valid() is False:
-                        print(&#39;[vipy.visualize.montage] invalid bounding box &#34;%s&#34; &#39; % str(imlist[k].bbox))
+                        log.warning(&#39;[vipy.visualize.montage] invalid bounding box &#34;%s&#34; &#39; % str(imlist[k].bbox))
                         if skip is False:
-                            print(&#39;[vipy.visualize.montage] using original image&#39;)
+                            log.warning(&#39;[vipy.visualize.montage] using original image&#39;)
                             im = imlist[k].rgb().resize(n,m).array()
                         else:
                             raise
@@ -1224,21 +1309,21 @@ display optional verbose messages</dd>
             except KeyboardInterrupt:
                 raise
             except Exception as exception:
-                print(&#39;[vipy.visualize.montage][%d/%d]: skipping &#34;%s&#34;&#39; % (k+1, len(imlist), str(imlist[k])))
+                log.warning(&#39;[vipy.visualize.montage][%d/%d]: skipping &#34;%s&#34;&#39; % (k+1, len(imlist), str(imlist[k])))
                 if skip:
-                    print(&#39;[vipy.visualize.montage][%d/%d]: &#34;%s&#34;&#39; % (k+1, len(imlist), str(exception)))
+                    log.warning(&#39;[vipy.visualize.montage][%d/%d]: &#34;%s&#34;&#39; % (k+1, len(imlist), str(exception)))
                 else:
                     raise
 
             if do_flush:
                 imlist[k].flush()  # clear memory
             if verbose and ((k % 100) == 0):
-                print(&#39;[vipy.visualize.montage][%d/%d] processing...&#39; % (k, n_imgs))
+                log.info(&#39;[vipy.visualize.montage][%d/%d] processing...&#39; % (k, n_imgs))
 
             k += 1
 
     if k == 0:
-        print(&#39;[vipy.visualize.montage] Warning: No images were processed&#39;)
+        log.warning(&#39;[vipy.visualize.montage] No images were processed&#39;)
 
     return Image(array=img_montage)</code></pre>
 </details>
@@ -1266,7 +1351,7 @@ Returns:
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/visualize.py#L236-L257" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/visualize.py#L319-L340" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def mosaic(videos, gridrows=None, gridcols=None):
     &#34;&#34;&#34;Create a mosaic iterator from an iterable of videos.
@@ -1290,6 +1375,120 @@ Returns:
     (H,W) = videos[0].shape()
     for frames in zip(*videos):        
         yield vipy.visualize.montage(frames, H, W, gridrows=gridrows, gridcols=gridcols)</code></pre>
+</details>
+</dd>
+<dt id="vipy.visualize.scene_explorer"><code class="name flex">
+<span>def <span class="ident">scene_explorer</span></span>(<span>im, outfile=None, width=1024, title='Scene Explorer', previewurl=None, keypoint_alpha=0.7, popup_alpha=0.8, embed=True, open_in_browser=False, tag_formatter=&lt;function &lt;lambda&gt;&gt;, attribute_formatter=&lt;function &lt;lambda&gt;&gt;, description_formatter=&lt;function &lt;lambda&gt;&gt;)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Generate a standalone scene_explorer visualization.</p>
+<p>A scene_explorer visualization is a standalone HTML file that shows a single <code><a title="vipy.image.Scene" href="image.html#vipy.image.Scene">Scene</a></code> object with an interactive search and visualization of all objects, attributes, captions and tags</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>im</code></strong></dt>
+<dd>a <code><a title="vipy.image.Scene" href="image.html#vipy.image.Scene">Scene</a></code> object for visualization</dd>
+<dt><strong><code>outfile</code></strong></dt>
+<dd>an html output file, if None a temp file with an html extension will be used </dd>
+</dl>
+<p>title [str]: the title of the html file
+previewurl [str]: A url containing an image thumbnail of what the html file contains.
+Useful for previewing the file contents if shared on social media
+keypoint_alpha [float]: the keypoint transparency in the range (0,1)
+popup_alpha [float]: the popup window transparency in the range (0,1)
+embed [bool]: If true, embed the image as base64 encoded image.
+If false, use the provided url in the image
+open_in_browser [bool]: If true, open the html file in the default browser on the current system
+tag_formatter [lambda]:
+A lambda function with a single argument equal to the input image that returns a HTML string for display in the tag popup.
+This can be any valid html.
+attribute_formatter [lambda]:
+A lambda function with a single argument equal to the input image that returns a HTML string for display in the attribute popup.
+This can be any valid html
+description_formatter [lambda]:
+A lambda function with a single argument equal to the input image that returns a HTML string for display in the description popup.
+This can be any valid html
+</p>
+<h2 id="returns">Returns</h2>
+<p>outfile
+Current support for <code><a title="vipy.object.Keypoint2d" href="object.html#vipy.object.Keypoint2d">Keypoint2d</a></code> only, <code><a title="vipy.object.Detection" href="object.html#vipy.object.Detection">Detection</a></code> are ignored</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/visualize.py#L28-L100" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def scene_explorer(im, outfile=None, width=1024, title=&#39;Scene Explorer&#39;, previewurl=None, keypoint_alpha=0.7, popup_alpha=0.8, embed=True, open_in_browser=False,
+                   tag_formatter=lambda im: &#34;&lt;strong&gt;Image Tags&lt;/strong&gt;&lt;br&gt;&lt;br&gt;%s&#34; % (&#39;&lt;br&gt;&#39;.join(im.tags()) if not im.has_confidences() else ascii_bar_chart(zip(im.tags(),im.confidences()), 64)),
+                   attribute_formatter=lambda im: &#34;&lt;strong&gt;Image Attributes&lt;/strong&gt;&lt;br&gt;&lt;br&gt;%s&#34; % json.dumps(im.clone().flush().json(encode=False), indent=2),
+                   description_formatter=lambda im: &#34;&lt;strong&gt;Image Description&lt;/strong&gt;&lt;br&gt;&lt;br&gt;%s&#34; % &#39;None&#39;):                   
+    
+    &#34;&#34;&#34;Generate a standalone scene_explorer visualization.
+
+    A scene_explorer visualization is a standalone HTML file that shows a single `vipy.image.Scene` object with an interactive search and visualization of all objects, attributes, captions and tags
+
+    Args:
+        im: a `vipy.image.Scene` object for visualization
+        outfile: an html output file, if None a temp file with an html extension will be used 
+        title [str]: the title of the html file
+        previewurl [str]: A url containing an image thumbnail of what the html file contains.  Useful for previewing the file contents if shared on social media
+        keypoint_alpha [float]: the keypoint transparency in the range (0,1)
+        popup_alpha [float]: the popup window transparency in the range (0,1)
+        embed [bool]: If true, embed the image as base64 encoded image.  If false, use the provided url in the image
+        open_in_browser [bool]: If true, open the html file in the default browser on the current system
+        tag_formatter [lambda]:  A lambda function with a single argument equal to the input image that returns a HTML string for display in the tag popup.  This can be any valid html.
+        attribute_formatter [lambda]:  A lambda function with a single argument equal to the input image that returns a HTML string for display in the attribute popup.  This can be any valid html
+        description_formatter [lambda]:  A lambda function with a single argument equal to the input image that returns a HTML string for display in the description popup.  This can be any valid html    
+
+    Returns:
+        outfile
+
+    Current support for `vipy.object.Keypoint2d` only, `vipy.object.Detection` are ignored
+    
+    &#34;&#34;&#34;
+    assert isinstance(im, vipy.image.Scene)
+    assert outfile is None or ishtml(outfile)
+    assert previewurl is None or isurl(previewurl)
+    assert keypoint_alpha &gt;=0 and keypoint_alpha &lt;=1
+    assert popup_alpha &gt;=0 and popup_alpha &lt;=1
+    assert embed or im.has_url()
+    if not all([isinstance(o, vipy.object.Keypoint2d) for o in im.objects()]):
+        warnings.warn(&#39;Scene explorer supports vipy.object.Keypoint2d only - all other vipy.object elements ignored&#39;)
+
+    imc = im.clone()
+    img = (&#39;data:image/jpeg;charset=utf-8;base64,%s&#39; % imc.load().resize(width=width).base64().decode(&#39;ascii&#39;)) if embed else imc.flush().url()
+    colors = [matplotlib.colors.to_hex(c) for c in vipy.show.colorlist()]
+    keypoints = [o for o in imc.objects() if isinstance(o, vipy.object.Keypoint2d)]
+    d_category_to_color = {o.category():colors[int(hashlib.sha1(o.category().split(&#39; &#39;)[-1].encode(&#39;utf-8&#39;)).hexdigest(), 16) % len(colors)] for o in keypoints}   # consistent color mapping by category suffix (space separated)
+    
+    html = Path(Path(__file__).parent.resolve() / &#39;visualize_scene_explorer.html&#39;).read_text()
+    keywords = {&#39;${TITLE}&#39;: title,
+                &#39;${META_OG_IMAGE}&#39;: (&#39;&lt;meta property=&#34;og:image&#34; content=&#34;%s&#34;&gt;&#39; % previewurl) if previewurl is not None else &#39;&#39;,  # useful to show as a preview of the HTML contents for shared links
+                &#39;${IMG_WIDTH}&#39;:str(imc.width()),
+                &#39;${IMG_HEIGHT}&#39;:str(imc.height()),
+                &#39;${IMG}&#39;:img,
+                &#39;${IMG_ATTRIBUTES}&#39;:escape_string_for_innerHTML(attribute_formatter(im)),
+                &#39;${IMG_DESCRIPTION}&#39;: escape_string_for_innerHTML(description_formatter(im)),
+                &#39;${IMG_TAGS}&#39;: escape_string_for_innerHTML(tag_formatter(im)),
+                &#39;${SEARCHBOX_WIDTH}&#39;:str(width // 4),
+                &#39;${POPUP_ALPHA}&#39;: str(popup_alpha),
+                &#39;${CLASSLIST}&#39;:str(sorted(set([o.category() for o in keypoints]))),  # assumes that shared class prefix encodes grouping
+                &#39;${KP_X}&#39;:str([o.x for o in keypoints]),
+                &#39;${KP_Y}&#39;:str([o.y for o in keypoints]),
+                &#39;${KP_R}&#39;:str([o.r for o in keypoints]),
+                &#39;${KP_ALPHA_HEX}&#39;:str(format(int(keypoint_alpha*255), &#39;02x&#39;)),  # keypoint face alpha = [0,255] -&gt; [00, FF]
+                &#39;${KP_CLASSLIST}&#39;:str([o.category() for o in keypoints]),
+                &#39;${KP_ATTRIBUTELIST}&#39;:str([o.json() for o in keypoints]),
+                &#39;${KP_COLORLIST}&#39;:str([d_category_to_color[o.category()] for o in keypoints])}    
+    for (k,v) in keywords.items():
+        html = html.replace(k,v)
+
+    filename = outfile if outfile is not None else temphtml()        
+    with open(filename, &#39;w&#39;) as f:
+        f.write(html)
+
+    if open_in_browser:
+        os.system(&#39;open %s&#39; % filename)
+        
+    return filename</code></pre>
 </details>
 </dd>
 <dt id="vipy.visualize.tohtml"><code class="name flex">
@@ -1318,7 +1517,7 @@ Returns:
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/visualize.py#L454-L520" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/visualize.py#L538-L604" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def tohtml(imlist, imdict=None, title=&#39;Image Visualization&#39;, mindim=1024, outfile=None, display=False, maxwidth=2400):
     &#34;&#34;&#34;Given a list of vipy.image.Image objects, show the images along with the dictionary contents of imdict (one per image) in a single standalone HTML file
@@ -1383,7 +1582,7 @@ Returns:
     # Display?
     if display:
         url = pathlib.Path(filename).as_uri()
-        print(&#39;[vipy.visualize.tohtml]: Opening &#34;%s&#34; in default browser&#39; % url)
+        log.info(&#39;[vipy.visualize.tohtml]: Opening &#34;%s&#34; in default browser&#39; % url)
         webbrowser.open(url)
         
     return filename</code></pre>
@@ -1410,7 +1609,7 @@ Returns:
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/visualize.py#L395-L450" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/visualize.py#L479-L534" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def urls(urllist, title=&#39;URL Visualization&#39;, imagewidth=1024, outfile=None, display=False):
     &#34;&#34;&#34;Given a list of public image URLs, create a stand-alone HTML page to show them all.
@@ -1464,7 +1663,7 @@ Returns:
     # Display?
     if display:
         url = pathlib.Path(filename).as_uri()
-        print(&#39;[vipy.visualize.urls]: Opening &#34;%s&#34; in default browser&#39; % url)
+        log.info(&#39;[vipy.visualize.urls]: Opening &#34;%s&#34; in default browser&#39; % url)
         webbrowser.open(url)
         
     return filename</code></pre>
@@ -1478,7 +1677,7 @@ Returns:
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/visualize.py#L523-L561" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/visualize.py#L607-L645" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def videolist(vidlist, viddict=None, title=&#39;Video Visualization&#39;, outfile=None, display=False):
     &#34;&#34;&#34;Create a standalone HTML file that will visualize the set of videos in vidlist using HTML5 video player&#34;&#34;&#34;
@@ -1515,14 +1714,14 @@ Returns:
     # Display?
     if display:
         url = pathlib.Path(filename).as_uri()
-        print(&#39;[vipy.visualize.videolist]: Opening &#34;%s&#34; in default browser&#39; % url)
+        log.info(&#39;[vipy.visualize.videolist]: Opening &#34;%s&#34; in default browser&#39; % url)
         webbrowser.open(url)
         
     return filename</code></pre>
 </details>
 </dd>
 <dt id="vipy.visualize.videomontage"><code class="name flex">
-<span>def <span class="ident">videomontage</span></span>(<span>vidlist, imgheight, imgwidth, gridrows=None, gridcols=None, aspectratio=1, crop=False, skip=True, border=1, border_bgr=(128, 128, 128), do_flush=False, verbose=True, framerate=30.0, max_duration=None)</span>
+<span>def <span class="ident">videomontage</span></span>(<span>vidlist, imgheight, imgwidth, gridrows=None, gridcols=None, aspectratio=1, crop=False, skip=True, border=1, border_rgb=(128, 128, 128), do_flush=False, verbose=True, framerate=30.0, max_duration=None)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Generate a video montage for the provided videos by creating a image montage for every frame.
@@ -1551,9 +1750,9 @@ If None, then use the duration of the longest video</dd>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/visualize.py#L357-L392" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/visualize.py#L441-L476" class="git-link">Browse git</a>
 </summary>
-<pre><code class="python">def videomontage(vidlist, imgheight, imgwidth, gridrows=None, gridcols=None, aspectratio=1, crop=False, skip=True, border=1, border_bgr=(128,128,128), do_flush=False, verbose=True, framerate=30.0, max_duration=None):
+<pre><code class="python">def videomontage(vidlist, imgheight, imgwidth, gridrows=None, gridcols=None, aspectratio=1, crop=False, skip=True, border=1, border_rgb=(128,128,128), do_flush=False, verbose=True, framerate=30.0, max_duration=None):
     &#34;&#34;&#34;Generate a video montage for the provided videos by creating a image montage for every frame.  
 
     Args:
@@ -1573,20 +1772,20 @@ If None, then use the duration of the longest video</dd>
     assert framerate &gt; 0
 
     if verbose:
-        print(&#39;[vipy.visualize.videomontage]: Loading %d videos&#39; % len(vidlist))
+        log.info(&#39;[vipy.visualize.videomontage]: Loading %d videos&#39; % len(vidlist))
 
     vidlist = [v.framerate(framerate) for v in vidlist]  # resample to a common framerate, this must occur prior to load
     vidlist = [v.load() for v in vidlist]  # triggers load, make sure that the vidlist videos have a reasonably small frames
     max_length = max([len(v) for v in vidlist]) if max_duration is None else int(round(max_duration * framerate))   
     
     if verbose:
-        print(&#39;[vipy.visualize.videomontage]: Maximum video length (frames) = %d&#39; % (max_length))
+        log.info(&#39;[vipy.visualize.videomontage]: Maximum video length (frames) = %d&#39; % (max_length))
 
     # FIXME: use stream here:
     # with Video(outfile).stream(write=True) as s:
     #     s.write(montage(...))
     
-    montagelist = [montage([v[k % len(v)].mindim(max(imgheight, imgwidth)).centercrop(imgheight, imgwidth) for v in vidlist], imgheight, imgwidth, gridrows, gridcols, aspectratio, crop, skip, border, border_bgr, do_flush, verbose=False)
+    montagelist = [montage([v[k % len(v)].mindim(max(imgheight, imgwidth)).centercrop(imgheight, imgwidth) for v in vidlist], imgheight, imgwidth, gridrows, gridcols, aspectratio, crop, skip, border, border_rgb, do_flush, verbose=False)
                    for k in range(0, max_length)]
     return vipy.video.Video(array=np.stack([im.array() for im in montagelist]), colorspace=&#39;rgb&#39;, framerate=framerate)</code></pre>
 </details>
@@ -1606,7 +1805,7 @@ This assumes that the videos are showing the same timestamps like in a security 
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/visualize.py#L260-L268" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/visualize.py#L343-L351" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def videomosaic(videos, gridrows=None, gridcols=None):
     &#34;&#34;&#34;Return a mosaic video from an iterable of videos.  
@@ -1695,6 +1894,7 @@ setTimeout(() => input.focus(), 100);
 <li><code><a title="vipy.visualize.imagetuplelist" href="#vipy.visualize.imagetuplelist">imagetuplelist</a></code></li>
 <li><code><a title="vipy.visualize.montage" href="#vipy.visualize.montage">montage</a></code></li>
 <li><code><a title="vipy.visualize.mosaic" href="#vipy.visualize.mosaic">mosaic</a></code></li>
+<li><code><a title="vipy.visualize.scene_explorer" href="#vipy.visualize.scene_explorer">scene_explorer</a></code></li>
 <li><code><a title="vipy.visualize.tohtml" href="#vipy.visualize.tohtml">tohtml</a></code></li>
 <li><code><a title="vipy.visualize.urls" href="#vipy.visualize.urls">urls</a></code></li>
 <li><code><a title="vipy.visualize.videolist" href="#vipy.visualize.videolist">videolist</a></code></li>
@@ -1706,7 +1906,7 @@ setTimeout(() => input.focus(), 100);
 </nav>
 </main>
 <footer id="footer">
-<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.10.0</a>.</p>
+<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.11.6</a>.</p>
 </footer>
 </body>
 </html>

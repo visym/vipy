@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
-<meta name="generator" content="pdoc 0.10.0" />
+<meta name="generator" content="pdoc 0.11.6" />
 <meta name="google-site-verification" content="aB8LkQegj94_TJPdrcJm2ldIRWyXY82Jp24Gtkdgyn0" />
 <title>vipy.data.fddb API documentation</title>
 <meta name="description" content="" />
@@ -26,14 +26,15 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/data/fddb.py#L1-L42" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/data/fddb.py#L1-L48" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">import os
-from vipy.util import readcsv
+import vipy
+from vipy.util import readcsv, tocache
 from vipy.image import Scene
 from vipy.object import Detection
 
-URL = &#39;http://tamaraberg.com/faceDataset/originalPics.tar.gz&#39;
+URL = &#39;http://vis-www.cs.umass.edu/fddb/originalPics.tar.gz&#39;
 FOLDS_URL = &#39;http://vis-www.cs.umass.edu/fddb/FDDB-folds.tgz&#39;
 FOLDS_SHA1 = &#39;94ce19ba3348425dfbb8bcbe55802490f8f152f8&#39;
 
@@ -41,24 +42,29 @@ FOLDS_SHA1 = &#39;94ce19ba3348425dfbb8bcbe55802490f8f152f8&#39;
 class FDDB(object):
     &#34;&#34;&#34;Manages the FDDB dataset: http://vis-www.cs.umass.edu/fddb&#34;&#34;&#34;
 
-    def __init__(self, rootdir):
-        self.rootdir = rootdir
-        self.folds_dir = os.path.join(self.rootdir, &#39;FDDB-folds&#39;)
+    def __init__(self, datadir=None, redownload=False):
+        datadir = tocache(&#39;fddb&#39;) if datadir is None else datadir
+        
+        self._datadir = vipy.util.remkdir(datadir)
+        self._folds_dir = vipy.util.remkdir(os.path.join(self._datadir, &#39;FDDB-folds&#39;))
 
-        if not os.path.isdir(os.path.join(self.rootdir, &#39;2002&#39;)):
-            raise ValueError(&#39;Download FDDB dataset manually, with &#34;wget %s -O %s; cd %s; tar zxvf %s&#34;&#39; % (URL, os.path.join(self.rootdir, &#39;originalPics.tar.gz&#39;), self.rootdir, &#39;originalPics.tar.gz&#39;))
+        if redownload or os.path.exists(os.path.join(self._datadir, &#39;.complete&#39;)):
+            vipy.downloader.download_and_unpack(URL, self._datadir)                        
+            #raise ValueError(&#39;Download FDDB dataset manually, with &#34;wget %s -O %s; cd %s; tar zxvf %s&#34;&#39; % (URL, os.path.join(self._datadir, &#39;originalPics.tar.gz&#39;), self._datadir, &#39;originalPics.tar.gz&#39;))
 
-        if not os.path.isfile(os.path.join(self.folds_dir, &#39;FDDB-fold-01.txt&#39;)):
-            raise ValueError(&#39;Download FDDB-folds dataset manually, with &#34;wget %s -O %s; cd %s; tar zxvf %s&#34;&#39; % (FOLDS_URL, os.path.join(self.rootdir, &#39;FDDB-folds.tgz&#39;), self.rootdir, &#39;FDDB-folds.tgz&#39;))
+            vipy.downloader.download_and_unpack(FOLDS_URL, self._folds_dir)
+            #raise ValueError(&#39;Download FDDB-folds dataset manually, with &#34;wget %s -O %s; cd %s; tar zxvf %s&#34;&#39; % (FOLDS_URL, os.path.join(self._datadir, &#39;FDDB-folds.tgz&#39;), self._datadir, &#39;FDDB-folds.tgz&#39;))
 
+        open(os.path.join(self._datadir, &#39;.complete&#39;), &#39;a&#39;).close()
+            
     def __repr__(self):
-        return str(&#34;&lt;vipy.dataset.fddb: &#39;%s&#39;&gt;&#34; % self.rootdir)
+        return str(&#34;&lt;vipy.dataset.fddb: &#39;%s&#39;&gt;&#34; % self._datadir)
 
     def fold(self, foldnum=1):
         &#34;&#34;&#34;Return the foldnum as a list of vipy.image.Scene objects, each containing all vipy.object.Detection faces in the current image&#34;&#34;&#34;
-        # fold_file = os.path.join(self.folds_dir, &#39;FDDB-fold-%02d.txt&#39; % foldnum)
+        # fold_file = os.path.join(self._folds_dir, &#39;FDDB-fold-%02d.txt&#39; % foldnum)
         k = 0
-        rows = readcsv(os.path.join(self.folds_dir, &#39;FDDB-fold-%02d-ellipseList.txt&#39; % foldnum), separator=&#39; &#39;)
+        rows = readcsv(os.path.join(self._folds_dir, &#39;FDDB-fold-%02d-ellipseList.txt&#39; % foldnum), separator=&#39; &#39;)
         imscenes = []
         while k &lt; len(rows):
             filename = rows[k][0]
@@ -67,7 +73,7 @@ class FDDB(object):
             k = k + 2 + len(bbox)
 
             # This ignores the rotation
-            ims = Scene(filename=os.path.join(self.rootdir, &#39;%s.jpg&#39; % filename), objects=[Detection(&#39;face&#39;, xcentroid=bb[3], ycentroid=bb[4], width=2 * float(bb[1]), height=2 * float(bb[0])) for bb in bbox])
+            ims = Scene(filename=os.path.join(self._datadir, &#39;%s.jpg&#39; % filename), objects=[Detection(&#39;face&#39;, xcentroid=bb[3], ycentroid=bb[4], width=2 * float(bb[1]), height=2 * float(bb[0])) for bb in bbox])
             imscenes.append(ims)
         return imscenes</code></pre>
 </details>
@@ -83,36 +89,41 @@ class FDDB(object):
 <dl>
 <dt id="vipy.data.fddb.FDDB"><code class="flex name class">
 <span>class <span class="ident">FDDB</span></span>
-<span>(</span><span>rootdir)</span>
+<span>(</span><span>datadir=None, redownload=False)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Manages the FDDB dataset: <a href="http://vis-www.cs.umass.edu/fddb">http://vis-www.cs.umass.edu/fddb</a></p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/data/fddb.py#L11-L42" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/data/fddb.py#L12-L48" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class FDDB(object):
     &#34;&#34;&#34;Manages the FDDB dataset: http://vis-www.cs.umass.edu/fddb&#34;&#34;&#34;
 
-    def __init__(self, rootdir):
-        self.rootdir = rootdir
-        self.folds_dir = os.path.join(self.rootdir, &#39;FDDB-folds&#39;)
+    def __init__(self, datadir=None, redownload=False):
+        datadir = tocache(&#39;fddb&#39;) if datadir is None else datadir
+        
+        self._datadir = vipy.util.remkdir(datadir)
+        self._folds_dir = vipy.util.remkdir(os.path.join(self._datadir, &#39;FDDB-folds&#39;))
 
-        if not os.path.isdir(os.path.join(self.rootdir, &#39;2002&#39;)):
-            raise ValueError(&#39;Download FDDB dataset manually, with &#34;wget %s -O %s; cd %s; tar zxvf %s&#34;&#39; % (URL, os.path.join(self.rootdir, &#39;originalPics.tar.gz&#39;), self.rootdir, &#39;originalPics.tar.gz&#39;))
+        if redownload or os.path.exists(os.path.join(self._datadir, &#39;.complete&#39;)):
+            vipy.downloader.download_and_unpack(URL, self._datadir)                        
+            #raise ValueError(&#39;Download FDDB dataset manually, with &#34;wget %s -O %s; cd %s; tar zxvf %s&#34;&#39; % (URL, os.path.join(self._datadir, &#39;originalPics.tar.gz&#39;), self._datadir, &#39;originalPics.tar.gz&#39;))
 
-        if not os.path.isfile(os.path.join(self.folds_dir, &#39;FDDB-fold-01.txt&#39;)):
-            raise ValueError(&#39;Download FDDB-folds dataset manually, with &#34;wget %s -O %s; cd %s; tar zxvf %s&#34;&#39; % (FOLDS_URL, os.path.join(self.rootdir, &#39;FDDB-folds.tgz&#39;), self.rootdir, &#39;FDDB-folds.tgz&#39;))
+            vipy.downloader.download_and_unpack(FOLDS_URL, self._folds_dir)
+            #raise ValueError(&#39;Download FDDB-folds dataset manually, with &#34;wget %s -O %s; cd %s; tar zxvf %s&#34;&#39; % (FOLDS_URL, os.path.join(self._datadir, &#39;FDDB-folds.tgz&#39;), self._datadir, &#39;FDDB-folds.tgz&#39;))
 
+        open(os.path.join(self._datadir, &#39;.complete&#39;), &#39;a&#39;).close()
+            
     def __repr__(self):
-        return str(&#34;&lt;vipy.dataset.fddb: &#39;%s&#39;&gt;&#34; % self.rootdir)
+        return str(&#34;&lt;vipy.dataset.fddb: &#39;%s&#39;&gt;&#34; % self._datadir)
 
     def fold(self, foldnum=1):
         &#34;&#34;&#34;Return the foldnum as a list of vipy.image.Scene objects, each containing all vipy.object.Detection faces in the current image&#34;&#34;&#34;
-        # fold_file = os.path.join(self.folds_dir, &#39;FDDB-fold-%02d.txt&#39; % foldnum)
+        # fold_file = os.path.join(self._folds_dir, &#39;FDDB-fold-%02d.txt&#39; % foldnum)
         k = 0
-        rows = readcsv(os.path.join(self.folds_dir, &#39;FDDB-fold-%02d-ellipseList.txt&#39; % foldnum), separator=&#39; &#39;)
+        rows = readcsv(os.path.join(self._folds_dir, &#39;FDDB-fold-%02d-ellipseList.txt&#39; % foldnum), separator=&#39; &#39;)
         imscenes = []
         while k &lt; len(rows):
             filename = rows[k][0]
@@ -121,7 +132,7 @@ class FDDB(object):
             k = k + 2 + len(bbox)
 
             # This ignores the rotation
-            ims = Scene(filename=os.path.join(self.rootdir, &#39;%s.jpg&#39; % filename), objects=[Detection(&#39;face&#39;, xcentroid=bb[3], ycentroid=bb[4], width=2 * float(bb[1]), height=2 * float(bb[0])) for bb in bbox])
+            ims = Scene(filename=os.path.join(self._datadir, &#39;%s.jpg&#39; % filename), objects=[Detection(&#39;face&#39;, xcentroid=bb[3], ycentroid=bb[4], width=2 * float(bb[1]), height=2 * float(bb[0])) for bb in bbox])
             imscenes.append(ims)
         return imscenes</code></pre>
 </details>
@@ -135,13 +146,13 @@ class FDDB(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/data/fddb.py#L27-L42" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/data/fddb.py#L33-L48" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def fold(self, foldnum=1):
     &#34;&#34;&#34;Return the foldnum as a list of vipy.image.Scene objects, each containing all vipy.object.Detection faces in the current image&#34;&#34;&#34;
-    # fold_file = os.path.join(self.folds_dir, &#39;FDDB-fold-%02d.txt&#39; % foldnum)
+    # fold_file = os.path.join(self._folds_dir, &#39;FDDB-fold-%02d.txt&#39; % foldnum)
     k = 0
-    rows = readcsv(os.path.join(self.folds_dir, &#39;FDDB-fold-%02d-ellipseList.txt&#39; % foldnum), separator=&#39; &#39;)
+    rows = readcsv(os.path.join(self._folds_dir, &#39;FDDB-fold-%02d-ellipseList.txt&#39; % foldnum), separator=&#39; &#39;)
     imscenes = []
     while k &lt; len(rows):
         filename = rows[k][0]
@@ -150,7 +161,7 @@ class FDDB(object):
         k = k + 2 + len(bbox)
 
         # This ignores the rotation
-        ims = Scene(filename=os.path.join(self.rootdir, &#39;%s.jpg&#39; % filename), objects=[Detection(&#39;face&#39;, xcentroid=bb[3], ycentroid=bb[4], width=2 * float(bb[1]), height=2 * float(bb[0])) for bb in bbox])
+        ims = Scene(filename=os.path.join(self._datadir, &#39;%s.jpg&#39; % filename), objects=[Detection(&#39;face&#39;, xcentroid=bb[3], ycentroid=bb[4], width=2 * float(bb[1]), height=2 * float(bb[0])) for bb in bbox])
         imscenes.append(ims)
     return imscenes</code></pre>
 </details>
@@ -237,7 +248,7 @@ setTimeout(() => input.focus(), 100);
 </nav>
 </main>
 <footer id="footer">
-<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.10.0</a>.</p>
+<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.11.6</a>.</p>
 </footer>
 </body>
 </html>

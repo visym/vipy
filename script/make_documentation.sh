@@ -1,7 +1,10 @@
 #!/bin/bash
 
+# pip install pdoc3
+#
 # Style guide:  https://google.github.io/styleguide/pyguide.html#38-comments-and-docstrings
 # Supported docstring format: https://pdoc3.github.io/pdoc/doc/pdoc/#supported-docstring-formats&gsc.tab=0
+# 
 
 if [ "$#" -ge 3 ]; then
     echo "Usage: ./make_documentation.sh --commit --open"

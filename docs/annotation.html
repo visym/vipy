@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
-<meta name="generator" content="pdoc 0.10.0" />
+<meta name="generator" content="pdoc 0.11.6" />
 <meta name="google-site-verification" content="aB8LkQegj94_TJPdrcJm2ldIRWyXY82Jp24Gtkdgyn0" />
 <title>vipy.annotation API documentation</title>
 <meta name="description" content="" />
@@ -26,7 +26,7 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/annotation.py#L1-L193" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/annotation.py#L1-L205" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">import urllib
 import os
@@ -37,8 +37,7 @@ from vipy.util import try_import, isurl, remkdir, temphtml, tempjson, filetail, 
 import tempfile
 import numpy as np
 from vipy.downloader import common_user_agents
-from vipy.globals import print
-import warnings
+from vipy.globals import log
 from datetime import datetime
 import time
 import webbrowser
@@ -72,7 +71,7 @@ def basic_level_categories():
     try_import(&#39;nltk&#39;); import nltk
     nltkdir = remkdir(os.path.join(os.environ[&#39;VIPY_CACHE&#39;], &#39;nltk&#39;)) if &#39;VIPY_CACHE&#39; in os.environ else tempfile.gettempdir()
     os.environ[&#39;NLTK_DATA&#39;] = nltkdir
-    print(&#39;[vipy.annotation.basic_level_categories]: Downloading wordnet to &#34;%s&#34;&#39; % nltkdir)
+    log.info(&#39;[vipy.annotation.basic_level_categories]: Downloading wordnet to &#34;%s&#34;&#39; % nltkdir)
     nltk.download(&#39;wordnet&#39;, nltkdir)
     nltk.data.path.append(nltkdir)
     
@@ -85,13 +84,26 @@ def basic_level_categories():
     nouns.sort()
     return nouns
 
+def nouns():
+    &#34;&#34;&#34;Return nouns from wordnet as a dictionary of imagenet &#39;wordnet id&#39; (e.g. n + offset) keys to a list of synset names&#34;&#34;&#34; 
+    try_import(&#39;nltk&#39;); import nltk
+    nltkdir = remkdir(os.path.join(os.environ[&#39;VIPY_CACHE&#39;], &#39;nltk&#39;)) if &#39;VIPY_CACHE&#39; in os.environ else tempfile.gettempdir()
+    os.environ[&#39;NLTK_DATA&#39;] = nltkdir
+    log.info(&#39;[vipy.annotation.nouns]: Downloading wordnet to &#34;%s&#34;&#39; % nltkdir)
+    nltk.download(&#39;wordnet&#39;, nltkdir)
+    nltk.data.path.append(nltkdir)
+
+    from nltk.corpus import wordnet
+    nouns = {&#39;n%d&#39; % s.offset():s.lemma_names() for s in wordnet.all_synsets(&#39;n&#39;)}
+    return dict(sorted(nouns.items(), key=lambda x: x[0]))
+    
 
 def verbs():
     &#34;&#34;&#34;Return a list of verbs from verbnet that can be used to define a set of activities&#34;&#34;&#34;
     try_import(&#39;nltk&#39;); import nltk
     nltkdir = remkdir(os.path.join(os.environ[&#39;VIPY_CACHE&#39;], &#39;nltk&#39;)) if &#39;VIPY_CACHE&#39; in os.environ else tempfile.gettempdir()
     os.environ[&#39;NLTK_DATA&#39;] = nltkdir
-    print(&#39;[vipy.annotation.verbs]: Downloading verbnet to &#34;%s&#34;&#39; % nltkdir)    
+    log.info(&#39;[vipy.annotation.verbs]: Downloading verbnet to &#34;%s&#34;&#39; % nltkdir)    
     nltk.download(&#39;verbnet&#39;, nltkdir)
     nltk.data.path.append(nltkdir)
     from nltk.corpus import verbnet
@@ -238,14 +250,14 @@ class Filter(Selector):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/annotation.py#L40-L56" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/annotation.py#L39-L55" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def basic_level_categories():
     &#34;&#34;&#34;Return a list of nouns from wordnet that can be used as an initial list of basic level object categories&#34;&#34;&#34;
     try_import(&#39;nltk&#39;); import nltk
     nltkdir = remkdir(os.path.join(os.environ[&#39;VIPY_CACHE&#39;], &#39;nltk&#39;)) if &#39;VIPY_CACHE&#39; in os.environ else tempfile.gettempdir()
     os.environ[&#39;NLTK_DATA&#39;] = nltkdir
-    print(&#39;[vipy.annotation.basic_level_categories]: Downloading wordnet to &#34;%s&#34;&#39; % nltkdir)
+    log.info(&#39;[vipy.annotation.basic_level_categories]: Downloading wordnet to &#34;%s&#34;&#39; % nltkdir)
     nltk.download(&#39;wordnet&#39;, nltkdir)
     nltk.data.path.append(nltkdir)
     
@@ -267,7 +279,7 @@ class Filter(Selector):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/annotation.py#L18-L37" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/annotation.py#L17-L36" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def googlesearch(tag):
     &#34;&#34;&#34;Return a list of image URLs from google image search associated with the provided tag&#34;&#34;&#34;
@@ -291,6 +303,30 @@ class Filter(Selector):
     return urls</code></pre>
 </details>
 </dd>
+<dt id="vipy.annotation.nouns"><code class="name flex">
+<span>def <span class="ident">nouns</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Return nouns from wordnet as a dictionary of imagenet 'wordnet id' (e.g. n + offset) keys to a list of synset names</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/annotation.py#L57-L68" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def nouns():
+    &#34;&#34;&#34;Return nouns from wordnet as a dictionary of imagenet &#39;wordnet id&#39; (e.g. n + offset) keys to a list of synset names&#34;&#34;&#34; 
+    try_import(&#39;nltk&#39;); import nltk
+    nltkdir = remkdir(os.path.join(os.environ[&#39;VIPY_CACHE&#39;], &#39;nltk&#39;)) if &#39;VIPY_CACHE&#39; in os.environ else tempfile.gettempdir()
+    os.environ[&#39;NLTK_DATA&#39;] = nltkdir
+    log.info(&#39;[vipy.annotation.nouns]: Downloading wordnet to &#34;%s&#34;&#39; % nltkdir)
+    nltk.download(&#39;wordnet&#39;, nltkdir)
+    nltk.data.path.append(nltkdir)
+
+    from nltk.corpus import wordnet
+    nouns = {&#39;n%d&#39; % s.offset():s.lemma_names() for s in wordnet.all_synsets(&#39;n&#39;)}
+    return dict(sorted(nouns.items(), key=lambda x: x[0]))</code></pre>
+</details>
+</dd>
 <dt id="vipy.annotation.verbs"><code class="name flex">
 <span>def <span class="ident">verbs</span></span>(<span>)</span>
 </code></dt>
@@ -299,14 +335,14 @@ class Filter(Selector):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/annotation.py#L59-L68" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/annotation.py#L71-L80" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def verbs():
     &#34;&#34;&#34;Return a list of verbs from verbnet that can be used to define a set of activities&#34;&#34;&#34;
     try_import(&#39;nltk&#39;); import nltk
     nltkdir = remkdir(os.path.join(os.environ[&#39;VIPY_CACHE&#39;], &#39;nltk&#39;)) if &#39;VIPY_CACHE&#39; in os.environ else tempfile.gettempdir()
     os.environ[&#39;NLTK_DATA&#39;] = nltkdir
-    print(&#39;[vipy.annotation.verbs]: Downloading verbnet to &#34;%s&#34;&#39; % nltkdir)    
+    log.info(&#39;[vipy.annotation.verbs]: Downloading verbnet to &#34;%s&#34;&#39; % nltkdir)    
     nltk.download(&#39;verbnet&#39;, nltkdir)
     nltk.data.path.append(nltkdir)
     from nltk.corpus import verbnet
@@ -341,7 +377,7 @@ filtered_imlist = s.fromjson('/path/to/downloaded.json')   # returns images with
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/annotation.py#L168-L191" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/annotation.py#L180-L203" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Filter(Selector):
     &#34;&#34;&#34;HTML+javascript based UI for filtering images from a group.  
@@ -382,7 +418,7 @@ filtered_imlist = s.fromjson('/path/to/downloaded.json')   # returns images with
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/annotation.py#L187-L191" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/annotation.py#L199-L203" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def fromjson(self, jsonfile):    
     &#34;&#34;&#34;Given the JSON file downloader from the HTML selector, return a filter of only those that were *not* selected&#34;&#34;&#34;
@@ -424,7 +460,7 @@ selected_imlist = s.fromjson('/path/to/downloaded.json')  # returns only those i
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/annotation.py#L71-L165" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/annotation.py#L83-L177" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Selector():
     &#34;&#34;&#34;HTML+javascript based UI for selecting images from a group.  
@@ -536,7 +572,7 @@ selected_imlist = s.fromjson('/path/to/downloaded.json')  # returns only those i
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/annotation.py#L161-L165" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/annotation.py#L173-L177" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def fromjson(self, jsonfile):
     &#34;&#34;&#34;Given the JSON file downloaded from the HTML selector, return only those that were selected&#34;&#34;&#34;
@@ -554,7 +590,7 @@ Selected images are output to jsonfile</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/annotation.py#L94-L159" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/annotation.py#L106-L171" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def html(self, jsonfile=None, htmlfile=None, imdict=None, title=&#39;Image Selector&#39;, maxwidth=4096, default_opacity=0.5, selected_opacity=1.0, show=False, description=&#34;Select the images to keep from each group, download the JSON, then call vipy.annotation.Select.fromjson()&#34;, mindim=None):
     &#34;&#34;&#34;Given a list of tuples of `vipy.image.Image` objects, create a standalone HTML file that will allow the user to select individual images in the group.  Selected images are output to jsonfile&#34;&#34;&#34;
@@ -696,6 +732,7 @@ setTimeout(() => input.focus(), 100);
 <ul class="">
 <li><code><a title="vipy.annotation.basic_level_categories" href="#vipy.annotation.basic_level_categories">basic_level_categories</a></code></li>
 <li><code><a title="vipy.annotation.googlesearch" href="#vipy.annotation.googlesearch">googlesearch</a></code></li>
+<li><code><a title="vipy.annotation.nouns" href="#vipy.annotation.nouns">nouns</a></code></li>
 <li><code><a title="vipy.annotation.verbs" href="#vipy.annotation.verbs">verbs</a></code></li>
 </ul>
 </li>
@@ -720,7 +757,7 @@ setTimeout(() => input.focus(), 100);
 </nav>
 </main>
 <footer id="footer">
-<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.10.0</a>.</p>
+<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.11.6</a>.</p>
 </footer>
 </body>
 </html>

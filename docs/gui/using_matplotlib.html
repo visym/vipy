@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
-<meta name="generator" content="pdoc 0.10.0" />
+<meta name="generator" content="pdoc 0.11.6" />
 <meta name="google-site-verification" content="aB8LkQegj94_TJPdrcJm2ldIRWyXY82Jp24Gtkdgyn0" />
 <title>vipy.gui.using_matplotlib API documentation</title>
 <meta name="description" content="" />
@@ -26,18 +26,32 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/gui/using_matplotlib.py#L1-L454" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/gui/using_matplotlib.py#L1-L583" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">import os
 import matplotlib
 from matplotlib import pyplot as plt
+from matplotlib.patches import Circle
+from matplotlib.collections import PatchCollection
+import matplotlib.colors as mcolors
 import numpy as np
 from vipy.util import islist, temppng
 import sys
+from vipy.globals import log
+from vipy.version import Version
+import numpy as np
 
 
 FIGHANDLE = {}
 matplotlib.rcParams[&#39;toolbar&#39;] = &#39;None&#39;
+matplotlib_version_at_least_3p3 = Version.from_string(matplotlib.__version__) &gt;= &#39;3.3&#39;
+
+
+PRIMARY_COLORLIST = [&#39;green&#39;,&#39;blue&#39;,&#39;red&#39;,&#39;cyan&#39;,&#39;orange&#39;,&#39;yellow&#39;,&#39;violet&#39;,&#39;white&#39;] + [&#39;tab:blue&#39;, &#39;tab:orange&#39;, &#39;tab:green&#39;, &#39;tab:red&#39;, &#39;tab:purple&#39;, &#39;tab:brown&#39;, &#39;tab:pink&#39;, &#39;tab:gray&#39;, &#39;tab:olive&#39;, &#39;tab:cyan&#39;]
+COLORLIST = PRIMARY_COLORLIST + [str(name) for (name, hex) in mcolors.cnames.items() if str(name) not in PRIMARY_COLORLIST]  # use primary colors first
+COLORLIST_LUMINANCE = [(np.array(mcolors.to_rgb(name)) * np.array([0.2126, 0.7152, 0.0722])).sum() for name in COLORLIST]
+DARK_COLORLIST = tuple(c for (c,l) in zip(COLORLIST, COLORLIST_LUMINANCE) if l&gt;=0.5)  # colors that show well on dark backgrounds
+LIGHT_COLORLIST = tuple(c for (c,l) in zip(COLORLIST, COLORLIST_LUMINANCE) if l&lt;=0.5) # colors that show well on light backgrounds
 
 
 # Optional latex strings in captions
@@ -58,13 +72,13 @@ def escape_to_exit(event):
         vipy.globals._user_hit_escape(True)
     
 def flush():
-    if matplotlib.get_backend() == &#39;MacOSX&#39;:
+    if matplotlib.get_backend().lower() == &#39;macosx&#39;:
         plt.draw()  # YUCK: to flush buffer on video play, will be slow
     plt.pause(0.001)
 
     
 def imflush():
-    if matplotlib.get_backend() == &#39;MacOSX&#39;:
+    if matplotlib.get_backend().lower() == &#39;macosx&#39;:
         plt.draw()  # YUCK: to flush buffer on video play, will be slow
     plt.pause(0.001)
 
@@ -151,52 +165,92 @@ def imshow(img, fignum=None):
 
         # Delete all polygon and text overlays from previous drawing so that they can be overwritten on current frame
         for c in plt.gca().get_children():
-            if &#39;Text&#39; in c.__repr__() or &#39;Polygon&#39; in c.__repr__() or &#39;Circle&#39; in c.__repr__() or &#39;Line&#39; in c.__repr__() or &#39;Patch&#39; in c.__repr__():
+            desc = c.__repr__()
+            if &#39;Text&#39; in desc or &#39;Polygon&#39; in desc or &#39;Circle&#39; in desc or &#39;Line&#39; in desc or &#39;Patch&#39; in desc or &#39;PathCollection&#39; in desc:
                 try:
                     c.remove()
                 except:
-                    pass
+                    # MacOSX fails with the error: NotImplementedError: cannot remove artist
+                    # fallback on closing figure completely
+                    (fignum, imh) = _imshow_tight(img, fignum=fignum) 
+                    FIGHANDLE[fignum] = imh
+                    return fignum
+
     else:
         # Jupyter notebook does not respect fignum.  It is always one when inspecting plt.get_fignums()
         if fignum in plt.get_fignums() and fignum in FIGHANDLE:
             close(fignum)
+            #pass  # don&#39;t close unless user requests, this is faster, but window size does not change with image resolution
         (fignum, imh) = _imshow_tight(img, fignum=fignum)
         FIGHANDLE[fignum] = imh
     return fignum
 
 
-def text(caption, xmin, ymin, fignum=None, textcolor=&#39;black&#39;, textfacecolor=&#39;white&#39;, textfacealpha=1.0, fontsize=10, linewidth=3, facecolor=&#39;white&#39;, facealpha=0.5, alpha=1.0, pad=0.5):
+def text(caption, xmin, ymin, fignum=None, textcolor=&#39;black&#39;, textfacecolor=&#39;white&#39;, textfacealpha=1.0, fontsize=10, linewidth=3, facecolor=&#39;white&#39;, facealpha=0.5, alpha=1.0, pad=0.5, captionoffset=0):
     plt.figure(fignum) if fignum is not None else plt.gcf()
     lw = linewidth  # pull in the boxes by linewidth so that they do not overhang the figure
 
     newlines = caption.count(&#39;\n&#39;)
-    captionoffset = 15*newlines   # move down a bit if near top of image, shift once per newline in caption    
-    try:
-        # MatplotlibDeprecationWarning: The &#39;s&#39; parameter of annotate() has been renamed &#39;text&#39; since Matplotlib 3.3            
-        handle = plt.annotate(alpha=alpha, text=caption, xy=(xmin,ymin), xytext=(xmin, ymin+captionoffset), xycoords=&#39;data&#39;, color=textcolor, bbox=None if textfacecolor is None else dict(facecolor=textfacecolor, edgecolor=None, alpha=textfacealpha, boxstyle=&#39;square&#39;, pad=pad), fontsize=fontsize, clip_on=True)
-    except:
-        handle = plt.annotate(alpha=alpha, s=caption, xy=(xmin,ymin), xytext=(xmin, ymin+captionoffset), xycoords=&#39;data&#39;, color=textcolor, bbox=None if textfacecolor is None else dict(facecolor=textfacecolor, edgecolor=None, alpha=textfacealpha, boxstyle=&#39;square&#39;, pad=pad), fontsize=fontsize, clip_on=True)        
+    
+    # MatplotlibDeprecationWarning: The &#39;s&#39; parameter of annotate() has been renamed &#39;text&#39; since Matplotlib 3.3            
+    handle = plt.annotate(**{&#39;text&#39; if matplotlib_version_at_least_3p3 else &#39;s&#39;: caption},
+                          alpha=alpha, xy=(xmin,ymin), xytext=(xmin, ymin+captionoffset), xycoords=&#39;data&#39;,
+                          color=textcolor, bbox=None if textfacecolor is None else dict(facecolor=textfacecolor, edgecolor=None, alpha=textfacealpha, boxstyle=&#39;square&#39;, pad=pad),
+                          fontsize=fontsize, clip_on=True)
 
     return fignum
 
 def boundingbox(img, xmin, ymin, xmax, ymax, bboxcaption=None, fignum=None, bboxcolor=&#39;green&#39;, facecolor=&#39;white&#39;, facealpha=0.5, textcolor=&#39;black&#39;, textfacecolor=&#39;white&#39;, textfacealpha=1.0, fontsize=10, captionoffset=(0,0), linewidth=3):
     &#34;&#34;&#34;Draw a captioned bounding box on a previously shown image&#34;&#34;&#34;
     plt.figure(fignum)
+    ax = plt.gca()
     lw = linewidth  # pull in the boxes by linewidth so that they do not overhang the figure
     (H,W) = (img.shape[0], img.shape[1])
-    plt.axvspan(max(xmin, lw/2), min(xmax, W-lw/2), ymin=1.0 - np.float32(float(min(ymax, H-lw/2)) / float(H)), ymax=1-np.float32(float(max(ymin, lw/2)) / float(H)), edgecolor=bboxcolor, linewidth=lw, fill=False, alpha=0.6, label=None, capstyle=&#39;round&#39;, joinstyle=&#39;bevel&#39;, clip_on=True)   
-    plt.axvspan(max(xmin, lw/2), min(xmax, W-lw/2), ymin=1.0 - np.float32(float(min(ymax, H-lw/2)) / float(H)), ymax=1-np.float32(float(max(ymin, lw/2)) / float(H)), edgecolor=bboxcolor, facecolor=facecolor, linewidth=lw, fill=True, alpha=facealpha, label=None, clip_on=True, capstyle=&#39;round&#39;, joinstyle=&#39;bevel&#39;)
+    
+    ymin_frac = 1.0 - (min(ymax, H - lw/2) / float(H))
+    ymax_frac = 1.0 - (max(ymin, lw/2) / float(H))
+    
+    y0, y1 = ax.get_ylim()                 # data‐coordinates of bottom and top of the axes
+    rect = Rectangle((xmin, ymin), xmax - xmin,  (ymax_frac - ymin_frac) * abs(y1 - y0), 
+                 linewidth=lw,
+                 edgecolor=(*mcolors.to_rgb(bboxcolor),0.4),
+                 facecolor=(*mcolors.to_rgb(facecolor),facealpha),
+                 #alpha=facealpha,
+                 transform=ax.transData, capstyle=&#39;round&#39;, joinstyle=&#39;bevel&#39;, clip_on=True)
+    ax.add_patch(rect)
 
     # Text string
     if bboxcaption is not None:
-        # clip_on clips anything outside the image
+        # a) Compute x‐fraction: (xmin − x0)/(x1 − x0)
+        x0, x1 = ax.get_xlim()
+        xmin_frac = ((xmin - x0) / (x1 - x0)) #+ (captionoffset[0]/H)
+        
+        # b) y1_frac is already the top of the box in axes‐fraction; add vertical offset
+        ymin_frac_text = ymin_frac #+ (captionoffset[1]/W)
+        ymax_frac = 1.0 - ((max(ymin, lw/2)) / float(H)) 
+        
         newlines = bboxcaption.count(&#39;\n&#39;)
-        captionoffset = captionoffset if ymin &gt; 15 else (captionoffset[0]+5, captionoffset[1]+(15*(newlines+1)))  # move down a bit if near top of image, shift once per newline in caption
-        try:
-            # MatplotlibDeprecationWarning: The &#39;s&#39; parameter of annotate() has been renamed &#39;text&#39; since Matplotlib 3.3            
-            handle = plt.annotate(text=bboxcaption, xy=(xmin,ymin), xytext=(xmin+captionoffset[0], ymin+captionoffset[1]), xycoords=&#39;data&#39;, color=textcolor, bbox=dict(facecolor=textfacecolor, edgecolor=textcolor, alpha=textfacealpha, boxstyle=&#39;round&#39;), fontsize=fontsize, clip_on=True)
-        except:
-            handle = plt.annotate(s=bboxcaption, xy=(xmin,ymin), xytext=(xmin+captionoffset[0], ymin+captionoffset[1]), xycoords=&#39;data&#39;, color=textcolor, bbox=dict(facecolor=textfacecolor, edgecolor=textcolor, alpha=textfacealpha, boxstyle=&#39;round&#39;), fontsize=fontsize, clip_on=True)            
+
+        captionoffset = captionoffset if ymin &gt; 20 else (captionoffset[0], captionoffset[1]+(20*(1)))  # move down a bit if near top of image, shift once per newline in caption
+
+        # MatplotlibDeprecationWarning: The &#39;s&#39; parameter of annotate() has been renamed &#39;text&#39; since Matplotlib 3.3   
+        plt.annotate(**{&#39;text&#39; if matplotlib_version_at_least_3p3 else &#39;s&#39;: bboxcaption},
+                     xy=(xmin_frac, ymax_frac),
+                     xytext=(captionoffset[0], -captionoffset[1]),
+                     textcoords=&#39;offset pixels&#39;,
+                     xycoords=&#39;axes fraction&#39;,
+                     color=textcolor,
+                     fontsize=fontsize,
+                     bbox=dict(
+                         facecolor=textfacecolor,
+                         edgecolor=textcolor,
+                         alpha=textfacealpha,
+                         boxstyle=&#39;square&#39;,
+                     ),
+                     horizontalalignment=&#39;left&#39;,
+                     verticalalignment=&#39;top&#39;,
+                     clip_on=True
+                     )
 
     return fignum
 
@@ -205,13 +259,14 @@ def imdetection(img, detlist, fignum=None, bboxcolor=&#39;green&#39;, do_caption
     &#34;&#34;&#34;Show bounding boxes from a list of vipy.object.Detections on the same image, plotted in list order with optional captions &#34;&#34;&#34;
 
     # Create image
-    fignum = imshow(img, fignum=fignum) 
+    #fignum = imshow(img, fignum=fignum)  # this can fail on MacOSX, go the slow route instead
+    fignum = _imshow_tight(img, fignum=fignum)     
 
     # A better way? https://matplotlib.org/api/_as_gen/matplotlib.animation.FuncAnimation.html
     
     # Valid detections
     for (k,det) in enumerate(detlist):
-        if do_caption and len(det.category()) != 0 and (det.category()[0:2] != &#39;__&#39;):  # prepending category with &#39;__&#39; will disable caption
+        if do_caption and det.category() is not None and len(det.category()) != 0 and (det.category()[0:2] != &#39;__&#39;):  # prepending category with &#39;__&#39; will disable caption
             bboxcaption = det.category()
         else:
             bboxcaption = None
@@ -232,8 +287,94 @@ def imdetection(img, detlist, fignum=None, bboxcolor=&#39;green&#39;, do_caption
     return fignum
 
 
+def imkeypoints(img, kplist, fignum=None, bordercolor=&#39;green&#39;, do_caption=True, facecolor=&#39;white&#39;, facealpha=0.5, textcolor=&#39;green&#39;, textfacecolor=&#39;white&#39;, textfacealpha=1.0, fontsize=10, captionoffset=(0,0)):
+    &#34;&#34;&#34;Show `vipy.object.Keypoint2d` on the same image, plotted in list order with optional captions &#34;&#34;&#34;
+
+    # Create image
+    fignum = imshow(img, fignum=fignum) 
+
+    # A better way? https://matplotlib.org/api/_as_gen/matplotlib.animation.FuncAnimation.html
+    
+    # Valid keypoints
+    (x,y,size,color,caption,captioncolor) = ([],[],[],[],[],[])
+    for (k,p) in enumerate(kplist):
+        x.append(p.x)
+        y.append(p.y)
+        size.append(max(p.r, 1)**2)  # size is pts squared
+        
+        if do_caption and p.category() is not None and len(p.category()) != 0 and (p.category()[0:2] != &#39;__&#39;):  # prepending category with &#39;__&#39; will disable caption
+            caption.append(p.category())
+        else:
+            caption.append(None)
+
+        if islist(bordercolor):
+            color.append(mcolors.to_hex(bordercolor[k]) + &#39;BB&#39;)  # with alpha
+        else:
+            color.append(mcolors.to_hex(bordercolor) + &#39;BB&#39;)  # with alpha
+            
+        if islist(textcolor):
+            captioncolor.append(textcolor[k])
+        else:
+            captioncolor.append(textcolor)
+
+    plt.figure(fignum)
+    plt.scatter(x, y, c=color, s=size)
+    return fignum
+
+
+def imobjects(img, objlist, fignum=None, bordercolor=&#39;green&#39;, do_caption=True, facecolor=&#39;white&#39;, facealpha=0.5, textcolor=&#39;green&#39;, textfacecolor=&#39;white&#39;, textfacealpha=1.0, fontsize=10, captionoffset=(0,0), kp_alpha=0.8):
+    &#34;&#34;&#34;Show `vipy.object.Keypoint2d` on the same image, plotted in list order with optional captions &#34;&#34;&#34;
+
+    # Create image
+    fignum = imshow(img, fignum=fignum) 
+    plt.gca().set_autoscale_on(False)
+
+
+    # A better way? https://matplotlib.org/api/_as_gen/matplotlib.animation.FuncAnimation.html
+
+    # Valid detections
+    detlist = [p for p in objlist if isinstance(p, vipy.object.Detection)]
+    if len(detlist) &gt; 0:
+        for (k,det) in enumerate(detlist):
+            if do_caption and det.category() is not None and len(det.category()) != 0 and (det.category()[0:2] != &#39;__&#39;):  # prepending category with &#39;__&#39; will disable caption
+                bboxcaption = det.category()
+            else:
+                bboxcaption = None
+
+            if islist(bordercolor):
+                bboxcolor_ = bordercolor[k]
+            else:
+                bboxcolor_ = bordercolor
+
+            if islist(textcolor):
+                textcolor_ = textcolor[k]
+            else:
+                textcolor_ = textcolor
+
+            boundingbox(img, xmin=det.xmin(), ymin=det.ymin(), xmax=det.xmax(), ymax=det.ymax(), bboxcaption=bboxcaption,
+                        fignum=fignum, bboxcolor=bboxcolor_, facecolor=bboxcolor_, facealpha=facealpha, textcolor=textcolor_, textfacecolor=textfacecolor, fontsize=fontsize, captionoffset=captionoffset, textfacealpha=textfacealpha)
+    
+    # Valid keypoints
+    kplist = [p for p in objlist if isinstance(p, vipy.object.Keypoint2d)]    
+    plt.gca().set_autoscale_on(False)
+
+    if len(kplist) &gt; 0:
+        (x,y,size,colors,r,patches) = ([],[],[],[],[],[])
+        for (k,p) in enumerate(kplist):
+            x.append(p.x)
+            y.append(p.y)
+            r.append(p.r)
+            
+            c = mcolors.to_hex(bordercolor[k] if islist(bordercolor) else bordercolor)
+            colors.append(c + format(int(255*kp_alpha), &#39;02X&#39;))  # with alpha
+            patches.append(Circle((p.x, p.y), p.r))
+
+        plt.gca().add_collection(PatchCollection(patches, facecolors=colors, edgecolors=&#39;silver&#39;, clip_on=True, linewidths=0.5))  # scale radius with window size
+    return fignum
+
+
 def imframe(img, fr, color=&#39;b&#39;, markersize=10, label=None, figure=None):
-    &#34;&#34;&#34;Show a scatterplot of fr=[[x1,y1],[x2,y2]...] 2D points overlayed on an image&#34;&#34;&#34;
+    &#34;&#34;&#34;Show a scatterplot of fr=[[x1,y1],[x2,y2]...] 2D points overlayed on an image, all the same color&#34;&#34;&#34;
     if figure is not None:
         fig = plt.figure(figure)
     else:
@@ -263,7 +404,7 @@ def imframe(img, fr, color=&#39;b&#39;, markersize=10, label=None, figure=None):
 
 
 def frame(fr, im=None, color=&#39;b.&#39;, markersize=10, figure=None, caption=None):
-    &#34;&#34;&#34;Show a scatterplot of fr=[[x1,y1],[x2,y2]...] 2D points&#34;&#34;&#34;
+    &#34;&#34;&#34;Show a scatterplot of fr=[[x1,y1],[x2,y2]...] 2D points, all the same color&#34;&#34;&#34;
     if figure is not None:
         plt.figure(figure)
     else:
@@ -276,21 +417,9 @@ def frame(fr, im=None, color=&#39;b.&#39;, markersize=10, figure=None, caption=N
     plt.draw()
 
 
-def colorlist():
-    &#34;&#34;&#34;Return a list of named colors that are higher contrast with a white background&#34;&#34;&#34;
-    colorlist = [str(name) for (name, hex) in matplotlib.colors.cnames.items()]
-    primarycolorlist = [&#39;green&#39;,&#39;blue&#39;,&#39;red&#39;,&#39;cyan&#39;,&#39;orange&#39;, &#39;yellow&#39;,&#39;violet&#39;]
-    tableaucolors = [&#39;tab:blue&#39;, &#39;tab:orange&#39;, &#39;tab:green&#39;, &#39;tab:red&#39;, &#39;tab:purple&#39;, &#39;tab:brown&#39;, &#39;tab:pink&#39;, &#39;tab:gray&#39;, &#39;tab:olive&#39;, &#39;tab:cyan&#39;]
-    colors = primarycolorlist + tableaucolors + [c for c in colorlist if c not in set(primarycolorlist).union(tableaucolors)]
-    colors = [x for x in colors if x not in
-              set([&#39;whitesmoke&#39;, &#39;gainsboro&#39;, &#39;w&#39;, &#39;floralwhite&#39;, &#39;lightgoldenrodyellow&#39;, &#39;ghostwhite&#39;, &#39;white&#39;, &#39;mistyrose&#39;,
-                   &#39;seashell&#39;, &#39;ivory&#39;, &#39;honeydew&#39;, &#39;azure&#39;, &#39;lavenderblush&#39;, &#39;beige&#39;, &#39;mintcream&#39;, &#39;lightcyan&#39;,
-                   &#39;snow&#39;, &#39;gainsboro&#39;, &#39;linen&#39;, &#39;antiquewhite&#39;, &#39;papayawhip&#39;, &#39;oldlace&#39;, &#39;cornsilk&#39;, &#39;palegoldenrod&#39;,
-                   &#39;lightyellow&#39;, &#39;aliceblue&#39;, &#39;yellow&#39;, &#39;sandybrown&#39;, &#39;orange&#39;, &#39;moccasin&#39;, &#39;bisque&#39;, &#39;peachpuff&#39;, &#39;blanchedalmond&#39;,
-                   &#39;lemonchiffon&#39;,&#39;navajowhite&#39;,&#39;wheat&#39;, &#39;lavender&#39;, &#39;burlywood&#39; , &#39;palegreen&#39;, &#39;greenyellow&#39;, &#39;lawngreen&#39;, &#39;khaki&#39;, &#39;powderblue&#39;
-                   &#39;paleturquoise&#39;, &#39;aquamarine&#39;])]  # https://matplotlib.org/3.1.0/gallery/color/named_colors.html
-    colors = [x for x in colors if &#39;light&#39; not in x]
-    return colors
+def colorlist(theme=None):
+    &#34;&#34;&#34;Return a list of named colors that are higher contrast with a white background if light_mode, else named colors that are higher contrast with a dark background if dark_mode&#34;&#34;&#34;        
+    return DARK_COLORLIST if theme==&#39;dark&#39; else (LIGHT_COLORLIST if theme==&#39;light&#39; else COLORLIST)
 
 
 def edit():
@@ -354,7 +483,7 @@ class DraggableRectangle(object):
 
         contains, attrd = self.rect.contains(event)
         if not contains: return
-        print(&#39;event contains&#39;, self.rect.xy)
+        log.info(&#39;event contains&#39;, self.rect.xy)
         x0, y0 = self.rect.xy
         self.press = x0, y0, event.xdata, event.ydata
 
@@ -365,7 +494,7 @@ class DraggableRectangle(object):
         x0, y0, xpress, ypress = self.press
         dx = event.xdata - xpress
         dy = event.ydata - ypress
-        #print(&#39;x0=%f, xpress=%f, event.xdata=%f, dx=%f, x0+dx=%f&#39; %
+        #log.info(&#39;x0=%f, xpress=%f, event.xdata=%f, dx=%f, x0+dx=%f&#39; %
         #      (x0, xpress, event.xdata, dx, x0+dx))
         self.rect.set_x(x0+dx)
         self.rect.set_y(y0+dy)
@@ -422,7 +551,7 @@ class DraggableRectangleFast(object):
         if DraggableRectangle.lock is not None: return
         contains, attrd = self.rect.contains(event)
         if not contains: return
-        print(&#39;event contains&#39;, self.rect.xy)
+        log.info(&#39;event contains&#39;, self.rect.xy)
         x0, y0 = self.rect.xy
         self.press = x0, y0, event.xdata, event.ydata
         DraggableRectangle.lock = self
@@ -499,26 +628,59 @@ class DraggableRectangleFast(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/gui/using_matplotlib.py#L152-L171" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/gui/using_matplotlib.py#L173-L225" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def boundingbox(img, xmin, ymin, xmax, ymax, bboxcaption=None, fignum=None, bboxcolor=&#39;green&#39;, facecolor=&#39;white&#39;, facealpha=0.5, textcolor=&#39;black&#39;, textfacecolor=&#39;white&#39;, textfacealpha=1.0, fontsize=10, captionoffset=(0,0), linewidth=3):
     &#34;&#34;&#34;Draw a captioned bounding box on a previously shown image&#34;&#34;&#34;
     plt.figure(fignum)
+    ax = plt.gca()
     lw = linewidth  # pull in the boxes by linewidth so that they do not overhang the figure
     (H,W) = (img.shape[0], img.shape[1])
-    plt.axvspan(max(xmin, lw/2), min(xmax, W-lw/2), ymin=1.0 - np.float32(float(min(ymax, H-lw/2)) / float(H)), ymax=1-np.float32(float(max(ymin, lw/2)) / float(H)), edgecolor=bboxcolor, linewidth=lw, fill=False, alpha=0.6, label=None, capstyle=&#39;round&#39;, joinstyle=&#39;bevel&#39;, clip_on=True)   
-    plt.axvspan(max(xmin, lw/2), min(xmax, W-lw/2), ymin=1.0 - np.float32(float(min(ymax, H-lw/2)) / float(H)), ymax=1-np.float32(float(max(ymin, lw/2)) / float(H)), edgecolor=bboxcolor, facecolor=facecolor, linewidth=lw, fill=True, alpha=facealpha, label=None, clip_on=True, capstyle=&#39;round&#39;, joinstyle=&#39;bevel&#39;)
+    
+    ymin_frac = 1.0 - (min(ymax, H - lw/2) / float(H))
+    ymax_frac = 1.0 - (max(ymin, lw/2) / float(H))
+    
+    y0, y1 = ax.get_ylim()                 # data‐coordinates of bottom and top of the axes
+    rect = Rectangle((xmin, ymin), xmax - xmin,  (ymax_frac - ymin_frac) * abs(y1 - y0), 
+                 linewidth=lw,
+                 edgecolor=(*mcolors.to_rgb(bboxcolor),0.4),
+                 facecolor=(*mcolors.to_rgb(facecolor),facealpha),
+                 #alpha=facealpha,
+                 transform=ax.transData, capstyle=&#39;round&#39;, joinstyle=&#39;bevel&#39;, clip_on=True)
+    ax.add_patch(rect)
 
     # Text string
     if bboxcaption is not None:
-        # clip_on clips anything outside the image
+        # a) Compute x‐fraction: (xmin − x0)/(x1 − x0)
+        x0, x1 = ax.get_xlim()
+        xmin_frac = ((xmin - x0) / (x1 - x0)) #+ (captionoffset[0]/H)
+        
+        # b) y1_frac is already the top of the box in axes‐fraction; add vertical offset
+        ymin_frac_text = ymin_frac #+ (captionoffset[1]/W)
+        ymax_frac = 1.0 - ((max(ymin, lw/2)) / float(H)) 
+        
         newlines = bboxcaption.count(&#39;\n&#39;)
-        captionoffset = captionoffset if ymin &gt; 15 else (captionoffset[0]+5, captionoffset[1]+(15*(newlines+1)))  # move down a bit if near top of image, shift once per newline in caption
-        try:
-            # MatplotlibDeprecationWarning: The &#39;s&#39; parameter of annotate() has been renamed &#39;text&#39; since Matplotlib 3.3            
-            handle = plt.annotate(text=bboxcaption, xy=(xmin,ymin), xytext=(xmin+captionoffset[0], ymin+captionoffset[1]), xycoords=&#39;data&#39;, color=textcolor, bbox=dict(facecolor=textfacecolor, edgecolor=textcolor, alpha=textfacealpha, boxstyle=&#39;round&#39;), fontsize=fontsize, clip_on=True)
-        except:
-            handle = plt.annotate(s=bboxcaption, xy=(xmin,ymin), xytext=(xmin+captionoffset[0], ymin+captionoffset[1]), xycoords=&#39;data&#39;, color=textcolor, bbox=dict(facecolor=textfacecolor, edgecolor=textcolor, alpha=textfacealpha, boxstyle=&#39;round&#39;), fontsize=fontsize, clip_on=True)            
+
+        captionoffset = captionoffset if ymin &gt; 20 else (captionoffset[0], captionoffset[1]+(20*(1)))  # move down a bit if near top of image, shift once per newline in caption
+
+        # MatplotlibDeprecationWarning: The &#39;s&#39; parameter of annotate() has been renamed &#39;text&#39; since Matplotlib 3.3   
+        plt.annotate(**{&#39;text&#39; if matplotlib_version_at_least_3p3 else &#39;s&#39;: bboxcaption},
+                     xy=(xmin_frac, ymax_frac),
+                     xytext=(captionoffset[0], -captionoffset[1]),
+                     textcoords=&#39;offset pixels&#39;,
+                     xycoords=&#39;axes fraction&#39;,
+                     color=textcolor,
+                     fontsize=fontsize,
+                     bbox=dict(
+                         facecolor=textfacecolor,
+                         edgecolor=textcolor,
+                         alpha=textfacealpha,
+                         boxstyle=&#39;square&#39;,
+                     ),
+                     horizontalalignment=&#39;left&#39;,
+                     verticalalignment=&#39;top&#39;,
+                     clip_on=True
+                     )
 
     return fignum</code></pre>
 </details>
@@ -531,7 +693,7 @@ class DraggableRectangleFast(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/gui/using_matplotlib.py#L76-L83" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/gui/using_matplotlib.py#L90-L97" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def close(fignum):
     global FIGHANDLE
@@ -551,7 +713,7 @@ class DraggableRectangleFast(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/gui/using_matplotlib.py#L86-L89" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/gui/using_matplotlib.py#L100-L103" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def closeall():
     global FIGHANDLE
@@ -560,30 +722,18 @@ class DraggableRectangleFast(object):
 </details>
 </dd>
 <dt id="vipy.gui.using_matplotlib.colorlist"><code class="name flex">
-<span>def <span class="ident">colorlist</span></span>(<span>)</span>
+<span>def <span class="ident">colorlist</span></span>(<span>theme=None)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Return a list of named colors that are higher contrast with a white background</p></div>
+<div class="desc"><p>Return a list of named colors that are higher contrast with a white background if light_mode, else named colors that are higher contrast with a dark background if dark_mode</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/gui/using_matplotlib.py#L249-L263" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/gui/using_matplotlib.py#L390-L392" class="git-link">Browse git</a>
 </summary>
-<pre><code class="python">def colorlist():
-    &#34;&#34;&#34;Return a list of named colors that are higher contrast with a white background&#34;&#34;&#34;
-    colorlist = [str(name) for (name, hex) in matplotlib.colors.cnames.items()]
-    primarycolorlist = [&#39;green&#39;,&#39;blue&#39;,&#39;red&#39;,&#39;cyan&#39;,&#39;orange&#39;, &#39;yellow&#39;,&#39;violet&#39;]
-    tableaucolors = [&#39;tab:blue&#39;, &#39;tab:orange&#39;, &#39;tab:green&#39;, &#39;tab:red&#39;, &#39;tab:purple&#39;, &#39;tab:brown&#39;, &#39;tab:pink&#39;, &#39;tab:gray&#39;, &#39;tab:olive&#39;, &#39;tab:cyan&#39;]
-    colors = primarycolorlist + tableaucolors + [c for c in colorlist if c not in set(primarycolorlist).union(tableaucolors)]
-    colors = [x for x in colors if x not in
-              set([&#39;whitesmoke&#39;, &#39;gainsboro&#39;, &#39;w&#39;, &#39;floralwhite&#39;, &#39;lightgoldenrodyellow&#39;, &#39;ghostwhite&#39;, &#39;white&#39;, &#39;mistyrose&#39;,
-                   &#39;seashell&#39;, &#39;ivory&#39;, &#39;honeydew&#39;, &#39;azure&#39;, &#39;lavenderblush&#39;, &#39;beige&#39;, &#39;mintcream&#39;, &#39;lightcyan&#39;,
-                   &#39;snow&#39;, &#39;gainsboro&#39;, &#39;linen&#39;, &#39;antiquewhite&#39;, &#39;papayawhip&#39;, &#39;oldlace&#39;, &#39;cornsilk&#39;, &#39;palegoldenrod&#39;,
-                   &#39;lightyellow&#39;, &#39;aliceblue&#39;, &#39;yellow&#39;, &#39;sandybrown&#39;, &#39;orange&#39;, &#39;moccasin&#39;, &#39;bisque&#39;, &#39;peachpuff&#39;, &#39;blanchedalmond&#39;,
-                   &#39;lemonchiffon&#39;,&#39;navajowhite&#39;,&#39;wheat&#39;, &#39;lavender&#39;, &#39;burlywood&#39; , &#39;palegreen&#39;, &#39;greenyellow&#39;, &#39;lawngreen&#39;, &#39;khaki&#39;, &#39;powderblue&#39;
-                   &#39;paleturquoise&#39;, &#39;aquamarine&#39;])]  # https://matplotlib.org/3.1.0/gallery/color/named_colors.html
-    colors = [x for x in colors if &#39;light&#39; not in x]
-    return colors</code></pre>
+<pre><code class="python">def colorlist(theme=None):
+    &#34;&#34;&#34;Return a list of named colors that are higher contrast with a white background if light_mode, else named colors that are higher contrast with a dark background if dark_mode&#34;&#34;&#34;        
+    return DARK_COLORLIST if theme==&#39;dark&#39; else (LIGHT_COLORLIST if theme==&#39;light&#39; else COLORLIST)</code></pre>
 </details>
 </dd>
 <dt id="vipy.gui.using_matplotlib.edit"><code class="name flex">
@@ -594,7 +744,7 @@ class DraggableRectangleFast(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/gui/using_matplotlib.py#L266-L275" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/gui/using_matplotlib.py#L395-L404" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def edit():
     import matplotlib.pyplot as plt 
@@ -616,7 +766,7 @@ class DraggableRectangleFast(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/gui/using_matplotlib.py#L25-L28" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/gui/using_matplotlib.py#L39-L42" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def escape_to_exit(event):
     if event.key == &#39;escape&#39; or event.key == &#39;q&#39; or event.key == &#39;ctrl+c&#39;:
@@ -632,7 +782,7 @@ class DraggableRectangleFast(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/gui/using_matplotlib.py#L68-L73" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/gui/using_matplotlib.py#L82-L87" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def figure(fignum=None):
     if fignum is not None:
@@ -650,10 +800,10 @@ class DraggableRectangleFast(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/gui/using_matplotlib.py#L30-L33" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/gui/using_matplotlib.py#L44-L47" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def flush():
-    if matplotlib.get_backend() == &#39;MacOSX&#39;:
+    if matplotlib.get_backend().lower() == &#39;macosx&#39;:
         plt.draw()  # YUCK: to flush buffer on video play, will be slow
     plt.pause(0.001)</code></pre>
 </details>
@@ -662,14 +812,14 @@ class DraggableRectangleFast(object):
 <span>def <span class="ident">frame</span></span>(<span>fr, im=None, color='b.', markersize=10, figure=None, caption=None)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Show a scatterplot of fr=[[x1,y1],[x2,y2]&hellip;] 2D points</p></div>
+<div class="desc"><p>Show a scatterplot of fr=[[x1,y1],[x2,y2]&hellip;] 2D points, all the same color</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/gui/using_matplotlib.py#L235-L246" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/gui/using_matplotlib.py#L376-L387" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def frame(fr, im=None, color=&#39;b.&#39;, markersize=10, figure=None, caption=None):
-    &#34;&#34;&#34;Show a scatterplot of fr=[[x1,y1],[x2,y2]...] 2D points&#34;&#34;&#34;
+    &#34;&#34;&#34;Show a scatterplot of fr=[[x1,y1],[x2,y2]...] 2D points, all the same color&#34;&#34;&#34;
     if figure is not None:
         plt.figure(figure)
     else:
@@ -690,19 +840,20 @@ class DraggableRectangleFast(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/gui/using_matplotlib.py#L174-L202" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/gui/using_matplotlib.py#L228-L257" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def imdetection(img, detlist, fignum=None, bboxcolor=&#39;green&#39;, do_caption=True, facecolor=&#39;white&#39;, facealpha=0.5, textcolor=&#39;green&#39;, textfacecolor=&#39;white&#39;, textfacealpha=1.0, fontsize=10, captionoffset=(0,0)):
     &#34;&#34;&#34;Show bounding boxes from a list of vipy.object.Detections on the same image, plotted in list order with optional captions &#34;&#34;&#34;
 
     # Create image
-    fignum = imshow(img, fignum=fignum) 
+    #fignum = imshow(img, fignum=fignum)  # this can fail on MacOSX, go the slow route instead
+    fignum = _imshow_tight(img, fignum=fignum)     
 
     # A better way? https://matplotlib.org/api/_as_gen/matplotlib.animation.FuncAnimation.html
     
     # Valid detections
     for (k,det) in enumerate(detlist):
-        if do_caption and len(det.category()) != 0 and (det.category()[0:2] != &#39;__&#39;):  # prepending category with &#39;__&#39; will disable caption
+        if do_caption and det.category() is not None and len(det.category()) != 0 and (det.category()[0:2] != &#39;__&#39;):  # prepending category with &#39;__&#39; will disable caption
             bboxcaption = det.category()
         else:
             bboxcaption = None
@@ -731,10 +882,10 @@ class DraggableRectangleFast(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/gui/using_matplotlib.py#L36-L45" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/gui/using_matplotlib.py#L50-L59" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def imflush():
-    if matplotlib.get_backend() == &#39;MacOSX&#39;:
+    if matplotlib.get_backend().lower() == &#39;macosx&#39;:
         plt.draw()  # YUCK: to flush buffer on video play, will be slow
     plt.pause(0.001)
 
@@ -749,14 +900,14 @@ class DraggableRectangleFast(object):
 <span>def <span class="ident">imframe</span></span>(<span>img, fr, color='b', markersize=10, label=None, figure=None)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Show a scatterplot of fr=[[x1,y1],[x2,y2]&hellip;] 2D points overlayed on an image</p></div>
+<div class="desc"><p>Show a scatterplot of fr=[[x1,y1],[x2,y2]&hellip;] 2D points overlayed on an image, all the same color</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/gui/using_matplotlib.py#L205-L232" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/gui/using_matplotlib.py#L346-L373" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def imframe(img, fr, color=&#39;b&#39;, markersize=10, label=None, figure=None):
-    &#34;&#34;&#34;Show a scatterplot of fr=[[x1,y1],[x2,y2]...] 2D points overlayed on an image&#34;&#34;&#34;
+    &#34;&#34;&#34;Show a scatterplot of fr=[[x1,y1],[x2,y2]...] 2D points overlayed on an image, all the same color&#34;&#34;&#34;
     if figure is not None:
         fig = plt.figure(figure)
     else:
@@ -785,6 +936,112 @@ class DraggableRectangleFast(object):
     return plt</code></pre>
 </details>
 </dd>
+<dt id="vipy.gui.using_matplotlib.imkeypoints"><code class="name flex">
+<span>def <span class="ident">imkeypoints</span></span>(<span>img, kplist, fignum=None, bordercolor='green', do_caption=True, facecolor='white', facealpha=0.5, textcolor='green', textfacecolor='white', textfacealpha=1.0, fontsize=10, captionoffset=(0, 0))</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Show <code><a title="vipy.object.Keypoint2d" href="../object.html#vipy.object.Keypoint2d">Keypoint2d</a></code> on the same image, plotted in list order with optional captions</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/gui/using_matplotlib.py#L260-L292" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def imkeypoints(img, kplist, fignum=None, bordercolor=&#39;green&#39;, do_caption=True, facecolor=&#39;white&#39;, facealpha=0.5, textcolor=&#39;green&#39;, textfacecolor=&#39;white&#39;, textfacealpha=1.0, fontsize=10, captionoffset=(0,0)):
+    &#34;&#34;&#34;Show `vipy.object.Keypoint2d` on the same image, plotted in list order with optional captions &#34;&#34;&#34;
+
+    # Create image
+    fignum = imshow(img, fignum=fignum) 
+
+    # A better way? https://matplotlib.org/api/_as_gen/matplotlib.animation.FuncAnimation.html
+    
+    # Valid keypoints
+    (x,y,size,color,caption,captioncolor) = ([],[],[],[],[],[])
+    for (k,p) in enumerate(kplist):
+        x.append(p.x)
+        y.append(p.y)
+        size.append(max(p.r, 1)**2)  # size is pts squared
+        
+        if do_caption and p.category() is not None and len(p.category()) != 0 and (p.category()[0:2] != &#39;__&#39;):  # prepending category with &#39;__&#39; will disable caption
+            caption.append(p.category())
+        else:
+            caption.append(None)
+
+        if islist(bordercolor):
+            color.append(mcolors.to_hex(bordercolor[k]) + &#39;BB&#39;)  # with alpha
+        else:
+            color.append(mcolors.to_hex(bordercolor) + &#39;BB&#39;)  # with alpha
+            
+        if islist(textcolor):
+            captioncolor.append(textcolor[k])
+        else:
+            captioncolor.append(textcolor)
+
+    plt.figure(fignum)
+    plt.scatter(x, y, c=color, s=size)
+    return fignum</code></pre>
+</details>
+</dd>
+<dt id="vipy.gui.using_matplotlib.imobjects"><code class="name flex">
+<span>def <span class="ident">imobjects</span></span>(<span>img, objlist, fignum=None, bordercolor='green', do_caption=True, facecolor='white', facealpha=0.5, textcolor='green', textfacecolor='white', textfacealpha=1.0, fontsize=10, captionoffset=(0, 0), kp_alpha=0.8)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Show <code><a title="vipy.object.Keypoint2d" href="../object.html#vipy.object.Keypoint2d">Keypoint2d</a></code> on the same image, plotted in list order with optional captions</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/gui/using_matplotlib.py#L295-L343" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def imobjects(img, objlist, fignum=None, bordercolor=&#39;green&#39;, do_caption=True, facecolor=&#39;white&#39;, facealpha=0.5, textcolor=&#39;green&#39;, textfacecolor=&#39;white&#39;, textfacealpha=1.0, fontsize=10, captionoffset=(0,0), kp_alpha=0.8):
+    &#34;&#34;&#34;Show `vipy.object.Keypoint2d` on the same image, plotted in list order with optional captions &#34;&#34;&#34;
+
+    # Create image
+    fignum = imshow(img, fignum=fignum) 
+    plt.gca().set_autoscale_on(False)
+
+
+    # A better way? https://matplotlib.org/api/_as_gen/matplotlib.animation.FuncAnimation.html
+
+    # Valid detections
+    detlist = [p for p in objlist if isinstance(p, vipy.object.Detection)]
+    if len(detlist) &gt; 0:
+        for (k,det) in enumerate(detlist):
+            if do_caption and det.category() is not None and len(det.category()) != 0 and (det.category()[0:2] != &#39;__&#39;):  # prepending category with &#39;__&#39; will disable caption
+                bboxcaption = det.category()
+            else:
+                bboxcaption = None
+
+            if islist(bordercolor):
+                bboxcolor_ = bordercolor[k]
+            else:
+                bboxcolor_ = bordercolor
+
+            if islist(textcolor):
+                textcolor_ = textcolor[k]
+            else:
+                textcolor_ = textcolor
+
+            boundingbox(img, xmin=det.xmin(), ymin=det.ymin(), xmax=det.xmax(), ymax=det.ymax(), bboxcaption=bboxcaption,
+                        fignum=fignum, bboxcolor=bboxcolor_, facecolor=bboxcolor_, facealpha=facealpha, textcolor=textcolor_, textfacecolor=textfacecolor, fontsize=fontsize, captionoffset=captionoffset, textfacealpha=textfacealpha)
+    
+    # Valid keypoints
+    kplist = [p for p in objlist if isinstance(p, vipy.object.Keypoint2d)]    
+    plt.gca().set_autoscale_on(False)
+
+    if len(kplist) &gt; 0:
+        (x,y,size,colors,r,patches) = ([],[],[],[],[],[])
+        for (k,p) in enumerate(kplist):
+            x.append(p.x)
+            y.append(p.y)
+            r.append(p.r)
+            
+            c = mcolors.to_hex(bordercolor[k] if islist(bordercolor) else bordercolor)
+            colors.append(c + format(int(255*kp_alpha), &#39;02X&#39;))  # with alpha
+            patches.append(Circle((p.x, p.y), p.r))
+
+        plt.gca().add_collection(PatchCollection(patches, facecolors=colors, edgecolors=&#39;silver&#39;, clip_on=True, linewidths=0.5))  # scale radius with window size
+    return fignum</code></pre>
+</details>
+</dd>
 <dt id="vipy.gui.using_matplotlib.imshow"><code class="name flex">
 <span>def <span class="ident">imshow</span></span>(<span>img, fignum=None)</span>
 </code></dt>
@@ -793,7 +1050,7 @@ class DraggableRectangleFast(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/gui/using_matplotlib.py#L114-L135" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/gui/using_matplotlib.py#L128-L156" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def imshow(img, fignum=None):
     &#34;&#34;&#34;Show an image in a figure window (optionally visible), reuse previous figure if it is the same shape&#34;&#34;&#34;
@@ -805,15 +1062,22 @@ class DraggableRectangleFast(object):
 
         # Delete all polygon and text overlays from previous drawing so that they can be overwritten on current frame
         for c in plt.gca().get_children():
-            if &#39;Text&#39; in c.__repr__() or &#39;Polygon&#39; in c.__repr__() or &#39;Circle&#39; in c.__repr__() or &#39;Line&#39; in c.__repr__() or &#39;Patch&#39; in c.__repr__():
+            desc = c.__repr__()
+            if &#39;Text&#39; in desc or &#39;Polygon&#39; in desc or &#39;Circle&#39; in desc or &#39;Line&#39; in desc or &#39;Patch&#39; in desc or &#39;PathCollection&#39; in desc:
                 try:
                     c.remove()
                 except:
-                    pass
+                    # MacOSX fails with the error: NotImplementedError: cannot remove artist
+                    # fallback on closing figure completely
+                    (fignum, imh) = _imshow_tight(img, fignum=fignum) 
+                    FIGHANDLE[fignum] = imh
+                    return fignum
+
     else:
         # Jupyter notebook does not respect fignum.  It is always one when inspecting plt.get_fignums()
         if fignum in plt.get_fignums() and fignum in FIGHANDLE:
             close(fignum)
+            #pass  # don&#39;t close unless user requests, this is faster, but window size does not change with image resolution
         (fignum, imh) = _imshow_tight(img, fignum=fignum)
         FIGHANDLE[fignum] = imh
     return fignum</code></pre>
@@ -827,7 +1091,7 @@ class DraggableRectangleFast(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/gui/using_matplotlib.py#L55-L56" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/gui/using_matplotlib.py#L69-L70" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def noshow(fignum):
     plt.ioff()</code></pre>
@@ -841,7 +1105,7 @@ class DraggableRectangleFast(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/gui/using_matplotlib.py#L59-L65" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/gui/using_matplotlib.py#L73-L79" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def savefig(filename=None, fignum=None, pad_inches=0, dpi=None, bbox_inches=&#39;tight&#39;, format=None):
     if fignum is not None:
@@ -860,7 +1124,7 @@ class DraggableRectangleFast(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/gui/using_matplotlib.py#L48-L52" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/gui/using_matplotlib.py#L62-L66" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def show(fignum):
     fig = plt.figure(fignum) 
@@ -870,26 +1134,26 @@ class DraggableRectangleFast(object):
 </details>
 </dd>
 <dt id="vipy.gui.using_matplotlib.text"><code class="name flex">
-<span>def <span class="ident">text</span></span>(<span>caption, xmin, ymin, fignum=None, textcolor='black', textfacecolor='white', textfacealpha=1.0, fontsize=10, linewidth=3, facecolor='white', facealpha=0.5, alpha=1.0, pad=0.5)</span>
+<span>def <span class="ident">text</span></span>(<span>caption, xmin, ymin, fignum=None, textcolor='black', textfacecolor='white', textfacealpha=1.0, fontsize=10, linewidth=3, facecolor='white', facealpha=0.5, alpha=1.0, pad=0.5, captionoffset=0)</span>
 </code></dt>
 <dd>
 <div class="desc"></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/gui/using_matplotlib.py#L138-L150" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/gui/using_matplotlib.py#L159-L171" class="git-link">Browse git</a>
 </summary>
-<pre><code class="python">def text(caption, xmin, ymin, fignum=None, textcolor=&#39;black&#39;, textfacecolor=&#39;white&#39;, textfacealpha=1.0, fontsize=10, linewidth=3, facecolor=&#39;white&#39;, facealpha=0.5, alpha=1.0, pad=0.5):
+<pre><code class="python">def text(caption, xmin, ymin, fignum=None, textcolor=&#39;black&#39;, textfacecolor=&#39;white&#39;, textfacealpha=1.0, fontsize=10, linewidth=3, facecolor=&#39;white&#39;, facealpha=0.5, alpha=1.0, pad=0.5, captionoffset=0):
     plt.figure(fignum) if fignum is not None else plt.gcf()
     lw = linewidth  # pull in the boxes by linewidth so that they do not overhang the figure
 
     newlines = caption.count(&#39;\n&#39;)
-    captionoffset = 15*newlines   # move down a bit if near top of image, shift once per newline in caption    
-    try:
-        # MatplotlibDeprecationWarning: The &#39;s&#39; parameter of annotate() has been renamed &#39;text&#39; since Matplotlib 3.3            
-        handle = plt.annotate(alpha=alpha, text=caption, xy=(xmin,ymin), xytext=(xmin, ymin+captionoffset), xycoords=&#39;data&#39;, color=textcolor, bbox=None if textfacecolor is None else dict(facecolor=textfacecolor, edgecolor=None, alpha=textfacealpha, boxstyle=&#39;square&#39;, pad=pad), fontsize=fontsize, clip_on=True)
-    except:
-        handle = plt.annotate(alpha=alpha, s=caption, xy=(xmin,ymin), xytext=(xmin, ymin+captionoffset), xycoords=&#39;data&#39;, color=textcolor, bbox=None if textfacecolor is None else dict(facecolor=textfacecolor, edgecolor=None, alpha=textfacealpha, boxstyle=&#39;square&#39;, pad=pad), fontsize=fontsize, clip_on=True)        
+    
+    # MatplotlibDeprecationWarning: The &#39;s&#39; parameter of annotate() has been renamed &#39;text&#39; since Matplotlib 3.3            
+    handle = plt.annotate(**{&#39;text&#39; if matplotlib_version_at_least_3p3 else &#39;s&#39;: caption},
+                          alpha=alpha, xy=(xmin,ymin), xytext=(xmin, ymin+captionoffset), xycoords=&#39;data&#39;,
+                          color=textcolor, bbox=None if textfacecolor is None else dict(facecolor=textfacecolor, edgecolor=None, alpha=textfacealpha, boxstyle=&#39;square&#39;, pad=pad),
+                          fontsize=fontsize, clip_on=True)
 
     return fignum</code></pre>
 </details>
@@ -907,7 +1171,7 @@ class DraggableRectangleFast(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/gui/using_matplotlib.py#L280-L304" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/gui/using_matplotlib.py#L409-L433" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Annotate(object):
     def __init__(self):
@@ -945,7 +1209,7 @@ class DraggableRectangleFast(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/gui/using_matplotlib.py#L292-L295" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/gui/using_matplotlib.py#L421-L424" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def on_press(self, event):
     print (&#39;press&#39;)
@@ -961,7 +1225,7 @@ class DraggableRectangleFast(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/gui/using_matplotlib.py#L297-L304" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/gui/using_matplotlib.py#L426-L433" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def on_release(self, event):
     print (&#39;release&#39;)
@@ -984,7 +1248,7 @@ class DraggableRectangleFast(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/gui/using_matplotlib.py#L307-L370" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/gui/using_matplotlib.py#L436-L499" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class DraggableRectangle(object):
     def __init__(self, rect):
@@ -1006,7 +1270,7 @@ class DraggableRectangleFast(object):
 
         contains, attrd = self.rect.contains(event)
         if not contains: return
-        print(&#39;event contains&#39;, self.rect.xy)
+        log.info(&#39;event contains&#39;, self.rect.xy)
         x0, y0 = self.rect.xy
         self.press = x0, y0, event.xdata, event.ydata
 
@@ -1017,7 +1281,7 @@ class DraggableRectangleFast(object):
         x0, y0, xpress, ypress = self.press
         dx = event.xdata - xpress
         dy = event.ydata - ypress
-        #print(&#39;x0=%f, xpress=%f, event.xdata=%f, dx=%f, x0+dx=%f&#39; %
+        #log.info(&#39;x0=%f, xpress=%f, event.xdata=%f, dx=%f, x0+dx=%f&#39; %
         #      (x0, xpress, event.xdata, dx, x0+dx))
         self.rect.set_x(x0+dx)
         self.rect.set_y(y0+dy)
@@ -1061,7 +1325,7 @@ class DraggableRectangleFast(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/gui/using_matplotlib.py#L312-L319" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/gui/using_matplotlib.py#L441-L448" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def connect(self):
     &#39;connect to all the events we need&#39;
@@ -1081,7 +1345,7 @@ class DraggableRectangleFast(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/gui/using_matplotlib.py#L351-L355" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/gui/using_matplotlib.py#L480-L484" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def disconnect(self):
     &#39;disconnect all the stored connection ids&#39;
@@ -1098,7 +1362,7 @@ class DraggableRectangleFast(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/gui/using_matplotlib.py#L331-L343" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/gui/using_matplotlib.py#L460-L472" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def on_motion(self, event):
     &#39;on motion we will move the rect if the mouse is over us&#39;
@@ -1107,7 +1371,7 @@ class DraggableRectangleFast(object):
     x0, y0, xpress, ypress = self.press
     dx = event.xdata - xpress
     dy = event.ydata - ypress
-    #print(&#39;x0=%f, xpress=%f, event.xdata=%f, dx=%f, x0+dx=%f&#39; %
+    #log.info(&#39;x0=%f, xpress=%f, event.xdata=%f, dx=%f, x0+dx=%f&#39; %
     #      (x0, xpress, event.xdata, dx, x0+dx))
     self.rect.set_x(x0+dx)
     self.rect.set_y(y0+dy)
@@ -1123,7 +1387,7 @@ class DraggableRectangleFast(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/gui/using_matplotlib.py#L321-L329" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/gui/using_matplotlib.py#L450-L458" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def on_press(self, event):
     &#39;on button press we will see if the mouse is over us and store some data&#39;
@@ -1131,7 +1395,7 @@ class DraggableRectangleFast(object):
 
     contains, attrd = self.rect.contains(event)
     if not contains: return
-    print(&#39;event contains&#39;, self.rect.xy)
+    log.info(&#39;event contains&#39;, self.rect.xy)
     x0, y0 = self.rect.xy
     self.press = x0, y0, event.xdata, event.ydata</code></pre>
 </details>
@@ -1144,7 +1408,7 @@ class DraggableRectangleFast(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/gui/using_matplotlib.py#L346-L349" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/gui/using_matplotlib.py#L475-L478" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def on_release(self, event):
     &#39;on release we reset the press data&#39;
@@ -1163,7 +1427,7 @@ class DraggableRectangleFast(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/gui/using_matplotlib.py#L373-L454" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/gui/using_matplotlib.py#L502-L583" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class DraggableRectangleFast(object):
     lock = None  # only one can be animated at a time
@@ -1187,7 +1451,7 @@ class DraggableRectangleFast(object):
         if DraggableRectangle.lock is not None: return
         contains, attrd = self.rect.contains(event)
         if not contains: return
-        print(&#39;event contains&#39;, self.rect.xy)
+        log.info(&#39;event contains&#39;, self.rect.xy)
         x0, y0 = self.rect.xy
         self.press = x0, y0, event.xdata, event.ydata
         DraggableRectangle.lock = self
@@ -1252,7 +1516,7 @@ class DraggableRectangleFast(object):
 <dl>
 <dt id="vipy.gui.using_matplotlib.DraggableRectangleFast.lock"><code class="name">var <span class="ident">lock</span></code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>The type of the None singleton.</p></div>
 </dd>
 </dl>
 <h3>Methods</h3>
@@ -1265,7 +1529,7 @@ class DraggableRectangleFast(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/gui/using_matplotlib.py#L380-L387" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/gui/using_matplotlib.py#L509-L516" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def connect(self):
     &#39;connect to all the events we need&#39;
@@ -1285,7 +1549,7 @@ class DraggableRectangleFast(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/gui/using_matplotlib.py#L450-L454" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/gui/using_matplotlib.py#L579-L583" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def disconnect(self):
     &#39;disconnect all the stored connection ids&#39;
@@ -1302,7 +1566,7 @@ class DraggableRectangleFast(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/gui/using_matplotlib.py#L413-L433" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/gui/using_matplotlib.py#L542-L562" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def on_motion(self, event):
     &#39;on motion we will move the rect if the mouse is over us&#39;
@@ -1335,7 +1599,7 @@ class DraggableRectangleFast(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/gui/using_matplotlib.py#L389-L411" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/gui/using_matplotlib.py#L518-L540" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def on_press(self, event):
     &#39;on button press we will see if the mouse is over us and store some data&#39;
@@ -1343,7 +1607,7 @@ class DraggableRectangleFast(object):
     if DraggableRectangle.lock is not None: return
     contains, attrd = self.rect.contains(event)
     if not contains: return
-    print(&#39;event contains&#39;, self.rect.xy)
+    log.info(&#39;event contains&#39;, self.rect.xy)
     x0, y0 = self.rect.xy
     self.press = x0, y0, event.xdata, event.ydata
     DraggableRectangle.lock = self
@@ -1370,7 +1634,7 @@ class DraggableRectangleFast(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/gui/using_matplotlib.py#L435-L448" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/gui/using_matplotlib.py#L564-L577" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def on_release(self, event):
     &#39;on release we reset the press data&#39;
@@ -1470,6 +1734,8 @@ setTimeout(() => input.focus(), 100);
 <li><code><a title="vipy.gui.using_matplotlib.imdetection" href="#vipy.gui.using_matplotlib.imdetection">imdetection</a></code></li>
 <li><code><a title="vipy.gui.using_matplotlib.imflush" href="#vipy.gui.using_matplotlib.imflush">imflush</a></code></li>
 <li><code><a title="vipy.gui.using_matplotlib.imframe" href="#vipy.gui.using_matplotlib.imframe">imframe</a></code></li>
+<li><code><a title="vipy.gui.using_matplotlib.imkeypoints" href="#vipy.gui.using_matplotlib.imkeypoints">imkeypoints</a></code></li>
+<li><code><a title="vipy.gui.using_matplotlib.imobjects" href="#vipy.gui.using_matplotlib.imobjects">imobjects</a></code></li>
 <li><code><a title="vipy.gui.using_matplotlib.imshow" href="#vipy.gui.using_matplotlib.imshow">imshow</a></code></li>
 <li><code><a title="vipy.gui.using_matplotlib.noshow" href="#vipy.gui.using_matplotlib.noshow">noshow</a></code></li>
 <li><code><a title="vipy.gui.using_matplotlib.savefig" href="#vipy.gui.using_matplotlib.savefig">savefig</a></code></li>
@@ -1513,7 +1779,7 @@ setTimeout(() => input.focus(), 100);
 </nav>
 </main>
 <footer id="footer">
-<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.10.0</a>.</p>
+<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.11.6</a>.</p>
 </footer>
 </body>
 </html>

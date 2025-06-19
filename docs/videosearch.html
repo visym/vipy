@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
-<meta name="generator" content="pdoc 0.10.0" />
+<meta name="generator" content="pdoc 0.11.6" />
 <meta name="google-site-verification" content="aB8LkQegj94_TJPdrcJm2ldIRWyXY82Jp24Gtkdgyn0" />
 <title>vipy.videosearch API documentation</title>
 <meta name="description" content="" />
@@ -26,7 +26,7 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/videosearch.py#L1-L182" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/videosearch.py#L1-L181" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">import sys
 import os
@@ -35,7 +35,7 @@ import urllib
 import json
 import re
 import random
-from vipy.globals import print
+from vipy.globals import log
 from vipy.downloader import common_user_agents, complete_user_agents
 from vipy.util import tofilename, remkdir, filepath, filebase, isurl, try_import
 import glob
@@ -44,7 +44,7 @@ import subprocess
 import shutil
 
 
-youtube_dl_exe = shutil.which(&#39;youtube-dl&#39;)        
+youtube_dl_exe = shutil.which(&#39;yt-dlp&#39;)        
 has_youtube_dl = youtube_dl_exe is not None and os.path.exists(youtube_dl_exe)
 
 
@@ -92,9 +92,9 @@ def youtubeuser(tag, n_pages=1):
 
 
 def is_downloadable_url(path):
-    &#34;&#34;&#34;Check to see if youtube-dl can download the path, this requires exeecuting &#39;youtube-dl $URL -q -j&#39; to see if the returncode is non-zero&#34;&#34;&#34;
+    &#34;&#34;&#34;Check to see if yt-dlp can download the path, this requires exeecuting &#39;yt-dlp $URL -q -j&#39; to see if the returncode is non-zero&#34;&#34;&#34;
     if not has_youtube_dl:
-        raise ImportError(&#39;Optional package &#34;youtube-dl&#34; not installed -  Run &#34;pip install youtube-dl&#34;&#39;)    
+        raise ImportError(&#39;Optional package &#34;yt-dlp&#34; not installed -  Run &#34;pip install yt-dlp&#34;&#39;)    
     retcode = subprocess.call([youtube_dl_exe, &#39;-q&#39;, &#39;-j&#39;], stdout=DEVNULL, stderr=STDOUT) if isurl(path) else -1
     return isurl(path) and retcode == 0
 
@@ -122,7 +122,7 @@ def youtube(tag, n_pages=1, channel=False, video_limit=None):
         except AttributeError:
             search_results = urllib.request.urlopen(search_request)
         except:
-            print(&#39;[vipy.videosearch.youtube]: URL 404: %s&#39; % (url))
+            log.info(&#39;[vipy.videosearch.youtube]: URL 404: %s&#39; % (url))
             url_template = &#39;http://www.youtube.com/channel/%s/videos&#39;
             url = url_template% (tag.replace(&#39; &#39;,&#39;+&#39;))
             search_request = urllib.request.Request(url, None, headers)
@@ -131,7 +131,7 @@ def youtube(tag, n_pages=1, channel=False, video_limit=None):
             except AttributeError:
                 search_results = urllib.request.urlopen(search_request)
             except:
-                print(&#39;[vipy.videosearch.youtube]: URL 404: %s&#39; % (url))
+                log.info(&#39;[vipy.videosearch.youtube]: URL 404: %s&#39; % (url))
                 return ([None], [None])
         search_data = str(search_results.read())
 
@@ -160,22 +160,22 @@ def liveleak(tag, n_pages=1):
     return(vidlist)
 
 
-def download(vidurl, vidfile, skip=False, writeurlfile=True, max_filesize=&#39;350m&#39;, remove_parts=True, verbose=False):
-    &#34;&#34;&#34;Use youtube-dl to download a video URL to a video file&#34;&#34;&#34;
+def download(vidurl, vidfile, skip=False, writeurlfile=True, max_filesize=&#39;9999m&#39;, remove_parts=True, verbose=False):
+    &#34;&#34;&#34;Use yt-dlp to download a video URL to a video file&#34;&#34;&#34;
 
     user_agent = random.choice(complete_user_agents)    
     if not has_youtube_dl:
-        raise ImportError(&#39;Optional package &#34;youtube-dl&#34; not installed -  Run &#34;pip install youtube-dl&#34;&#39;)
+        raise ImportError(&#39;Optional package &#34;yt-dlp&#34; not installed -  Run &#34;pip install yt-dlp&#34;&#39;)
     try:
-        print(&#39;[vipy.videosearch.download]: saving &#34;%s&#34; to &#34;%s&#34;&#39; % (vidurl, vidfile))
+        log.info(&#39;saving &#34;%s&#34; to &#34;%s&#34;&#39; % (vidurl, vidfile))
         for f in glob.glob(&#34;%s*&#34; % vidfile):
-            os.remove(f)  # youtube-dl will not overwrite, so we force it
+            os.remove(f)  # yt-dlp will not overwrite, so we force it
         cmd = &#39;%s %s &#34;%s&#34; -o &#34;%s&#34; --no-check-certificate --max-filesize=&#34;%s&#34; --user-agent=&#34;%s&#34;&#39; % (youtube_dl_exe, &#39;-q&#39; if not verbose else &#39;&#39;, vidurl, vidfile, max_filesize, user_agent)  # must be on path            
         if verbose:
-            print(&#39;[vipy.videosearch.download]: executing \&#39;%s\&#39;&#39; % cmd)
+            log.info(&#39;executing \&#39;%s\&#39;&#39; % cmd)
         erno = os.system(cmd)
         if erno != 0:
-            raise ValueError(&#39;youtube-dl returned %d&#39; % erno)
+            raise ValueError(&#39;yt-dlp returned %d&#39; % erno)
         if os.path.isfile(vidfile):
             if writeurlfile:
                 urlfile = os.path.join(filepath(vidfile), &#39;%s.url&#39; % filebase(vidfile))
@@ -183,17 +183,16 @@ def download(vidurl, vidfile, skip=False, writeurlfile=True, max_filesize=&#39;3
                     f.write(vidurl + &#39;\n&#39;)
         if remove_parts and os.path.isfile(vidfile + &#39;.part&#39;):
             partfile = vidfile + &#39;.part&#39;
-            print(&#39;[vipy.youtube.download]: removing partial file: %s&#39; % partfile)
+            log.info(&#39;removing partial file: %s&#39; % partfile)
             os.remove(partfile)
     except KeyboardInterrupt:
         raise
     except Exception as exception:
-        print(exception)
-        # http://rg3.github.io/youtube-dl/supportedsites.html
-        print(&#39;[vipy.videosearch.download]: download failed - skipping&#39;)
+        log.warning(exception)
+        log.warning(&#39;download failed&#39;)
         return None
 
-    if erno == 256:
+    if erno == 2:
         raise KeyboardInterrupt
     elif skip and erno:  # use this if every video on a page fails
         return None
@@ -202,7 +201,7 @@ def download(vidurl, vidfile, skip=False, writeurlfile=True, max_filesize=&#39;3
 
 
 def bulkdownload(vidurls, outpattern, skip=True, writeurlfile=True, max_filesize=&#39;350m&#39;, remove_parts=True):
-    &#34;&#34;&#34;Use youtube-dl to download a list of video URLs to video files using the provided sprintf outpattern=/path/to/out_%d.mp4 where the index is provided by the URL list index&#34;&#34;&#34;
+    &#34;&#34;&#34;Use yt-dlp to download a list of video URLs to video files using the provided sprintf outpattern=/path/to/out_%d.mp4 where the index is provided by the URL list index&#34;&#34;&#34;
 
     vidfiles = []
     for (k, vidurl) in enumerate(vidurls):
@@ -223,14 +222,14 @@ def bulkdownload(vidurls, outpattern, skip=True, writeurlfile=True, max_filesize
 <span>def <span class="ident">bulkdownload</span></span>(<span>vidurls, outpattern, skip=True, writeurlfile=True, max_filesize='350m', remove_parts=True)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Use youtube-dl to download a list of video URLs to video files using the provided sprintf outpattern=/path/to/out_%d.mp4 where the index is provided by the URL list index</p></div>
+<div class="desc"><p>Use yt-dlp to download a list of video URLs to video files using the provided sprintf outpattern=/path/to/out_%d.mp4 where the index is provided by the URL list index</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/videosearch.py#L174-L182" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/videosearch.py#L173-L181" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def bulkdownload(vidurls, outpattern, skip=True, writeurlfile=True, max_filesize=&#39;350m&#39;, remove_parts=True):
-    &#34;&#34;&#34;Use youtube-dl to download a list of video URLs to video files using the provided sprintf outpattern=/path/to/out_%d.mp4 where the index is provided by the URL list index&#34;&#34;&#34;
+    &#34;&#34;&#34;Use yt-dlp to download a list of video URLs to video files using the provided sprintf outpattern=/path/to/out_%d.mp4 where the index is provided by the URL list index&#34;&#34;&#34;
 
     vidfiles = []
     for (k, vidurl) in enumerate(vidurls):
@@ -241,31 +240,31 @@ def bulkdownload(vidurls, outpattern, skip=True, writeurlfile=True, max_filesize
 </details>
 </dd>
 <dt id="vipy.videosearch.download"><code class="name flex">
-<span>def <span class="ident">download</span></span>(<span>vidurl, vidfile, skip=False, writeurlfile=True, max_filesize='350m', remove_parts=True, verbose=False)</span>
+<span>def <span class="ident">download</span></span>(<span>vidurl, vidfile, skip=False, writeurlfile=True, max_filesize='9999m', remove_parts=True, verbose=False)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Use youtube-dl to download a video URL to a video file</p></div>
+<div class="desc"><p>Use yt-dlp to download a video URL to a video file</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/videosearch.py#L133-L171" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/videosearch.py#L133-L170" class="git-link">Browse git</a>
 </summary>
-<pre><code class="python">def download(vidurl, vidfile, skip=False, writeurlfile=True, max_filesize=&#39;350m&#39;, remove_parts=True, verbose=False):
-    &#34;&#34;&#34;Use youtube-dl to download a video URL to a video file&#34;&#34;&#34;
+<pre><code class="python">def download(vidurl, vidfile, skip=False, writeurlfile=True, max_filesize=&#39;9999m&#39;, remove_parts=True, verbose=False):
+    &#34;&#34;&#34;Use yt-dlp to download a video URL to a video file&#34;&#34;&#34;
 
     user_agent = random.choice(complete_user_agents)    
     if not has_youtube_dl:
-        raise ImportError(&#39;Optional package &#34;youtube-dl&#34; not installed -  Run &#34;pip install youtube-dl&#34;&#39;)
+        raise ImportError(&#39;Optional package &#34;yt-dlp&#34; not installed -  Run &#34;pip install yt-dlp&#34;&#39;)
     try:
-        print(&#39;[vipy.videosearch.download]: saving &#34;%s&#34; to &#34;%s&#34;&#39; % (vidurl, vidfile))
+        log.info(&#39;saving &#34;%s&#34; to &#34;%s&#34;&#39; % (vidurl, vidfile))
         for f in glob.glob(&#34;%s*&#34; % vidfile):
-            os.remove(f)  # youtube-dl will not overwrite, so we force it
+            os.remove(f)  # yt-dlp will not overwrite, so we force it
         cmd = &#39;%s %s &#34;%s&#34; -o &#34;%s&#34; --no-check-certificate --max-filesize=&#34;%s&#34; --user-agent=&#34;%s&#34;&#39; % (youtube_dl_exe, &#39;-q&#39; if not verbose else &#39;&#39;, vidurl, vidfile, max_filesize, user_agent)  # must be on path            
         if verbose:
-            print(&#39;[vipy.videosearch.download]: executing \&#39;%s\&#39;&#39; % cmd)
+            log.info(&#39;executing \&#39;%s\&#39;&#39; % cmd)
         erno = os.system(cmd)
         if erno != 0:
-            raise ValueError(&#39;youtube-dl returned %d&#39; % erno)
+            raise ValueError(&#39;yt-dlp returned %d&#39; % erno)
         if os.path.isfile(vidfile):
             if writeurlfile:
                 urlfile = os.path.join(filepath(vidfile), &#39;%s.url&#39; % filebase(vidfile))
@@ -273,17 +272,16 @@ def bulkdownload(vidurls, outpattern, skip=True, writeurlfile=True, max_filesize
                     f.write(vidurl + &#39;\n&#39;)
         if remove_parts and os.path.isfile(vidfile + &#39;.part&#39;):
             partfile = vidfile + &#39;.part&#39;
-            print(&#39;[vipy.youtube.download]: removing partial file: %s&#39; % partfile)
+            log.info(&#39;removing partial file: %s&#39; % partfile)
             os.remove(partfile)
     except KeyboardInterrupt:
         raise
     except Exception as exception:
-        print(exception)
-        # http://rg3.github.io/youtube-dl/supportedsites.html
-        print(&#39;[vipy.videosearch.download]: download failed - skipping&#39;)
+        log.warning(exception)
+        log.warning(&#39;download failed&#39;)
         return None
 
-    if erno == 256:
+    if erno == 2:
         raise KeyboardInterrupt
     elif skip and erno:  # use this if every video on a page fails
         return None
@@ -295,16 +293,16 @@ def bulkdownload(vidurls, outpattern, skip=True, writeurlfile=True, max_filesize
 <span>def <span class="ident">is_downloadable_url</span></span>(<span>path)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Check to see if youtube-dl can download the path, this requires exeecuting 'youtube-dl $URL -q -j' to see if the returncode is non-zero</p></div>
+<div class="desc"><p>Check to see if yt-dlp can download the path, this requires exeecuting 'yt-dlp $URL -q -j' to see if the returncode is non-zero</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/videosearch.py#L64-L69" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/videosearch.py#L64-L69" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def is_downloadable_url(path):
-    &#34;&#34;&#34;Check to see if youtube-dl can download the path, this requires exeecuting &#39;youtube-dl $URL -q -j&#39; to see if the returncode is non-zero&#34;&#34;&#34;
+    &#34;&#34;&#34;Check to see if yt-dlp can download the path, this requires exeecuting &#39;yt-dlp $URL -q -j&#39; to see if the returncode is non-zero&#34;&#34;&#34;
     if not has_youtube_dl:
-        raise ImportError(&#39;Optional package &#34;youtube-dl&#34; not installed -  Run &#34;pip install youtube-dl&#34;&#39;)    
+        raise ImportError(&#39;Optional package &#34;yt-dlp&#34; not installed -  Run &#34;pip install yt-dlp&#34;&#39;)    
     retcode = subprocess.call([youtube_dl_exe, &#39;-q&#39;, &#39;-j&#39;], stdout=DEVNULL, stderr=STDOUT) if isurl(path) else -1
     return isurl(path) and retcode == 0</code></pre>
 </details>
@@ -317,7 +315,7 @@ def bulkdownload(vidurls, outpattern, skip=True, writeurlfile=True, max_filesize
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/videosearch.py#L21-L38" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/videosearch.py#L21-L38" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def isactiveyoutuber(username):
     &#34;&#34;&#34;Does the youtube user have any uploaded videos?&#34;&#34;&#34;
@@ -347,7 +345,7 @@ def bulkdownload(vidurls, outpattern, skip=True, writeurlfile=True, max_filesize
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/videosearch.py#L116-L130" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/videosearch.py#L116-L130" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def liveleak(tag, n_pages=1):
     url = &#39;http://www.liveleak.com/browse?q=%s&amp;page=%d&#39;
@@ -374,7 +372,7 @@ def bulkdownload(vidurls, outpattern, skip=True, writeurlfile=True, max_filesize
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/videosearch.py#L72-L113" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/videosearch.py#L72-L113" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def youtube(tag, n_pages=1, channel=False, video_limit=None):
     &#34;&#34;&#34;Return a list of YouTube URLs for the given tag and optional channel&#34;&#34;&#34;
@@ -399,7 +397,7 @@ def bulkdownload(vidurls, outpattern, skip=True, writeurlfile=True, max_filesize
         except AttributeError:
             search_results = urllib.request.urlopen(search_request)
         except:
-            print(&#39;[vipy.videosearch.youtube]: URL 404: %s&#39; % (url))
+            log.info(&#39;[vipy.videosearch.youtube]: URL 404: %s&#39; % (url))
             url_template = &#39;http://www.youtube.com/channel/%s/videos&#39;
             url = url_template% (tag.replace(&#39; &#39;,&#39;+&#39;))
             search_request = urllib.request.Request(url, None, headers)
@@ -408,7 +406,7 @@ def bulkdownload(vidurls, outpattern, skip=True, writeurlfile=True, max_filesize
             except AttributeError:
                 search_results = urllib.request.urlopen(search_request)
             except:
-                print(&#39;[vipy.videosearch.youtube]: URL 404: %s&#39; % (url))
+                log.info(&#39;[vipy.videosearch.youtube]: URL 404: %s&#39; % (url))
                 return ([None], [None])
         search_data = str(search_results.read())
 
@@ -428,7 +426,7 @@ def bulkdownload(vidurls, outpattern, skip=True, writeurlfile=True, max_filesize
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/videosearch.py#L41-L61" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/videosearch.py#L41-L61" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def youtubeuser(tag, n_pages=1):
     &#34;&#34;&#34;return all unique /user/* urls returned for a search for a given query tag&#34;&#34;&#34;
@@ -536,7 +534,7 @@ setTimeout(() => input.focus(), 100);
 </nav>
 </main>
 <footer id="footer">
-<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.10.0</a>.</p>
+<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.11.6</a>.</p>
 </footer>
 </body>
 </html>

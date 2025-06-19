@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
-<meta name="generator" content="pdoc 0.10.0" />
+<meta name="generator" content="pdoc 0.11.6" />
 <meta name="google-site-verification" content="aB8LkQegj94_TJPdrcJm2ldIRWyXY82Jp24Gtkdgyn0" />
 <title>vipy.downloader API documentation</title>
 <meta name="description" content="" />
@@ -26,7 +26,7 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/downloader.py#L1-L1515" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/downloader.py#L1-L1577" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python"># Adapted for vipy.downloader from original authors below
 #
@@ -57,9 +57,12 @@ try:
     import bz2  # FIXME: Remove once bz2 is included in CentOS7 vendor baseline release?
 except:
     pass
-from vipy.util import isS3url, filetail
-from vipy.globals import print
+from vipy.util import isS3url, filetail, premkdir
+from vipy.globals import log
 import vipy.version
+import shutil
+import random
+import glob
 
 
 # FIX &lt;urlopen error [SSL: CERTIFICATE_VERIFY_FAILED] certificate
@@ -69,6 +72,57 @@ import ssl
 if hasattr(ssl, &#39;_create_unverified_context&#39;):
     ssl._create_default_https_context = ssl._create_unverified_context 
 
+youtube_dl_exe = shutil.which(&#39;yt-dlp&#39;)        
+has_youtube_dl = youtube_dl_exe is not None and os.path.exists(youtube_dl_exe)
+    
+
+def youtube(vidurl, vidfile, skip=False, writeurlfile=True, max_filesize=&#39;9999m&#39;, remove_parts=True, verbose=False):
+    &#34;&#34;&#34;Use yt-dlp to download a video URL to a video file&#34;&#34;&#34;
+    if not has_youtube_dl:
+        raise ImportError(&#39;Optional package &#34;yt-dlp&#34; not installed -  Run &#34;pip install yt-dlp&#34;&#39;)
+    
+    global complete_user_agents;  # defined later in this file
+    user_agent = random.choice(complete_user_agents)
+    
+    try:
+        log.info(&#39;Downloading &#34;%s&#34; to &#34;%s&#34;&#39; % (vidurl, vidfile))
+        for f in glob.glob(&#34;%s*&#34; % vidfile):
+            os.remove(f)  # yt-dlp will not overwrite, so we force it
+        cmd = &#39;%s %s &#34;%s&#34; -o &#34;%s&#34; --no-warnings --progress --no-check-certificate --max-filesize=&#34;%s&#34; --user-agent=&#34;%s&#34;&#39; % (youtube_dl_exe, &#39;-q&#39; if not verbose else &#39;&#39;, vidurl, vidfile, max_filesize, user_agent)  
+        if verbose:
+            log.info(&#39;executing \&#39;%s\&#39;&#39; % cmd)
+        erno = os.system(cmd)
+        if erno == 2:
+            raise KeyboardInterrupt
+        
+        if erno != 0:
+            raise ValueError(&#39;yt-dlp returned %d&#39; % erno)
+        if os.path.isfile(vidfile):
+            if writeurlfile:
+                urlfile = os.path.join(filepath(vidfile), &#39;%s.url&#39; % filebase(vidfile))
+                with open(urlfile, &#39;w&#39;) as f:
+                    f.write(vidurl + &#39;\n&#39;)
+        if remove_parts and os.path.isfile(vidfile + &#39;.part&#39;):
+            partfile = vidfile + &#39;.part&#39;
+            log.info(&#39;removing partial file: %s&#39; % partfile)
+            os.remove(partfile)
+    except KeyboardInterrupt:
+        raise KeyboardInterrupt
+    
+    except Exception as exception:
+        log.warning(exception)
+        log.warning(&#39;download failed&#39;)
+        return None
+
+    if erno == 2:
+        raise KeyboardInterrupt
+    elif skip and erno:  # use this if every video on a page fails
+        return None
+    else:
+        return vidfile
+
+    
+    
 
 def generate_sha1(filename, blocks=128):
     &#34;&#34;&#34;Generate the SHA1 hash of the provided filename.
@@ -120,26 +174,27 @@ def generate_md5(filename, blocks=128):
         return h.hexdigest()
 
 
-def scp(url, output_filename, verbose=True):
-    &#34;&#34;&#34;Download using pre-installed SSH keys where hostname is formatted &#39;scp://hostname.com:/path/to/file.jpg&#39; &#34;&#34;&#34;        
+def scp(url, output_filename, verbose=True, progress=True):
+    &#34;&#34;&#34;Download using pre-installed SSH keys where hostname is formatted &#39;scp://hostname.com/path/to/file.jpg&#39; &#34;&#34;&#34;        
     try_import(&#39;paramiko&#39;, &#39;paramiko scp&#39;)
     try_import(&#39;scp&#39;, &#39;paramiko scp&#39;)    
     import paramiko
     from scp import SCPClient
-        
-    assert &#39;scp://&#39; in url, &#34;Invalid URL&#34;
-    (hostname, remote_filename) = url.split(&#39;scp://&#39;)[1].split(&#39;:&#39;)
+
+    if url.startswith(&#39;scp://&#39;):
+        url = url.split(&#39;scp://&#39;)[1]
+    (hostname, remote_filename) = url.split(&#39;/&#39;,1)
 
     if verbose:
-        print(&#34;[vipy.downloader]: Downloading &#39;%s&#39; to &#39;%s&#39;&#34; % (url, output_filename))
+        log.info(&#34;Downloading &#39;%s&#39; to &#39;%s&#39;&#34; % (url, output_filename))
         
-    def progress(filename, size, sent):
-        sys.stdout.write(&#34;[vipy.downloader]: %s ... %.2f%%   \r&#34; % (filename, float(sent)/float(size)*100) )
+    def _progress(filename, size, sent):
+        sys.stdout.write(&#34;%s ... %.2f%%   \r&#34; % (filename, float(sent)/float(size)*100) )
     
     ssh = paramiko.SSHClient()
     ssh.load_system_host_keys()
     ssh.connect(hostname)
-    scp = SCPClient(ssh.get_transport(), progress=progress if verbose else None)
+    scp = SCPClient(ssh.get_transport(), progress=_progress if progress else None)
     scp.get(remote_filename, output_filename)
     scp.close()
     return output_filename
@@ -154,7 +209,9 @@ def s3(url, output_filename, verbose=True):
     try_import(&#39;boto3&#39;, &#39;boto3&#39;)    
     assert isS3url(url), &#34;Invalid URL - Must be &#39;s3://BUCKETNAME.s3.amazonaws.com/OBJECTNAME.ext&#39;&#34;
     
-    import boto3                        
+    import boto3
+    from botocore.exceptions import ClientError
+    
     s3 = boto3.client(&#39;s3&#39;,
                       aws_access_key_id=os.environ[&#39;VIPY_AWS_ACCESS_KEY_ID&#39;],
                       aws_secret_access_key=os.environ[&#39;VIPY_AWS_SECRET_ACCESS_KEY&#39;],
@@ -164,12 +221,13 @@ def s3(url, output_filename, verbose=True):
     # url format: s3://BUCKETNAME.s3.amazonaws.com/OBJECTNAME.mp4
     bucket_name = urllib.parse.urlparse(url).netloc.split(&#39;.&#39;)[0]
     object_name = urllib.parse.urlparse(url).path[1:]
-
+    
     if verbose:
-        print(&#39;[vipy.downloader.s3]: Downloading &#34;%s&#34; -&gt; &#34;%s&#34;&#39; % (url, output_filename))
+        log.info(&#39;Downloading &#34;%s&#34; -&gt; &#34;%s&#34;&#39; % (url, output_filename))
+
     s3.download_file(bucket_name, object_name, output_filename)
     return output_filename
-
+    
 
 def s3_bucket(bucket_name, object_name, output_filename, verbose=True):
     &#34;&#34;&#34;Thin wrapper for boto3&#34;&#34;&#34;
@@ -191,7 +249,7 @@ def downloadif(url, output_filename, sha1):
     &#34;&#34;&#34;Downloads file at `url` and write it in `output_filename` only if the file does not exist with the provided SHA1 hash&#34;&#34;&#34;    
     return output_filename if os.path.exists(output_filename) and verify_sha1(output_filename, sha1) else download(url=url, output_filename=output_filename, sha1=sha1)
 
-def download(url, output_filename, sha1=None, verbose=True, md5=None, timeout=None, username=None, password=None):
+def download(url, output_filename, sha1=None, verbose=True, md5=None, timeout=None, username=None, password=None, progress=True):
     &#34;&#34;&#34;Downloads file at `url` and write it in `output_filename`&#34;&#34;&#34;
     if timeout is None:
         timeout = 10
@@ -208,17 +266,17 @@ def download(url, output_filename, sha1=None, verbose=True, md5=None, timeout=No
 
     page_info = page.info()
 
-    output_file = open(output_filename, &#39;wb+&#39;)  # will raise IOError exception on invalid permissions
+    output_file = open(premkdir(output_filename), &#39;wb+&#39;)  # will raise IOError exception on invalid permissions, parent directory not created
 
     # size of the download unit
     block_size = 2 ** 15
     dl_size = 0
 
     if verbose:
-        print(&#34;[vipy.downloader]: Downloading &#39;%s&#39; to &#39;%s&#39;&#34; % (url, output_filename))
+        log.info(&#34;Downloading &#39;%s&#39; -&gt; &#39;%s&#39;&#34; % (url, output_filename))
 
-    # display  progress only if we know the length
-    if &#39;content-length&#39; in page_info and verbose:
+    # display progress only if we know the length
+    if &#39;content-length&#39; in page_info:
         # file size in Kilobytes
         file_size = int(page_info[&#39;content-length&#39;]) / 1024.
         while True:
@@ -228,14 +286,14 @@ def download(url, output_filename, sha1=None, verbose=True, md5=None, timeout=No
             dl_size += block_size / 1024
             output_file.write(buffer)
             percent = min(100, 100. * dl_size / file_size)
-            status = r&#34;Progress: %20d kilobytes [%4.1f%%]&#34; \
-                % (dl_size, percent)
-            status = status + chr(8) * (len(status) + 1)
-            if verbose:
-                print(status, end=&#39; &#39;)  # space instead of newline
+            status = r&#34;Progress: %10d KB [%4.1f%%]&#34; % (dl_size, percent)
+            status = status + chr(8) * (len(status) )
+            if progress:
+                print(status, end=&#39;&#39;)  # space instead of newline
                 sys.stdout.flush()
-        if verbose:
-            print(&#39;&#39;)
+        if progress:
+            print(&#39; &#39;*len(status) + chr(8) * (len(status) ), end=&#39;&#39;) # erase line
+                
     else:
         while True:
             buffer = page.read(block_size)
@@ -244,30 +302,33 @@ def download(url, output_filename, sha1=None, verbose=True, md5=None, timeout=No
             dl_size += block_size / 1024
             output_file.write(buffer)
             # percent = min(100, 100. * dl_size / file_size)
-            status = r&#34;Progress: %20d kilobytes&#34; \
-                % (dl_size)
-            status = status + chr(8) * (len(status) + 1)
-            if verbose:
-                print(status, end=&#39; &#39;)  # space instead of newline
+            status = r&#34;Progress: %10d KB&#34; % (dl_size)
+            status = status + chr(8) * (len(status) )
+            if progress:
+                print(status, end=&#39;&#39;)  # space instead of newline
                 sys.stdout.flush()
-        if verbose:
-            print(&#39;&#39;)
+        if progress:
+            print(&#39; &#39;*len(status) + chr(8) * (len(status) ), end=&#39;&#39;) # erase line            
         # output_file.write(page.read())
 
     output_file.close()
 
     if sha1 is not None:
+        if verbose:
+            log.info(&#34;Verifying sha1 for &#39;%s&#39;&#34; % (output_filename))                
         if not verify_sha1(output_filename, sha1):
             raise IOError(&#39;invalid sha1 for &#34;%s&#34;&#39; % output_filename)
 
     if md5 is not None:
+        if verbose:
+            log.info(&#34;Verifying md5 for &#39;%s&#39;&#34; % (output_filename))        
         if not verify_md5(output_filename, md5):
-            raise IOError(&#39;invalid md5 for &#34;%s&#34;&#39; % output_filename)
+            raise IOError(&#39;Invalid md5 for &#34;%s&#34;&#39; % output_filename)
 
     return output_filename
 
 
-def unpack(archive_filename, output_dirname, sha1=None, verbose=True, passwd=None):
+def unpack(archive_filename, output_dirname, sha1=None, verbose=True, passwd=None, progress=True):
     &#34;&#34;&#34;Extracts `archive_filename` in `output_dirname`.
 
     Supported archives:
@@ -278,13 +339,11 @@ def unpack(archive_filename, output_dirname, sha1=None, verbose=True, passwd=Non
     * non-tar .bz2
     &#34;&#34;&#34;
     if verbose:
-        print(&#34;[vipy.downloader.extract]: Extracting &#39;%s&#39; to &#39;%s&#39;&#34; % (archive_filename, output_dirname))
+        log.info(&#34;Extracting &#39;%s&#39; -&gt; &#39;%s&#39;&#34; % (archive_filename, output_dirname))
     if sha1 is not None:
-        if verbose:
-            print(&#34; SHA-1 verification...&#34;)
         verify_sha1(archive_filename, sha1)
     try:
-        extract(archive_filename, output_dirname, verbose=verbose, passwd=passwd)
+        extract(archive_filename, output_dirname, progress=progress, passwd=passwd)
     except UnrecognizedArchiveFormat:
         base, ext = os.path.splitext(archive_filename)
         # Handle non-tar bz2 archives
@@ -300,7 +359,7 @@ def unpack(archive_filename, output_dirname, sha1=None, verbose=True, passwd=Non
             raise
 
 
-def download_and_unpack(url, output_dirname, sha1=None, verbose=True, md5=None, passwd=None):
+def download_and_unpack(url, output_dirname, sha1=None, verbose=True, md5=None, passwd=None, progress=True):
     &#34;&#34;&#34;Downloads and extracts archive in `url` into `output_dirname`.
 
     Note that `output_dirname` has to exist and won&#39;t be created by this
@@ -308,18 +367,20 @@ def download_and_unpack(url, output_dirname, sha1=None, verbose=True, md5=None, 
     &#34;&#34;&#34;
     archive_basename = path.basename(url)
     archive_filename = path.join(output_dirname, archive_basename)
-    download(url, archive_filename, sha1=sha1, verbose=verbose, md5=md5)
-    extract(archive_filename, output_dirname, verbose=verbose, passwd=passwd)
+    download(url, archive_filename, sha1=sha1, verbose=verbose, md5=md5, progress=progress)
+    unpack(archive_filename, output_dirname, passwd=passwd, progress=progress, verbose=verbose, sha1=sha1)
 
 
-def download_unpack_and_cleanup(url, output_dirname, sha1=None, verbose=True):
-    download_and_unpack(url, output_dirname, sha1, verbose)
+def download_unpack_and_cleanup(url, output_dirname, sha1=None, verbose=True, progress=True):
+    download_and_unpack(url, output_dirname, sha1, verbose, progress=progress)
+    log.info(&#34;Deleting &#39;%s&#39;&#34; % path.join(output_dirname, path.basename(url)))    
     os.remove(path.join(output_dirname, path.basename(url)))
 
 
-def unpack_and_cleanup(archive_filename, output_dirname, sha1=None, verbose=True):
-    download_and_unpack(url, output_dirname, sha1, verbose)
-    os.remove(path.join(output_dirname, path.basename(url)))
+def unpack_and_cleanup(archive_filename, output_dirname, sha1=None, verbose=True, progress=True):
+    unpack(archive_filename, output_dirname, sha1, verbose, progress=progress)
+    log.info(&#34;Deleting &#39;%s&#39;&#34; % archive_filename)
+    os.remove(archive_filename)
 
 
 class ArchiveException(Exception):
@@ -330,12 +391,12 @@ class UnrecognizedArchiveFormat(ArchiveException):
     &#34;&#34;&#34;Error raised when passed file is not a recognized archive format.&#34;&#34;&#34;
 
 
-def extract(archive_filename, output_dirname=&#39;./&#39;, verbose=True, passwd=None):
+def extract(archive_filename, output_dirname=&#39;./&#39;, passwd=None, progress=True):
     &#34;&#34;&#34;
     Unpack the tar or zip file at the specified `archive_filename` to the
     directory specified by `output_dirname`.
     &#34;&#34;&#34;
-    Archive(archive_filename, passwd=passwd).extract(output_dirname)
+    Archive(archive_filename, passwd=passwd).extract(output_dirname, progress=progress)
 
 
 class Archive(object):
@@ -367,8 +428,8 @@ class Archive(object):
                 &#34;Path not a recognized archive format: %s&#34; % filename)
         return cls
 
-    def extract(self, output_dirname=&#39;&#39;):
-        self._archive.extract(output_dirname)
+    def extract(self, output_dirname=&#39;&#39;, progress=True):
+        self._archive.extract(output_dirname, progress=progress)
 
     def list(self):
         self._archive.list()
@@ -393,21 +454,22 @@ class ExtractInterface(object):
     zipfile).
     &#34;&#34;&#34;
 
-    def extract(self, output_dirname, verbose=True):
-        if not verbose:
-            self._archive.extractall(output_dirname)
-        else:
-            members = self.get_members()
-            n_members = len(members)
-            for mi, member in enumerate(members):
-                self._archive.extract(member, path=output_dirname)
-                extracted = mi + 1
-                status = (r&#34;Progress: %20i files extracted [%4.1f%%]&#34;
+    def extract(self, output_dirname, progress=True):
+        members = self.get_members()
+        n_members = len(members)
+        for mi, member in enumerate(members):
+            self._archive.extract(member, path=output_dirname)
+            extracted = mi + 1
+            if progress:
+                status = (r&#34;Progress: %10i files [%4.1f%%]&#34;
                           % (extracted, extracted * 100. / n_members))
-                status += chr(8) * (len(status) + 1)
-                print(status, end=&#39; &#39;)
+                status += chr(8) * (len(status) )
+                print(status, end=&#39;&#39;)
                 sys.stdout.flush()
-
+        if progress:
+            print(&#39; &#39;*len(status) + chr(8) * (len(status) ), end=&#39;&#39;) # erase line                        
+                
+                
 class TarArchive(ExtractInterface, BaseArchive):
     def __init__(self, filename, passwd=None):
         self._archive = tarfile.open(filename)
@@ -1553,16 +1615,16 @@ complete_user_agents = [
 <h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
 <dt id="vipy.downloader.download"><code class="name flex">
-<span>def <span class="ident">download</span></span>(<span>url, output_filename, sha1=None, verbose=True, md5=None, timeout=None, username=None, password=None)</span>
+<span>def <span class="ident">download</span></span>(<span>url, output_filename, sha1=None, verbose=True, md5=None, timeout=None, username=None, password=None, progress=True)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Downloads file at <code>url</code> and write it in <code>output_filename</code></p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/downloader.py#L164-L237" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/downloader.py#L222-L298" class="git-link">Browse git</a>
 </summary>
-<pre><code class="python">def download(url, output_filename, sha1=None, verbose=True, md5=None, timeout=None, username=None, password=None):
+<pre><code class="python">def download(url, output_filename, sha1=None, verbose=True, md5=None, timeout=None, username=None, password=None, progress=True):
     &#34;&#34;&#34;Downloads file at `url` and write it in `output_filename`&#34;&#34;&#34;
     if timeout is None:
         timeout = 10
@@ -1579,17 +1641,17 @@ complete_user_agents = [
 
     page_info = page.info()
 
-    output_file = open(output_filename, &#39;wb+&#39;)  # will raise IOError exception on invalid permissions
+    output_file = open(premkdir(output_filename), &#39;wb+&#39;)  # will raise IOError exception on invalid permissions, parent directory not created
 
     # size of the download unit
     block_size = 2 ** 15
     dl_size = 0
 
     if verbose:
-        print(&#34;[vipy.downloader]: Downloading &#39;%s&#39; to &#39;%s&#39;&#34; % (url, output_filename))
+        log.info(&#34;Downloading &#39;%s&#39; -&gt; &#39;%s&#39;&#34; % (url, output_filename))
 
-    # display  progress only if we know the length
-    if &#39;content-length&#39; in page_info and verbose:
+    # display progress only if we know the length
+    if &#39;content-length&#39; in page_info:
         # file size in Kilobytes
         file_size = int(page_info[&#39;content-length&#39;]) / 1024.
         while True:
@@ -1599,14 +1661,14 @@ complete_user_agents = [
             dl_size += block_size / 1024
             output_file.write(buffer)
             percent = min(100, 100. * dl_size / file_size)
-            status = r&#34;Progress: %20d kilobytes [%4.1f%%]&#34; \
-                % (dl_size, percent)
-            status = status + chr(8) * (len(status) + 1)
-            if verbose:
-                print(status, end=&#39; &#39;)  # space instead of newline
+            status = r&#34;Progress: %10d KB [%4.1f%%]&#34; % (dl_size, percent)
+            status = status + chr(8) * (len(status) )
+            if progress:
+                print(status, end=&#39;&#39;)  # space instead of newline
                 sys.stdout.flush()
-        if verbose:
-            print(&#39;&#39;)
+        if progress:
+            print(&#39; &#39;*len(status) + chr(8) * (len(status) ), end=&#39;&#39;) # erase line
+                
     else:
         while True:
             buffer = page.read(block_size)
@@ -1615,31 +1677,34 @@ complete_user_agents = [
             dl_size += block_size / 1024
             output_file.write(buffer)
             # percent = min(100, 100. * dl_size / file_size)
-            status = r&#34;Progress: %20d kilobytes&#34; \
-                % (dl_size)
-            status = status + chr(8) * (len(status) + 1)
-            if verbose:
-                print(status, end=&#39; &#39;)  # space instead of newline
+            status = r&#34;Progress: %10d KB&#34; % (dl_size)
+            status = status + chr(8) * (len(status) )
+            if progress:
+                print(status, end=&#39;&#39;)  # space instead of newline
                 sys.stdout.flush()
-        if verbose:
-            print(&#39;&#39;)
+        if progress:
+            print(&#39; &#39;*len(status) + chr(8) * (len(status) ), end=&#39;&#39;) # erase line            
         # output_file.write(page.read())
 
     output_file.close()
 
     if sha1 is not None:
+        if verbose:
+            log.info(&#34;Verifying sha1 for &#39;%s&#39;&#34; % (output_filename))                
         if not verify_sha1(output_filename, sha1):
             raise IOError(&#39;invalid sha1 for &#34;%s&#34;&#39; % output_filename)
 
     if md5 is not None:
+        if verbose:
+            log.info(&#34;Verifying md5 for &#39;%s&#39;&#34; % (output_filename))        
         if not verify_md5(output_filename, md5):
-            raise IOError(&#39;invalid md5 for &#34;%s&#34;&#39; % output_filename)
+            raise IOError(&#39;Invalid md5 for &#34;%s&#34;&#39; % output_filename)
 
     return output_filename</code></pre>
 </details>
 </dd>
 <dt id="vipy.downloader.download_and_unpack"><code class="name flex">
-<span>def <span class="ident">download_and_unpack</span></span>(<span>url, output_dirname, sha1=None, verbose=True, md5=None, passwd=None)</span>
+<span>def <span class="ident">download_and_unpack</span></span>(<span>url, output_dirname, sha1=None, verbose=True, md5=None, passwd=None, progress=True)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Downloads and extracts archive in <code>url</code> into <code>output_dirname</code>.</p>
@@ -1648,9 +1713,9 @@ function.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/downloader.py#L273-L282" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/downloader.py#L332-L341" class="git-link">Browse git</a>
 </summary>
-<pre><code class="python">def download_and_unpack(url, output_dirname, sha1=None, verbose=True, md5=None, passwd=None):
+<pre><code class="python">def download_and_unpack(url, output_dirname, sha1=None, verbose=True, md5=None, passwd=None, progress=True):
     &#34;&#34;&#34;Downloads and extracts archive in `url` into `output_dirname`.
 
     Note that `output_dirname` has to exist and won&#39;t be created by this
@@ -1658,22 +1723,23 @@ function.</p></div>
     &#34;&#34;&#34;
     archive_basename = path.basename(url)
     archive_filename = path.join(output_dirname, archive_basename)
-    download(url, archive_filename, sha1=sha1, verbose=verbose, md5=md5)
-    extract(archive_filename, output_dirname, verbose=verbose, passwd=passwd)</code></pre>
+    download(url, archive_filename, sha1=sha1, verbose=verbose, md5=md5, progress=progress)
+    unpack(archive_filename, output_dirname, passwd=passwd, progress=progress, verbose=verbose, sha1=sha1)</code></pre>
 </details>
 </dd>
 <dt id="vipy.downloader.download_unpack_and_cleanup"><code class="name flex">
-<span>def <span class="ident">download_unpack_and_cleanup</span></span>(<span>url, output_dirname, sha1=None, verbose=True)</span>
+<span>def <span class="ident">download_unpack_and_cleanup</span></span>(<span>url, output_dirname, sha1=None, verbose=True, progress=True)</span>
 </code></dt>
 <dd>
 <div class="desc"></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/downloader.py#L285-L287" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/downloader.py#L344-L347" class="git-link">Browse git</a>
 </summary>
-<pre><code class="python">def download_unpack_and_cleanup(url, output_dirname, sha1=None, verbose=True):
-    download_and_unpack(url, output_dirname, sha1, verbose)
+<pre><code class="python">def download_unpack_and_cleanup(url, output_dirname, sha1=None, verbose=True, progress=True):
+    download_and_unpack(url, output_dirname, sha1, verbose, progress=progress)
+    log.info(&#34;Deleting &#39;%s&#39;&#34; % path.join(output_dirname, path.basename(url)))    
     os.remove(path.join(output_dirname, path.basename(url)))</code></pre>
 </details>
 </dd>
@@ -1685,7 +1751,7 @@ function.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/downloader.py#L160-L162" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/downloader.py#L218-L220" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def downloadif(url, output_filename, sha1):
     &#34;&#34;&#34;Downloads file at `url` and write it in `output_filename` only if the file does not exist with the provided SHA1 hash&#34;&#34;&#34;    
@@ -1693,7 +1759,7 @@ function.</p></div>
 </details>
 </dd>
 <dt id="vipy.downloader.extract"><code class="name flex">
-<span>def <span class="ident">extract</span></span>(<span>archive_filename, output_dirname='./', verbose=True, passwd=None)</span>
+<span>def <span class="ident">extract</span></span>(<span>archive_filename, output_dirname='./', passwd=None, progress=True)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Unpack the tar or zip file at the specified <code>archive_filename</code> to the
@@ -1701,14 +1767,14 @@ directory specified by <code>output_dirname</code>.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/downloader.py#L303-L308" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/downloader.py#L364-L369" class="git-link">Browse git</a>
 </summary>
-<pre><code class="python">def extract(archive_filename, output_dirname=&#39;./&#39;, verbose=True, passwd=None):
+<pre><code class="python">def extract(archive_filename, output_dirname=&#39;./&#39;, passwd=None, progress=True):
     &#34;&#34;&#34;
     Unpack the tar or zip file at the specified `archive_filename` to the
     directory specified by `output_dirname`.
     &#34;&#34;&#34;
-    Archive(archive_filename, passwd=passwd).extract(output_dirname)</code></pre>
+    Archive(archive_filename, passwd=passwd).extract(output_dirname, progress=progress)</code></pre>
 </details>
 </dd>
 <dt id="vipy.downloader.generate_md5"><code class="name flex">
@@ -1722,7 +1788,7 @@ directory specified by <code>output_dirname</code>.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/downloader.py#L72-L90" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/downloader.py#L126-L144" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def generate_md5(filename, blocks=128):
     &#34;&#34;&#34;Generate the MD5 sum of the provided filename.
@@ -1756,7 +1822,7 @@ directory specified by <code>output_dirname</code>.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/downloader.py#L43-L61" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/downloader.py#L97-L115" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def generate_sha1(filename, blocks=128):
     &#34;&#34;&#34;Generate the SHA1 hash of the provided filename.
@@ -1787,7 +1853,7 @@ directory specified by <code>output_dirname</code>.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/downloader.py#L118-L141" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/downloader.py#L173-L199" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def s3(url, output_filename, verbose=True):
     &#34;&#34;&#34;Thin wrapper for boto3&#34;&#34;&#34;
@@ -1798,7 +1864,9 @@ directory specified by <code>output_dirname</code>.</p></div>
     try_import(&#39;boto3&#39;, &#39;boto3&#39;)    
     assert isS3url(url), &#34;Invalid URL - Must be &#39;s3://BUCKETNAME.s3.amazonaws.com/OBJECTNAME.ext&#39;&#34;
     
-    import boto3                        
+    import boto3
+    from botocore.exceptions import ClientError
+    
     s3 = boto3.client(&#39;s3&#39;,
                       aws_access_key_id=os.environ[&#39;VIPY_AWS_ACCESS_KEY_ID&#39;],
                       aws_secret_access_key=os.environ[&#39;VIPY_AWS_SECRET_ACCESS_KEY&#39;],
@@ -1808,9 +1876,10 @@ directory specified by <code>output_dirname</code>.</p></div>
     # url format: s3://BUCKETNAME.s3.amazonaws.com/OBJECTNAME.mp4
     bucket_name = urllib.parse.urlparse(url).netloc.split(&#39;.&#39;)[0]
     object_name = urllib.parse.urlparse(url).path[1:]
-
+    
     if verbose:
-        print(&#39;[vipy.downloader.s3]: Downloading &#34;%s&#34; -&gt; &#34;%s&#34;&#39; % (url, output_filename))
+        log.info(&#39;Downloading &#34;%s&#34; -&gt; &#34;%s&#34;&#39; % (url, output_filename))
+
     s3.download_file(bucket_name, object_name, output_filename)
     return output_filename</code></pre>
 </details>
@@ -1823,7 +1892,7 @@ directory specified by <code>output_dirname</code>.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/downloader.py#L144-L157" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/downloader.py#L202-L215" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def s3_bucket(bucket_name, object_name, output_filename, verbose=True):
     &#34;&#34;&#34;Thin wrapper for boto3&#34;&#34;&#34;
@@ -1842,42 +1911,43 @@ directory specified by <code>output_dirname</code>.</p></div>
 </details>
 </dd>
 <dt id="vipy.downloader.scp"><code class="name flex">
-<span>def <span class="ident">scp</span></span>(<span>url, output_filename, verbose=True)</span>
+<span>def <span class="ident">scp</span></span>(<span>url, output_filename, verbose=True, progress=True)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Download using pre-installed SSH keys where hostname is formatted 'scp://hostname.com:/path/to/file.jpg'</p></div>
+<div class="desc"><p>Download using pre-installed SSH keys where hostname is formatted 'scp://hostname.com/path/to/file.jpg'</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/downloader.py#L93-L115" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/downloader.py#L147-L170" class="git-link">Browse git</a>
 </summary>
-<pre><code class="python">def scp(url, output_filename, verbose=True):
-    &#34;&#34;&#34;Download using pre-installed SSH keys where hostname is formatted &#39;scp://hostname.com:/path/to/file.jpg&#39; &#34;&#34;&#34;        
+<pre><code class="python">def scp(url, output_filename, verbose=True, progress=True):
+    &#34;&#34;&#34;Download using pre-installed SSH keys where hostname is formatted &#39;scp://hostname.com/path/to/file.jpg&#39; &#34;&#34;&#34;        
     try_import(&#39;paramiko&#39;, &#39;paramiko scp&#39;)
     try_import(&#39;scp&#39;, &#39;paramiko scp&#39;)    
     import paramiko
     from scp import SCPClient
-        
-    assert &#39;scp://&#39; in url, &#34;Invalid URL&#34;
-    (hostname, remote_filename) = url.split(&#39;scp://&#39;)[1].split(&#39;:&#39;)
+
+    if url.startswith(&#39;scp://&#39;):
+        url = url.split(&#39;scp://&#39;)[1]
+    (hostname, remote_filename) = url.split(&#39;/&#39;,1)
 
     if verbose:
-        print(&#34;[vipy.downloader]: Downloading &#39;%s&#39; to &#39;%s&#39;&#34; % (url, output_filename))
+        log.info(&#34;Downloading &#39;%s&#39; to &#39;%s&#39;&#34; % (url, output_filename))
         
-    def progress(filename, size, sent):
-        sys.stdout.write(&#34;[vipy.downloader]: %s ... %.2f%%   \r&#34; % (filename, float(sent)/float(size)*100) )
+    def _progress(filename, size, sent):
+        sys.stdout.write(&#34;%s ... %.2f%%   \r&#34; % (filename, float(sent)/float(size)*100) )
     
     ssh = paramiko.SSHClient()
     ssh.load_system_host_keys()
     ssh.connect(hostname)
-    scp = SCPClient(ssh.get_transport(), progress=progress if verbose else None)
+    scp = SCPClient(ssh.get_transport(), progress=_progress if progress else None)
     scp.get(remote_filename, output_filename)
     scp.close()
     return output_filename</code></pre>
 </details>
 </dd>
 <dt id="vipy.downloader.unpack"><code class="name flex">
-<span>def <span class="ident">unpack</span></span>(<span>archive_filename, output_dirname, sha1=None, verbose=True, passwd=None)</span>
+<span>def <span class="ident">unpack</span></span>(<span>archive_filename, output_dirname, sha1=None, verbose=True, passwd=None, progress=True)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Extracts <code>archive_filename</code> in <code>output_dirname</code>.</p>
@@ -1891,9 +1961,9 @@ directory specified by <code>output_dirname</code>.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/downloader.py#L240-L270" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/downloader.py#L301-L329" class="git-link">Browse git</a>
 </summary>
-<pre><code class="python">def unpack(archive_filename, output_dirname, sha1=None, verbose=True, passwd=None):
+<pre><code class="python">def unpack(archive_filename, output_dirname, sha1=None, verbose=True, passwd=None, progress=True):
     &#34;&#34;&#34;Extracts `archive_filename` in `output_dirname`.
 
     Supported archives:
@@ -1904,13 +1974,11 @@ directory specified by <code>output_dirname</code>.</p></div>
     * non-tar .bz2
     &#34;&#34;&#34;
     if verbose:
-        print(&#34;[vipy.downloader.extract]: Extracting &#39;%s&#39; to &#39;%s&#39;&#34; % (archive_filename, output_dirname))
+        log.info(&#34;Extracting &#39;%s&#39; -&gt; &#39;%s&#39;&#34; % (archive_filename, output_dirname))
     if sha1 is not None:
-        if verbose:
-            print(&#34; SHA-1 verification...&#34;)
         verify_sha1(archive_filename, sha1)
     try:
-        extract(archive_filename, output_dirname, verbose=verbose, passwd=passwd)
+        extract(archive_filename, output_dirname, progress=progress, passwd=passwd)
     except UnrecognizedArchiveFormat:
         base, ext = os.path.splitext(archive_filename)
         # Handle non-tar bz2 archives
@@ -1927,18 +1995,19 @@ directory specified by <code>output_dirname</code>.</p></div>
 </details>
 </dd>
 <dt id="vipy.downloader.unpack_and_cleanup"><code class="name flex">
-<span>def <span class="ident">unpack_and_cleanup</span></span>(<span>archive_filename, output_dirname, sha1=None, verbose=True)</span>
+<span>def <span class="ident">unpack_and_cleanup</span></span>(<span>archive_filename, output_dirname, sha1=None, verbose=True, progress=True)</span>
 </code></dt>
 <dd>
 <div class="desc"></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/downloader.py#L290-L292" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/downloader.py#L350-L353" class="git-link">Browse git</a>
 </summary>
-<pre><code class="python">def unpack_and_cleanup(archive_filename, output_dirname, sha1=None, verbose=True):
-    download_and_unpack(url, output_dirname, sha1, verbose)
-    os.remove(path.join(output_dirname, path.basename(url)))</code></pre>
+<pre><code class="python">def unpack_and_cleanup(archive_filename, output_dirname, sha1=None, verbose=True, progress=True):
+    unpack(archive_filename, output_dirname, sha1, verbose, progress=progress)
+    log.info(&#34;Deleting &#39;%s&#39;&#34; % archive_filename)
+    os.remove(archive_filename)</code></pre>
 </details>
 </dd>
 <dt id="vipy.downloader.verify_md5"><code class="name flex">
@@ -1949,7 +2018,7 @@ directory specified by <code>output_dirname</code>.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/downloader.py#L68-L70" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/downloader.py#L122-L124" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def verify_md5(filename, md5):
     &#34;&#34;&#34;Verify that the provide MD5 hash is equivalent to the provided file&#34;&#34;&#34; 
@@ -1964,11 +2033,67 @@ directory specified by <code>output_dirname</code>.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/downloader.py#L63-L65" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/downloader.py#L117-L119" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def verify_sha1(filename, sha1):
     &#34;&#34;&#34;Verify that the provide SHA1 hash is equivalent to the provided file&#34;&#34;&#34;     
     return sha1 == generate_sha1(filename)</code></pre>
+</details>
+</dd>
+<dt id="vipy.downloader.youtube"><code class="name flex">
+<span>def <span class="ident">youtube</span></span>(<span>vidurl, vidfile, skip=False, writeurlfile=True, max_filesize='9999m', remove_parts=True, verbose=False)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Use yt-dlp to download a video URL to a video file</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/downloader.py#L49-L92" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def youtube(vidurl, vidfile, skip=False, writeurlfile=True, max_filesize=&#39;9999m&#39;, remove_parts=True, verbose=False):
+    &#34;&#34;&#34;Use yt-dlp to download a video URL to a video file&#34;&#34;&#34;
+    if not has_youtube_dl:
+        raise ImportError(&#39;Optional package &#34;yt-dlp&#34; not installed -  Run &#34;pip install yt-dlp&#34;&#39;)
+    
+    global complete_user_agents;  # defined later in this file
+    user_agent = random.choice(complete_user_agents)
+    
+    try:
+        log.info(&#39;Downloading &#34;%s&#34; to &#34;%s&#34;&#39; % (vidurl, vidfile))
+        for f in glob.glob(&#34;%s*&#34; % vidfile):
+            os.remove(f)  # yt-dlp will not overwrite, so we force it
+        cmd = &#39;%s %s &#34;%s&#34; -o &#34;%s&#34; --no-warnings --progress --no-check-certificate --max-filesize=&#34;%s&#34; --user-agent=&#34;%s&#34;&#39; % (youtube_dl_exe, &#39;-q&#39; if not verbose else &#39;&#39;, vidurl, vidfile, max_filesize, user_agent)  
+        if verbose:
+            log.info(&#39;executing \&#39;%s\&#39;&#39; % cmd)
+        erno = os.system(cmd)
+        if erno == 2:
+            raise KeyboardInterrupt
+        
+        if erno != 0:
+            raise ValueError(&#39;yt-dlp returned %d&#39; % erno)
+        if os.path.isfile(vidfile):
+            if writeurlfile:
+                urlfile = os.path.join(filepath(vidfile), &#39;%s.url&#39; % filebase(vidfile))
+                with open(urlfile, &#39;w&#39;) as f:
+                    f.write(vidurl + &#39;\n&#39;)
+        if remove_parts and os.path.isfile(vidfile + &#39;.part&#39;):
+            partfile = vidfile + &#39;.part&#39;
+            log.info(&#39;removing partial file: %s&#39; % partfile)
+            os.remove(partfile)
+    except KeyboardInterrupt:
+        raise KeyboardInterrupt
+    
+    except Exception as exception:
+        log.warning(exception)
+        log.warning(&#39;download failed&#39;)
+        return None
+
+    if erno == 2:
+        raise KeyboardInterrupt
+    elif skip and erno:  # use this if every video on a page fails
+        return None
+    else:
+        return vidfile</code></pre>
 </details>
 </dd>
 </dl>
@@ -1985,7 +2110,7 @@ directory specified by <code>output_dirname</code>.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/downloader.py#L311-L344" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/downloader.py#L372-L405" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Archive(object):
     &#34;&#34;&#34;
@@ -2016,8 +2141,8 @@ directory specified by <code>output_dirname</code>.</p></div>
                 &#34;Path not a recognized archive format: %s&#34; % filename)
         return cls
 
-    def extract(self, output_dirname=&#39;&#39;):
-        self._archive.extract(output_dirname)
+    def extract(self, output_dirname=&#39;&#39;, progress=True):
+        self._archive.extract(output_dirname, progress=progress)
 
     def list(self):
         self._archive.list()</code></pre>
@@ -2025,17 +2150,17 @@ directory specified by <code>output_dirname</code>.</p></div>
 <h3>Methods</h3>
 <dl>
 <dt id="vipy.downloader.Archive.extract"><code class="name flex">
-<span>def <span class="ident">extract</span></span>(<span>self, output_dirname='')</span>
+<span>def <span class="ident">extract</span></span>(<span>self, output_dirname='', progress=True)</span>
 </code></dt>
 <dd>
 <div class="desc"></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/downloader.py#L340-L341" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/downloader.py#L401-L402" class="git-link">Browse git</a>
 </summary>
-<pre><code class="python">def extract(self, output_dirname=&#39;&#39;):
-    self._archive.extract(output_dirname)</code></pre>
+<pre><code class="python">def extract(self, output_dirname=&#39;&#39;, progress=True):
+    self._archive.extract(output_dirname, progress=progress)</code></pre>
 </details>
 </dd>
 <dt id="vipy.downloader.Archive.list"><code class="name flex">
@@ -2046,7 +2171,7 @@ directory specified by <code>output_dirname</code>.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/downloader.py#L343-L344" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/downloader.py#L404-L405" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def list(self):
     self._archive.list()</code></pre>
@@ -2063,7 +2188,7 @@ directory specified by <code>output_dirname</code>.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/downloader.py#L295-L296" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/downloader.py#L356-L357" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class ArchiveException(Exception):
     &#34;&#34;&#34;Base exception class for all archive errors.&#34;&#34;&#34;</code></pre>
@@ -2087,7 +2212,7 @@ Implementations should inherit this class.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/downloader.py#L347-L356" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/downloader.py#L408-L417" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class BaseArchive(object):
     &#34;&#34;&#34;
@@ -2115,7 +2240,7 @@ Implementations should inherit this class.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/downloader.py#L352-L353" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/downloader.py#L413-L414" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def extract(self):
     raise NotImplementedError</code></pre>
@@ -2129,7 +2254,7 @@ Implementations should inherit this class.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/downloader.py#L355-L356" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/downloader.py#L416-L417" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def list(self):
     raise NotImplementedError</code></pre>
@@ -2147,7 +2272,7 @@ zipfile).</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/downloader.py#L359-L379" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/downloader.py#L420-L440" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class ExtractInterface(object):
     &#34;&#34;&#34;
@@ -2156,20 +2281,20 @@ zipfile).</p></div>
     zipfile).
     &#34;&#34;&#34;
 
-    def extract(self, output_dirname, verbose=True):
-        if not verbose:
-            self._archive.extractall(output_dirname)
-        else:
-            members = self.get_members()
-            n_members = len(members)
-            for mi, member in enumerate(members):
-                self._archive.extract(member, path=output_dirname)
-                extracted = mi + 1
-                status = (r&#34;Progress: %20i files extracted [%4.1f%%]&#34;
+    def extract(self, output_dirname, progress=True):
+        members = self.get_members()
+        n_members = len(members)
+        for mi, member in enumerate(members):
+            self._archive.extract(member, path=output_dirname)
+            extracted = mi + 1
+            if progress:
+                status = (r&#34;Progress: %10i files [%4.1f%%]&#34;
                           % (extracted, extracted * 100. / n_members))
-                status += chr(8) * (len(status) + 1)
-                print(status, end=&#39; &#39;)
-                sys.stdout.flush()</code></pre>
+                status += chr(8) * (len(status) )
+                print(status, end=&#39;&#39;)
+                sys.stdout.flush()
+        if progress:
+            print(&#39; &#39;*len(status) + chr(8) * (len(status) ), end=&#39;&#39;) # erase line                        </code></pre>
 </details>
 <h3>Subclasses</h3>
 <ul class="hlist">
@@ -2179,29 +2304,29 @@ zipfile).</p></div>
 <h3>Methods</h3>
 <dl>
 <dt id="vipy.downloader.ExtractInterface.extract"><code class="name flex">
-<span>def <span class="ident">extract</span></span>(<span>self, output_dirname, verbose=True)</span>
+<span>def <span class="ident">extract</span></span>(<span>self, output_dirname, progress=True)</span>
 </code></dt>
 <dd>
 <div class="desc"></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/downloader.py#L366-L379" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/downloader.py#L427-L440" class="git-link">Browse git</a>
 </summary>
-<pre><code class="python">def extract(self, output_dirname, verbose=True):
-    if not verbose:
-        self._archive.extractall(output_dirname)
-    else:
-        members = self.get_members()
-        n_members = len(members)
-        for mi, member in enumerate(members):
-            self._archive.extract(member, path=output_dirname)
-            extracted = mi + 1
-            status = (r&#34;Progress: %20i files extracted [%4.1f%%]&#34;
+<pre><code class="python">def extract(self, output_dirname, progress=True):
+    members = self.get_members()
+    n_members = len(members)
+    for mi, member in enumerate(members):
+        self._archive.extract(member, path=output_dirname)
+        extracted = mi + 1
+        if progress:
+            status = (r&#34;Progress: %10i files [%4.1f%%]&#34;
                       % (extracted, extracted * 100. / n_members))
-            status += chr(8) * (len(status) + 1)
-            print(status, end=&#39; &#39;)
-            sys.stdout.flush()</code></pre>
+            status += chr(8) * (len(status) )
+            print(status, end=&#39;&#39;)
+            sys.stdout.flush()
+    if progress:
+        print(&#39; &#39;*len(status) + chr(8) * (len(status) ), end=&#39;&#39;) # erase line                        </code></pre>
 </details>
 </dd>
 </dl>
@@ -2217,7 +2342,7 @@ zipfile).</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/downloader.py#L381-L389" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/downloader.py#L443-L451" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class TarArchive(ExtractInterface, BaseArchive):
     def __init__(self, filename, passwd=None):
@@ -2244,7 +2369,7 @@ zipfile).</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/downloader.py#L388-L389" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/downloader.py#L450-L451" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def get_members(self):
     return self._archive.getmembers()</code></pre>
@@ -2258,7 +2383,7 @@ zipfile).</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/downloader.py#L385-L386" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/downloader.py#L447-L448" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def list(self, *args, **kwargs):
     self._archive.list(*args, **kwargs)</code></pre>
@@ -2275,7 +2400,7 @@ zipfile).</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/downloader.py#L299-L300" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/downloader.py#L360-L361" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class UnrecognizedArchiveFormat(ArchiveException):
     &#34;&#34;&#34;Error raised when passed file is not a recognized archive format.&#34;&#34;&#34;</code></pre>
@@ -2299,7 +2424,7 @@ zipfile).</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/downloader.py#L392-L403" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/downloader.py#L454-L465" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class ZipArchive(ExtractInterface, BaseArchive):
     def __init__(self, filename, passwd=None):
@@ -2329,7 +2454,7 @@ zipfile).</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/downloader.py#L402-L403" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/downloader.py#L464-L465" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def get_members(self):
     return self._archive.namelist()</code></pre>
@@ -2343,7 +2468,7 @@ zipfile).</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/downloader.py#L399-L400" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/downloader.py#L461-L462" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def list(self, *args, **kwargs):
     self._archive.printdir(*args, **kwargs)</code></pre>
@@ -2433,6 +2558,7 @@ setTimeout(() => input.focus(), 100);
 <li><code><a title="vipy.downloader.unpack_and_cleanup" href="#vipy.downloader.unpack_and_cleanup">unpack_and_cleanup</a></code></li>
 <li><code><a title="vipy.downloader.verify_md5" href="#vipy.downloader.verify_md5">verify_md5</a></code></li>
 <li><code><a title="vipy.downloader.verify_sha1" href="#vipy.downloader.verify_sha1">verify_sha1</a></code></li>
+<li><code><a title="vipy.downloader.youtube" href="#vipy.downloader.youtube">youtube</a></code></li>
 </ul>
 </li>
 <li><h3><a href="#header-classes">Classes</a></h3>
@@ -2483,7 +2609,7 @@ setTimeout(() => input.focus(), 100);
 </nav>
 </main>
 <footer id="footer">
-<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.10.0</a>.</p>
+<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.11.6</a>.</p>
 </footer>
 </body>
 </html>

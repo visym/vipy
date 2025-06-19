@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
-<meta name="generator" content="pdoc 0.10.0" />
+<meta name="generator" content="pdoc 0.11.6" />
 <meta name="google-site-verification" content="aB8LkQegj94_TJPdrcJm2ldIRWyXY82Jp24Gtkdgyn0" />
 <title>vipy.torch API documentation</title>
 <meta name="description" content="" />
@@ -26,7 +26,7 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/torch.py#L1-L103" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/torch.py#L1-L103" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">import vipy
 import numpy as np
@@ -36,7 +36,7 @@ import random
 import dill
 import time
 import json
-
+from vipy.globals import log
 
 import vipy.util
 vipy.util.try_import(&#39;torch&#39;);
@@ -109,7 +109,7 @@ class Tensordir(torch.utils.data.Dataset):
             except:
                 time.sleep(1)  # try again after a bit if another process is augmenting this .pkl.bz2 in parallel
         if self._verbose:
-            print(&#39;[vipy.dataset.TorchTensordir][WARNING]: %s corrupted or invalid&#39; % self._dirlist[k])
+            log.warning(&#39;[vipy.dataset.TorchTensordir]: %s corrupted or invalid&#39; % self._dirlist[k])
         return self.__getitem__(random.randint(0, len(self)-1))  # maximum retries reached, get another one
 
     def __len__(self):
@@ -159,7 +159,7 @@ vipy.torch.Tensordir( ('/path/to/1', '/path/to/2') )
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/torch.py#L45-L99" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/torch.py#L45-L99" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Tensordir(torch.utils.data.Dataset):
     &#34;&#34;&#34;A torch dataset stored as a directory of .pkl.bz2 files each containing a list of [(tensor, str=json.dumps(label)), ...] tuples used for data augmented training.
@@ -198,7 +198,7 @@ vipy.torch.Tensordir( ('/path/to/1', '/path/to/2') )
             except:
                 time.sleep(1)  # try again after a bit if another process is augmenting this .pkl.bz2 in parallel
         if self._verbose:
-            print(&#39;[vipy.dataset.TorchTensordir][WARNING]: %s corrupted or invalid&#39; % self._dirlist[k])
+            log.warning(&#39;[vipy.dataset.TorchTensordir]: %s corrupted or invalid&#39; % self._dirlist[k])
         return self.__getitem__(random.randint(0, len(self)-1))  # maximum retries reached, get another one
 
     def __len__(self):
@@ -236,7 +236,7 @@ vipy.torch.Tensordir( ('/path/to/1', '/path/to/2') )
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/torch.py#L98-L99" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/torch.py#L98-L99" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def clone(self):
     return copy.deepcopy(self)</code></pre>
@@ -251,7 +251,7 @@ This is useful for filtering by instanceid in the <code><a title="vipy.util.file
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/torch.py#L92-L96" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/torch.py#L92-L96" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def filter(self, f):
     &#34;&#34;&#34;Keep elements that lambda evaluates true. The lambda operates on the *absolute path filename* for the tensordir and not the contents.  This is useful for filtering by instanceid in the `vipy.util.filebase`.&#34;&#34;&#34;
@@ -268,7 +268,7 @@ This is useful for filtering by instanceid in the <code><a title="vipy.util.file
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/torch.py#L88-L90" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/torch.py#L88-L90" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def take(self, n):
     self._dirlist = [self._dirlist[k] for k in np.random.permutation(range(len(self._dirlist)))[0:n]]
@@ -286,7 +286,7 @@ This is useful for filtering by instanceid in the <code><a title="vipy.util.file
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/torch.py#L19-L42" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/torch.py#L19-L42" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class TorchDataset(torch.utils.data.Dataset):
     &#34;&#34;&#34;Converter from a pycollector dataset to a torch dataset&#34;&#34;&#34;
@@ -336,7 +336,7 @@ vipy.torch.Tensordir( ('/path/to/1', '/path/to/2') )
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/torch.py#L102-L103" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/torch.py#L102-L103" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class TorchTensordir(Tensordir):
     pass  # alias for backwards compatibility</code></pre>
@@ -444,7 +444,7 @@ setTimeout(() => input.focus(), 100);
 </nav>
 </main>
 <footer id="footer">
-<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.10.0</a>.</p>
+<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.11.6</a>.</p>
 </footer>
 </body>
 </html>

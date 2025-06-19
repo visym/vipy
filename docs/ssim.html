@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
-<meta name="generator" content="pdoc 0.10.0" />
+<meta name="generator" content="pdoc 0.11.6" />
 <meta name="google-site-verification" content="aB8LkQegj94_TJPdrcJm2ldIRWyXY82Jp24Gtkdgyn0" />
 <title>vipy.ssim API documentation</title>
 <meta name="description" content="" />
@@ -26,13 +26,13 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/ssim.py#L1-L153" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/ssim.py#L1-L153" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">import vipy
 from scipy.signal import convolve2d
 from vipy.math import gaussian
 import numpy as np
-from vipy.globals import print
+from vipy.globals import log
 from vipy.util import try_import
 try_import(&#39;cv2&#39;, &#39;opencv-python&#39;); import cv2 
 
@@ -176,8 +176,8 @@ def demo(im=None):
     # SSIM
     (ssim_aligned, im_aligned) = SSIM(do_alignment=True).ssim(im.numpy(), im_degraded.numpy(), returnAligned=True)
     (ssim_unaligned) = SSIM(do_alignment=False).ssim(im.numpy(), im_degraded.numpy())    
-    print(&#39;Structural similarity score (aligned): %f&#39; % ssim_aligned)
-    print(&#39;Structural similarity score (unaligned): %f&#39; % ssim_unaligned)
+    log.info(&#39;Structural similarity score (aligned): %f&#39; % ssim_aligned)
+    log.info(&#39;Structural similarity score (unaligned): %f&#39; % ssim_unaligned)
     return (im.show(figure=1),
             im_degraded.show(figure=2),
             im_aligned.show(figure=3))</code></pre>
@@ -200,7 +200,7 @@ def demo(im=None):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/ssim.py#L134-L153" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/ssim.py#L134-L153" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def demo(im=None):
     &#34;&#34;&#34;Synthetically rotate an image by 4 degrees, and compute structural similarity with and without alignment, return images
@@ -217,8 +217,8 @@ def demo(im=None):
     # SSIM
     (ssim_aligned, im_aligned) = SSIM(do_alignment=True).ssim(im.numpy(), im_degraded.numpy(), returnAligned=True)
     (ssim_unaligned) = SSIM(do_alignment=False).ssim(im.numpy(), im_degraded.numpy())    
-    print(&#39;Structural similarity score (aligned): %f&#39; % ssim_aligned)
-    print(&#39;Structural similarity score (unaligned): %f&#39; % ssim_unaligned)
+    log.info(&#39;Structural similarity score (aligned): %f&#39; % ssim_aligned)
+    log.info(&#39;Structural similarity score (unaligned): %f&#39; % ssim_unaligned)
     return (im.show(figure=1),
             im_degraded.show(figure=2),
             im_aligned.show(figure=3))</code></pre>
@@ -238,7 +238,7 @@ def demo(im=None):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/ssim.py#L10-L131" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/ssim.py#L10-L131" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class SSIM(object):
     &#34;&#34;&#34;Structural similarity (SSIM) index &#34;&#34;&#34;
@@ -373,7 +373,7 @@ def demo(im=None):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/ssim.py#L53-L56" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/ssim.py#L53-L56" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def align(self, img1, img2):
     &#34;&#34;&#34;Return an image which is the warped version of img1 (MxN uint8 numpy) that aligns with img2 (MxN uint8 numpy)&#34;&#34;&#34;
@@ -389,7 +389,7 @@ def demo(im=None):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/ssim.py#L24-L44" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/ssim.py#L24-L44" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def match(self, img1, img2):
     &#34;&#34;&#34;Return a set of matching points in img1 (MxN uint8 numpy) and img2 (MxN uint8 numpy) in the form suitable for homography estimation&#34;&#34;&#34;
@@ -422,7 +422,7 @@ def demo(im=None):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/ssim.py#L58-L63" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/ssim.py#L58-L63" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def rgb2gray(self, I):
     &#34;&#34;&#34;Convert RGB image to grayscale; accesory function&#34;&#34;&#34;
@@ -452,7 +452,7 @@ Outputs:
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/ssim.py#L65-L111" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/ssim.py#L65-L111" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def similarity(self, I1, I2, returnMap=True):
     &#34;&#34;&#34;Compute the Structural Similarity Index (SSIM) score of two images
@@ -516,7 +516,7 @@ Outputs:
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/ssim.py#L114-L131" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/ssim.py#L114-L131" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def ssim(self, im_reference, im_degraded, returnAligned=False):
     &#34;&#34;&#34;Return structural similarity score when aligning im_degraded to im_reference
@@ -546,7 +546,7 @@ Outputs:
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/ssim.py#L46-L51" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/ssim.py#L46-L51" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def warp(self, src_pts, dst_pts, im_src):
     &#34;&#34;&#34;Warp an image im_src with points src_pts to align with dst_pts&#34;&#34;&#34;
@@ -648,7 +648,7 @@ setTimeout(() => input.focus(), 100);
 </nav>
 </main>
 <footer id="footer">
-<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.10.0</a>.</p>
+<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.11.6</a>.</p>
 </footer>
 </body>
 </html>

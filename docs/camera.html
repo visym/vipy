@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
-<meta name="generator" content="pdoc 0.10.0" />
+<meta name="generator" content="pdoc 0.11.6" />
 <meta name="google-site-verification" content="aB8LkQegj94_TJPdrcJm2ldIRWyXY82Jp24Gtkdgyn0" />
 <title>vipy.camera API documentation</title>
 <meta name="description" content="" />
@@ -26,13 +26,13 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/camera.py#L1-L128" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/camera.py#L1-L128" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">import urllib
 import timeit
 from vipy.util import tempimage, try_import, isurl
 from vipy.image import Image
-from vipy.globals import print
+from vipy.globals import log
 
 try_import(&#34;cv2&#34;, &#34;opencv-python&#34;)
 import cv2
@@ -109,7 +109,7 @@ class Webcam(Camera):
             raise ValueError(&#39;Invalid Frame&#39;)
         if self.FRAMERATE:
             self.TOC = timeit.default_timer()
-            print(&#39;[vipy.camera]: frame rate = &#39; + str(round(1.0 / (self.TOC - self.TIC),1)) + &#39; Hz&#39;)
+            log.info(&#39;[vipy.camera]: frame rate = &#39; + str(round(1.0 / (self.TOC - self.TIC),1)) + &#39; Hz&#39;)
             self.TIC = self.TOC
 
         return Image(array=im, colorspace=&#39;bgr&#39;)
@@ -175,7 +175,7 @@ class Ipcam(Camera):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/camera.py#L11-L18" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/camera.py#L11-L18" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Camera(object):
     CAM = None
@@ -195,37 +195,37 @@ class Ipcam(Camera):
 <dl>
 <dt id="vipy.camera.Camera.CAM"><code class="name">var <span class="ident">CAM</span></code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>The type of the None singleton.</p></div>
 </dd>
 <dt id="vipy.camera.Camera.FRAMERATE"><code class="name">var <span class="ident">FRAMERATE</span></code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>The type of the None singleton.</p></div>
 </dd>
 <dt id="vipy.camera.Camera.GREY"><code class="name">var <span class="ident">GREY</span></code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>The type of the None singleton.</p></div>
 </dd>
 <dt id="vipy.camera.Camera.PROCESS"><code class="name">var <span class="ident">PROCESS</span></code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>The type of the None singleton.</p></div>
 </dd>
 <dt id="vipy.camera.Camera.RESIZE"><code class="name">var <span class="ident">RESIZE</span></code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>The type of the None singleton.</p></div>
 </dd>
 <dt id="vipy.camera.Camera.TIC"><code class="name">var <span class="ident">TIC</span></code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>The type of the None singleton.</p></div>
 </dd>
 <dt id="vipy.camera.Camera.TOC"><code class="name">var <span class="ident">TOC</span></code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>The type of the None singleton.</p></div>
 </dd>
 </dl>
 </dd>
 <dt id="vipy.camera.Ipcam"><code class="flex name class">
 <span>class <span class="ident">Ipcam</span></span>
-<span>(</span><span>url, imfile='/tmp/0b07cd48247dfb33.jpg')</span>
+<span>(</span><span>url, imfile='/tmp/PbJuU0q7.jpg')</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Create a IPcam object that will yield <code><a title="vipy.image.Image" href="image.html#vipy.image.Image">Image</a></code> frames.</p>
@@ -239,7 +239,7 @@ class Ipcam(Camera):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/camera.py#L103-L128" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/camera.py#L103-L128" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Ipcam(Camera):
     &#34;&#34;&#34;Create a IPcam object that will yield `vipy.image.Image` frames.
@@ -276,7 +276,7 @@ class Ipcam(Camera):
 <dl>
 <dt id="vipy.camera.Ipcam.TMPFILE"><code class="name">var <span class="ident">TMPFILE</span></code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>The type of the None singleton.</p></div>
 </dd>
 </dl>
 <h3>Methods</h3>
@@ -289,7 +289,7 @@ class Ipcam(Camera):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/camera.py#L126-L128" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/camera.py#L126-L128" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def next(self):
     urllib.urlretrieve(self.CAM, self.TMPFILE)
@@ -297,6 +297,20 @@ class Ipcam(Camera):
 </details>
 </dd>
 </dl>
+<h3>Inherited members</h3>
+<ul class="hlist">
+<li><code><b><a title="vipy.camera.Camera" href="#vipy.camera.Camera">Camera</a></b></code>:
+<ul class="hlist">
+<li><code><a title="vipy.camera.Camera.CAM" href="#vipy.camera.Camera.CAM">CAM</a></code></li>
+<li><code><a title="vipy.camera.Camera.FRAMERATE" href="#vipy.camera.Camera.FRAMERATE">FRAMERATE</a></code></li>
+<li><code><a title="vipy.camera.Camera.GREY" href="#vipy.camera.Camera.GREY">GREY</a></code></li>
+<li><code><a title="vipy.camera.Camera.PROCESS" href="#vipy.camera.Camera.PROCESS">PROCESS</a></code></li>
+<li><code><a title="vipy.camera.Camera.RESIZE" href="#vipy.camera.Camera.RESIZE">RESIZE</a></code></li>
+<li><code><a title="vipy.camera.Camera.TIC" href="#vipy.camera.Camera.TIC">TIC</a></code></li>
+<li><code><a title="vipy.camera.Camera.TOC" href="#vipy.camera.Camera.TOC">TOC</a></code></li>
+</ul>
+</li>
+</ul>
 </dd>
 <dt id="vipy.camera.Webcam"><code class="flex name class">
 <span>class <span class="ident">Webcam</span></span>
@@ -326,7 +340,7 @@ The camera index to open</dd>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/camera.py#L21-L100" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/camera.py#L21-L100" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Webcam(Camera):
     &#34;&#34;&#34;Create a webcam object that will yield `vipy.image.Image` frames.
@@ -389,7 +403,7 @@ The camera index to open</dd>
             raise ValueError(&#39;Invalid Frame&#39;)
         if self.FRAMERATE:
             self.TOC = timeit.default_timer()
-            print(&#39;[vipy.camera]: frame rate = &#39; + str(round(1.0 / (self.TOC - self.TIC),1)) + &#39; Hz&#39;)
+            log.info(&#39;[vipy.camera]: frame rate = &#39; + str(round(1.0 / (self.TOC - self.TIC),1)) + &#39; Hz&#39;)
             self.TIC = self.TOC
 
         return Image(array=im, colorspace=&#39;bgr&#39;)
@@ -423,7 +437,7 @@ The camera index to open</dd>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/camera.py#L64-L66" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/camera.py#L64-L66" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def current(self):
     &#34;&#34;&#34;Alias for `vipy.camera.Webcam.next`&#34;&#34;&#34;
@@ -438,7 +452,7 @@ The camera index to open</dd>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/camera.py#L87-L89" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/camera.py#L87-L89" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def frame(self):
     &#34;&#34;&#34;Alias for `vipy.camera.Webcam.next`&#34;&#34;&#34;
@@ -453,7 +467,7 @@ The camera index to open</dd>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/camera.py#L68-L85" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/camera.py#L68-L85" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def next(self):
     &#34;&#34;&#34;Return a `vipy.image.Image` from the camera&#34;&#34;&#34;
@@ -469,7 +483,7 @@ The camera index to open</dd>
         raise ValueError(&#39;Invalid Frame&#39;)
     if self.FRAMERATE:
         self.TOC = timeit.default_timer()
-        print(&#39;[vipy.camera]: frame rate = &#39; + str(round(1.0 / (self.TOC - self.TIC),1)) + &#39; Hz&#39;)
+        log.info(&#39;[vipy.camera]: frame rate = &#39; + str(round(1.0 / (self.TOC - self.TIC),1)) + &#39; Hz&#39;)
         self.TIC = self.TOC
 
     return Image(array=im, colorspace=&#39;bgr&#39;)</code></pre>
@@ -483,7 +497,7 @@ The camera index to open</dd>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/camera.py#L91-L100" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/camera.py#L91-L100" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def video(self, n, framerate=30):
     &#34;&#34;&#34;Return a `vipy.video.Video` with n frames, constructed using the provided framerate (defaults to 30Hz)&#34;&#34;&#34;
@@ -498,6 +512,20 @@ The camera index to open</dd>
 </details>
 </dd>
 </dl>
+<h3>Inherited members</h3>
+<ul class="hlist">
+<li><code><b><a title="vipy.camera.Camera" href="#vipy.camera.Camera">Camera</a></b></code>:
+<ul class="hlist">
+<li><code><a title="vipy.camera.Camera.CAM" href="#vipy.camera.Camera.CAM">CAM</a></code></li>
+<li><code><a title="vipy.camera.Camera.FRAMERATE" href="#vipy.camera.Camera.FRAMERATE">FRAMERATE</a></code></li>
+<li><code><a title="vipy.camera.Camera.GREY" href="#vipy.camera.Camera.GREY">GREY</a></code></li>
+<li><code><a title="vipy.camera.Camera.PROCESS" href="#vipy.camera.Camera.PROCESS">PROCESS</a></code></li>
+<li><code><a title="vipy.camera.Camera.RESIZE" href="#vipy.camera.Camera.RESIZE">RESIZE</a></code></li>
+<li><code><a title="vipy.camera.Camera.TIC" href="#vipy.camera.Camera.TIC">TIC</a></code></li>
+<li><code><a title="vipy.camera.Camera.TOC" href="#vipy.camera.Camera.TOC">TOC</a></code></li>
+</ul>
+</li>
+</ul>
 </dd>
 </dl>
 </section>
@@ -601,7 +629,7 @@ setTimeout(() => input.focus(), 100);
 </nav>
 </main>
 <footer id="footer">
-<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.10.0</a>.</p>
+<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.11.6</a>.</p>
 </footer>
 </body>
 </html>

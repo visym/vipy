@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
-<meta name="generator" content="pdoc 0.10.0" />
+<meta name="generator" content="pdoc 0.11.6" />
 <meta name="google-site-verification" content="aB8LkQegj94_TJPdrcJm2ldIRWyXY82Jp24Gtkdgyn0" />
 <title>vipy.data.kthactions API documentation</title>
 <meta name="description" content="" />
@@ -26,18 +26,21 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/data/kthactions.py#L1-L41" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/data/kthactions.py#L1-L45" class="git-link">Browse git</a>
 </summary>
-<pre><code class="python">from vipy.util import remkdir, filetail, videolist
+<pre><code class="python">import os
+import vipy.dataset
+from vipy.util import remkdir, filetail, videolist
 import vipy.downloader
 import vipy.video
 
-URLS = [&#39;http://www.nada.kth.se/cvap/actions/walking.zip&#39;,
-        &#39;http://www.nada.kth.se/cvap/actions/jogging.zip&#39;,
-        &#39;http://www.nada.kth.se/cvap/actions/running.zip&#39;,
-        &#39;http://www.nada.kth.se/cvap/actions/boxing.zip&#39;,
-        &#39;http://www.nada.kth.se/cvap/actions/handwaving.zip&#39;,
-        &#39;http://www.nada.kth.se/cvap/actions/handclapping.zip&#39;]
+
+URLS = [&#39;http://www.csc.kth.se/cvap/actions/walking.zip&#39;,
+        &#39;http://www.csc.kth.se/cvap/actions/jogging.zip&#39;,
+        &#39;http://www.csc.kth.se/cvap/actions/running.zip&#39;,
+        &#39;http://www.csc.kth.se/cvap/actions/boxing.zip&#39;,
+        &#39;http://www.csc.kth.se/cvap/actions/handwaving.zip&#39;,
+        &#39;http://www.csc.kth.se/cvap/actions/handclapping.zip&#39;]
 SHA1 = [&#39;a3e81537271a0ab4576591774baa38c2d97b7e3a&#39;,
         &#39;21943bdbcef9dad106db0d74661e49eaeaa15a25&#39;,
         &#39;da83bb313edfd4455fffdda6263696fa10d43c6f&#39;,
@@ -51,7 +54,9 @@ class KTHActions(object):
     def __init__(self, datadir):
         &#34;&#34;&#34;KTH ACtions dataset, provide a datadir=&#39;/path/to/store/kthactions&#39; &#34;&#34;&#34;
         self.datadir = remkdir(datadir)
-
+        if not os.path.exists(os.path.join(self.datadir, &#39;handclapping.zip&#39;)):
+            self.download_and_unpack()
+        
     def __repr__(self):
         return str(&#39;&lt;vipy.data.kthactions: %s&gt;&#39; % self.datadir)
 
@@ -60,10 +65,9 @@ class KTHActions(object):
         videos = self.dataset()
         trainset = [vid for vid in videos if filetail(vid.filename()).split(&#39;_&#39;)[0] in trainPeople]
         testset = [vid for vid in videos if filetail(vid.filename()).split(&#39;_&#39;)[0] not in trainPeople]
-        return (trainset, testset)
+        return (vipy.dataset.Dataset(trainset, &#39;kthactions:train&#39;), vipy.dataset.Dataset(testset, &#39;kthactions:test&#39;))
 
     def download_and_unpack(self):
-        print(&#39;[vipy.data.kthactions][WARNING]: downloads will not show percent progress since content length is unknown&#39;)
         for (url, label, sha1) in zip(URLS, LABELS, SHA1):
             vipy.downloader.download_and_unpack(url, self.datadir, sha1=sha1)
 
@@ -89,13 +93,15 @@ class KTHActions(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/data/kthactions.py#L20-L41" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/data/kthactions.py#L23-L45" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class KTHActions(object):
     def __init__(self, datadir):
         &#34;&#34;&#34;KTH ACtions dataset, provide a datadir=&#39;/path/to/store/kthactions&#39; &#34;&#34;&#34;
         self.datadir = remkdir(datadir)
-
+        if not os.path.exists(os.path.join(self.datadir, &#39;handclapping.zip&#39;)):
+            self.download_and_unpack()
+        
     def __repr__(self):
         return str(&#39;&lt;vipy.data.kthactions: %s&gt;&#39; % self.datadir)
 
@@ -104,10 +110,9 @@ class KTHActions(object):
         videos = self.dataset()
         trainset = [vid for vid in videos if filetail(vid.filename()).split(&#39;_&#39;)[0] in trainPeople]
         testset = [vid for vid in videos if filetail(vid.filename()).split(&#39;_&#39;)[0] not in trainPeople]
-        return (trainset, testset)
+        return (vipy.dataset.Dataset(trainset, &#39;kthactions:train&#39;), vipy.dataset.Dataset(testset, &#39;kthactions:test&#39;))
 
     def download_and_unpack(self):
-        print(&#39;[vipy.data.kthactions][WARNING]: downloads will not show percent progress since content length is unknown&#39;)
         for (url, label, sha1) in zip(URLS, LABELS, SHA1):
             vipy.downloader.download_and_unpack(url, self.datadir, sha1=sha1)
 
@@ -124,7 +129,7 @@ class KTHActions(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/data/kthactions.py#L40-L41" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/data/kthactions.py#L44-L45" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def dataset(self):
     return [vipy.video.VideoCategory(filename=f, category=f.split(&#39;_&#39;)[1]) for f in videolist(self.datadir)]</code></pre>
@@ -138,10 +143,9 @@ class KTHActions(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/data/kthactions.py#L35-L38" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/data/kthactions.py#L40-L42" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def download_and_unpack(self):
-    print(&#39;[vipy.data.kthactions][WARNING]: downloads will not show percent progress since content length is unknown&#39;)
     for (url, label, sha1) in zip(URLS, LABELS, SHA1):
         vipy.downloader.download_and_unpack(url, self.datadir, sha1=sha1)</code></pre>
 </details>
@@ -154,14 +158,14 @@ class KTHActions(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/data/kthactions.py#L28-L33" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/data/kthactions.py#L33-L38" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def split(self):
     trainPeople = [&#39;person02&#39;,&#39;person03&#39;,&#39;person05&#39;,&#39;person06&#39;,&#39;person07&#39;,&#39;person08&#39;,&#39;person09&#39;,&#39;person10&#39;,&#39;person22&#39;]
     videos = self.dataset()
     trainset = [vid for vid in videos if filetail(vid.filename()).split(&#39;_&#39;)[0] in trainPeople]
     testset = [vid for vid in videos if filetail(vid.filename()).split(&#39;_&#39;)[0] not in trainPeople]
-    return (trainset, testset)</code></pre>
+    return (vipy.dataset.Dataset(trainset, &#39;kthactions:train&#39;), vipy.dataset.Dataset(testset, &#39;kthactions:test&#39;))</code></pre>
 </details>
 </dd>
 </dl>
@@ -248,7 +252,7 @@ setTimeout(() => input.focus(), 100);
 </nav>
 </main>
 <footer id="footer">
-<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.10.0</a>.</p>
+<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.11.6</a>.</p>
 </footer>
 </body>
 </html>

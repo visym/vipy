@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
-<meta name="generator" content="pdoc 0.10.0" />
+<meta name="generator" content="pdoc 0.11.6" />
 <meta name="google-site-verification" content="aB8LkQegj94_TJPdrcJm2ldIRWyXY82Jp24Gtkdgyn0" />
 <title>vipy.data.oxford_flowers_102 API documentation</title>
 <meta name="description" content="" />
@@ -26,27 +26,29 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/data/oxford_flowers_102.py#L1-L148" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/data/oxford_flowers_102.py#L1-L152" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">import os
 import vipy.downloader
 import vipy.dataset
-from vipy.util import remkdir
+from vipy.util import remkdir, tocache
 from vipy.image import ImageCategory
 import scipy.io
 
 
 IMAGE_URL = &#39;https://www.robots.ox.ac.uk/~vgg/data/flowers/102/102flowers.tgz&#39;
 ANNO_URL = &#39;https://www.robots.ox.ac.uk/~vgg/data/flowers/102/imagelabels.mat&#39;
-SHA1 = None
+SHA1 = &#39;f5b09dbcd82e3eb09ef97f265ff6d0ae95b75a80&#39;
 
 
 class Flowers102(vipy.dataset.Dataset):
     &#34;&#34;&#34;Project: https://www.robots.ox.ac.uk/~vgg/data/flowers/102&#34;&#34;&#34;
-    def __init__(self, datadir):
+    def __init__(self, datadir=None, redownload=False):
         # Download (if not cached)
+        datadir = tocache(&#39;flowers102&#39;) if datadir is None else datadir
+        
         self._datadir = remkdir(datadir)        
-        if not os.path.exists(os.path.join(self._datadir, &#39;102flowers.tgz&#39;)):
+        if redownload or not os.path.exists(os.path.join(self._datadir, &#39;.complete&#39;)):
             vipy.downloader.download_and_unpack(IMAGE_URL, self._datadir, sha1=None)            
 
         # Read cached JSON
@@ -56,10 +58,12 @@ class Flowers102(vipy.dataset.Dataset):
         self._json = vipy.util.readjson(jsonfile)
 
         # Create dataset
-        imlist = [vipy.image.ImageCategory(filename=f, category=self._json[&#39;labelindex_to_category&#39;][self._json[&#39;imageindex_to_labelindex&#39;][k]]) for (k,f) in enumerate(sorted(vipy.util.findimages(self._datadir)))]
-        super().__init__(imlist, id=&#39;flowers102&#39;)
+        imlist = tuple((f, self._json[&#39;labelindex_to_category&#39;][self._json[&#39;imageindex_to_labelindex&#39;][k]]) for (k,f) in enumerate(sorted(vipy.util.findimages(self._datadir))))
+        loader = lambda x: vipy.image.ImageCategory(filename=x[0], category=x[1])
+        super().__init__(imlist, id=&#39;flowers102&#39;, loader=loader)
 
-
+        open(os.path.join(self._datadir, &#39;.complete&#39;), &#39;a&#39;).close()
+        
     def _cache_annotations(self, outjson=&#39;oxford_flowers_102.json&#39;):        
         if not os.path.exists(os.path.join(self._datadir, &#39;imagelabels.mat&#39;)):
             vipy.downloader.download(ANNO_URL, os.path.join(self._datadir, &#39;imagelabels.mat&#39;), sha1=None)            
@@ -189,21 +193,23 @@ class Flowers102(vipy.dataset.Dataset):
 <dl>
 <dt id="vipy.data.oxford_flowers_102.Flowers102"><code class="flex name class">
 <span>class <span class="ident">Flowers102</span></span>
-<span>(</span><span>datadir)</span>
+<span>(</span><span>datadir=None, redownload=False)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Project: <a href="https://www.robots.ox.ac.uk/~vgg/data/flowers/102">https://www.robots.ox.ac.uk/~vgg/data/flowers/102</a></p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/data/oxford_flowers_102.py#L14-L148" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/data/oxford_flowers_102.py#L14-L152" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Flowers102(vipy.dataset.Dataset):
     &#34;&#34;&#34;Project: https://www.robots.ox.ac.uk/~vgg/data/flowers/102&#34;&#34;&#34;
-    def __init__(self, datadir):
+    def __init__(self, datadir=None, redownload=False):
         # Download (if not cached)
+        datadir = tocache(&#39;flowers102&#39;) if datadir is None else datadir
+        
         self._datadir = remkdir(datadir)        
-        if not os.path.exists(os.path.join(self._datadir, &#39;102flowers.tgz&#39;)):
+        if redownload or not os.path.exists(os.path.join(self._datadir, &#39;.complete&#39;)):
             vipy.downloader.download_and_unpack(IMAGE_URL, self._datadir, sha1=None)            
 
         # Read cached JSON
@@ -213,10 +219,12 @@ class Flowers102(vipy.dataset.Dataset):
         self._json = vipy.util.readjson(jsonfile)
 
         # Create dataset
-        imlist = [vipy.image.ImageCategory(filename=f, category=self._json[&#39;labelindex_to_category&#39;][self._json[&#39;imageindex_to_labelindex&#39;][k]]) for (k,f) in enumerate(sorted(vipy.util.findimages(self._datadir)))]
-        super().__init__(imlist, id=&#39;flowers102&#39;)
+        imlist = tuple((f, self._json[&#39;labelindex_to_category&#39;][self._json[&#39;imageindex_to_labelindex&#39;][k]]) for (k,f) in enumerate(sorted(vipy.util.findimages(self._datadir))))
+        loader = lambda x: vipy.image.ImageCategory(filename=x[0], category=x[1])
+        super().__init__(imlist, id=&#39;flowers102&#39;, loader=loader)
 
-
+        open(os.path.join(self._datadir, &#39;.complete&#39;), &#39;a&#39;).close()
+        
     def _cache_annotations(self, outjson=&#39;oxford_flowers_102.json&#39;):        
         if not os.path.exists(os.path.join(self._datadir, &#39;imagelabels.mat&#39;)):
             vipy.downloader.download(ANNO_URL, os.path.join(self._datadir, &#39;imagelabels.mat&#39;), sha1=None)            
@@ -342,56 +350,46 @@ class Flowers102(vipy.dataset.Dataset):
 <ul class="hlist">
 <li><code><b><a title="vipy.dataset.Dataset" href="../dataset.html#vipy.dataset.Dataset">Dataset</a></b></code>:
 <ul class="hlist">
-<li><code><a title="vipy.dataset.Dataset.archive" href="../dataset.html#vipy.dataset.Dataset.archive">archive</a></code></li>
-<li><code><a title="vipy.dataset.Dataset.categories" href="../dataset.html#vipy.dataset.Dataset.categories">categories</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.batch" href="../dataset.html#vipy.dataset.Dataset.batch">batch</a></code></li>
 <li><code><a title="vipy.dataset.Dataset.chunk" href="../dataset.html#vipy.dataset.Dataset.chunk">chunk</a></code></li>
-<li><code><a title="vipy.dataset.Dataset.class_to_index" href="../dataset.html#vipy.dataset.Dataset.class_to_index">class_to_index</a></code></li>
-<li><code><a title="vipy.dataset.Dataset.classes" href="../dataset.html#vipy.dataset.Dataset.classes">classes</a></code></li>
-<li><code><a title="vipy.dataset.Dataset.classlist" href="../dataset.html#vipy.dataset.Dataset.classlist">classlist</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.chunks" href="../dataset.html#vipy.dataset.Dataset.chunks">chunks</a></code></li>
 <li><code><a title="vipy.dataset.Dataset.clone" href="../dataset.html#vipy.dataset.Dataset.clone">clone</a></code></li>
 <li><code><a title="vipy.dataset.Dataset.count" href="../dataset.html#vipy.dataset.Dataset.count">count</a></code></li>
-<li><code><a title="vipy.dataset.Dataset.countby" href="../dataset.html#vipy.dataset.Dataset.countby">countby</a></code></li>
-<li><code><a title="vipy.dataset.Dataset.density" href="../dataset.html#vipy.dataset.Dataset.density">density</a></code></li>
-<li><code><a title="vipy.dataset.Dataset.duration_in_seconds" href="../dataset.html#vipy.dataset.Dataset.duration_in_seconds">duration_in_seconds</a></code></li>
 <li><code><a title="vipy.dataset.Dataset.filter" href="../dataset.html#vipy.dataset.Dataset.filter">filter</a></code></li>
-<li><code><a title="vipy.dataset.Dataset.flatten" href="../dataset.html#vipy.dataset.Dataset.flatten">flatten</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.frequency" href="../dataset.html#vipy.dataset.Dataset.frequency">frequency</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.from_directory" href="../dataset.html#vipy.dataset.Dataset.from_directory">from_directory</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.from_image_urls" href="../dataset.html#vipy.dataset.Dataset.from_image_urls">from_image_urls</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.groupby" href="../dataset.html#vipy.dataset.Dataset.groupby">groupby</a></code></li>
 <li><code><a title="vipy.dataset.Dataset.id" href="../dataset.html#vipy.dataset.Dataset.id">id</a></code></li>
-<li><code><a title="vipy.dataset.Dataset.index_to_class" href="../dataset.html#vipy.dataset.Dataset.index_to_class">index_to_class</a></code></li>
-<li><code><a title="vipy.dataset.Dataset.inverse_frequency_weight" href="../dataset.html#vipy.dataset.Dataset.inverse_frequency_weight">inverse_frequency_weight</a></code></li>
-<li><code><a title="vipy.dataset.Dataset.istype" href="../dataset.html#vipy.dataset.Dataset.istype">istype</a></code></li>
-<li><code><a title="vipy.dataset.Dataset.jsondir" href="../dataset.html#vipy.dataset.Dataset.jsondir">jsondir</a></code></li>
-<li><code><a title="vipy.dataset.Dataset.label_to_index" href="../dataset.html#vipy.dataset.Dataset.label_to_index">label_to_index</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.identity_shuffler" href="../dataset.html#vipy.dataset.Dataset.identity_shuffler">identity_shuffler</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.index" href="../dataset.html#vipy.dataset.Dataset.index">index</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.inverse_frequency" href="../dataset.html#vipy.dataset.Dataset.inverse_frequency">inverse_frequency</a></code></li>
 <li><code><a title="vipy.dataset.Dataset.list" href="../dataset.html#vipy.dataset.Dataset.list">list</a></code></li>
 <li><code><a title="vipy.dataset.Dataset.load" href="../dataset.html#vipy.dataset.Dataset.load">load</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.localmap" href="../dataset.html#vipy.dataset.Dataset.localmap">localmap</a></code></li>
 <li><code><a title="vipy.dataset.Dataset.map" href="../dataset.html#vipy.dataset.Dataset.map">map</a></code></li>
-<li><code><a title="vipy.dataset.Dataset.merge" href="../dataset.html#vipy.dataset.Dataset.merge">merge</a></code></li>
 <li><code><a title="vipy.dataset.Dataset.minibatch" href="../dataset.html#vipy.dataset.Dataset.minibatch">minibatch</a></code></li>
-<li><code><a title="vipy.dataset.Dataset.multilabel_inverse_frequency_weight" href="../dataset.html#vipy.dataset.Dataset.multilabel_inverse_frequency_weight">multilabel_inverse_frequency_weight</a></code></li>
-<li><code><a title="vipy.dataset.Dataset.num_categories" href="../dataset.html#vipy.dataset.Dataset.num_categories">num_categories</a></code></li>
-<li><code><a title="vipy.dataset.Dataset.num_classes" href="../dataset.html#vipy.dataset.Dataset.num_classes">num_classes</a></code></li>
-<li><code><a title="vipy.dataset.Dataset.num_labels" href="../dataset.html#vipy.dataset.Dataset.num_labels">num_labels</a></code></li>
-<li><code><a title="vipy.dataset.Dataset.percentage" href="../dataset.html#vipy.dataset.Dataset.percentage">percentage</a></code></li>
-<li><code><a title="vipy.dataset.Dataset.replace" href="../dataset.html#vipy.dataset.Dataset.replace">replace</a></code></li>
-<li><code><a title="vipy.dataset.Dataset.save" href="../dataset.html#vipy.dataset.Dataset.save">save</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.partition" href="../dataset.html#vipy.dataset.Dataset.partition">partition</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.pipeline" href="../dataset.html#vipy.dataset.Dataset.pipeline">pipeline</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.raw" href="../dataset.html#vipy.dataset.Dataset.raw">raw</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.repeat" href="../dataset.html#vipy.dataset.Dataset.repeat">repeat</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.sample" href="../dataset.html#vipy.dataset.Dataset.sample">sample</a></code></li>
 <li><code><a title="vipy.dataset.Dataset.set" href="../dataset.html#vipy.dataset.Dataset.set">set</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.shift" href="../dataset.html#vipy.dataset.Dataset.shift">shift</a></code></li>
 <li><code><a title="vipy.dataset.Dataset.shuffle" href="../dataset.html#vipy.dataset.Dataset.shuffle">shuffle</a></code></li>
-<li><code><a title="vipy.dataset.Dataset.shuffler" href="../dataset.html#vipy.dataset.Dataset.shuffler">shuffler</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.slice" href="../dataset.html#vipy.dataset.Dataset.slice">slice</a></code></li>
 <li><code><a title="vipy.dataset.Dataset.sort" href="../dataset.html#vipy.dataset.Dataset.sort">sort</a></code></li>
 <li><code><a title="vipy.dataset.Dataset.split" href="../dataset.html#vipy.dataset.Dataset.split">split</a></code></li>
-<li><code><a title="vipy.dataset.Dataset.split_by_videoid" href="../dataset.html#vipy.dataset.Dataset.split_by_videoid">split_by_videoid</a></code></li>
-<li><code><a title="vipy.dataset.Dataset.synonym" href="../dataset.html#vipy.dataset.Dataset.synonym">synonym</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.streaming_map" href="../dataset.html#vipy.dataset.Dataset.streaming_map">streaming_map</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.streaming_shuffler" href="../dataset.html#vipy.dataset.Dataset.streaming_shuffler">streaming_shuffler</a></code></li>
 <li><code><a title="vipy.dataset.Dataset.take" href="../dataset.html#vipy.dataset.Dataset.take">take</a></code></li>
-<li><code><a title="vipy.dataset.Dataset.take_per_category" href="../dataset.html#vipy.dataset.Dataset.take_per_category">take_per_category</a></code></li>
-<li><code><a title="vipy.dataset.Dataset.takefilter" href="../dataset.html#vipy.dataset.Dataset.takefilter">takefilter</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.take_fraction" href="../dataset.html#vipy.dataset.Dataset.take_fraction">take_fraction</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.takeby" href="../dataset.html#vipy.dataset.Dataset.takeby">takeby</a></code></li>
 <li><code><a title="vipy.dataset.Dataset.takelist" href="../dataset.html#vipy.dataset.Dataset.takelist">takelist</a></code></li>
 <li><code><a title="vipy.dataset.Dataset.takeone" href="../dataset.html#vipy.dataset.Dataset.takeone">takeone</a></code></li>
-<li><code><a title="vipy.dataset.Dataset.to_torch" href="../dataset.html#vipy.dataset.Dataset.to_torch">to_torch</a></code></li>
-<li><code><a title="vipy.dataset.Dataset.to_torch_tensordir" href="../dataset.html#vipy.dataset.Dataset.to_torch_tensordir">to_torch_tensordir</a></code></li>
-<li><code><a title="vipy.dataset.Dataset.tohtml" href="../dataset.html#vipy.dataset.Dataset.tohtml">tohtml</a></code></li>
-<li><code><a title="vipy.dataset.Dataset.tojsondir" href="../dataset.html#vipy.dataset.Dataset.tojsondir">tojsondir</a></code></li>
-<li><code><a title="vipy.dataset.Dataset.tolist" href="../dataset.html#vipy.dataset.Dataset.tolist">tolist</a></code></li>
-<li><code><a title="vipy.dataset.Dataset.video_duration_in_seconds" href="../dataset.html#vipy.dataset.Dataset.video_duration_in_seconds">video_duration_in_seconds</a></code></li>
-<li><code><a title="vipy.dataset.Dataset.video_montage" href="../dataset.html#vipy.dataset.Dataset.video_montage">video_montage</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.truncate" href="../dataset.html#vipy.dataset.Dataset.truncate">truncate</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.tuple" href="../dataset.html#vipy.dataset.Dataset.tuple">tuple</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.uniform_shuffler" href="../dataset.html#vipy.dataset.Dataset.uniform_shuffler">uniform_shuffler</a></code></li>
 <li><code><a title="vipy.dataset.Dataset.zip" href="../dataset.html#vipy.dataset.Dataset.zip">zip</a></code></li>
 </ul>
 </li>
@@ -474,7 +472,7 @@ setTimeout(() => input.focus(), 100);
 </nav>
 </main>
 <footer id="footer">
-<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.10.0</a>.</p>
+<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.11.6</a>.</p>
 </footer>
 </body>
 </html>

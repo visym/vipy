@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
-<meta name="generator" content="pdoc 0.10.0" />
+<meta name="generator" content="pdoc 0.11.6" />
 <meta name="google-site-verification" content="aB8LkQegj94_TJPdrcJm2ldIRWyXY82Jp24Gtkdgyn0" />
 <title>vipy.data.charades API documentation</title>
 <meta name="description" content="" />
@@ -26,7 +26,7 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/data/charades.py#L1-L75" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/data/charades.py#L1-L76" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">import os
 from vipy.util import filetail, remkdir, readjson, groupbyasdict, filefull, readlist, readcsv
@@ -44,7 +44,8 @@ URL_DATA = &#39;http://ai2-website.s3.amazonaws.com/data/Charades_v1.zip&#39;
 
 class Charades(object):
     def __init__(self, datadir, annodir):
-        &#34;&#34;&#34;Charades, provide paths such that datadir contains the contents of &#39;http://ai2-website.s3.amazonaws.com/data/Charades_v1.zip&#39; and annodir contains &#39;http://ai2-website.s3.amazonaws.com/data/Charades.zip&#39;&#34;&#34;&#34;
+        &#34;&#34;&#34;Charades, provide paths such that datadir contains the contents of &#39;http://ai2-website.s3.amazonaws.com/data/Charades_v1.zip&#39; and annodir contains &#39;http://ai2-website.s3.amazonaws.com/data/Charades.zip&#39;.  
+        These are license restructed and must be downloaded by the user&#34;&#34;&#34;
         self.datadir = datadir
         self.annodir = annodir
         if not self._isdownloaded():
@@ -119,15 +120,17 @@ class Charades(object):
 <span>(</span><span>datadir, annodir)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Charades, provide paths such that datadir contains the contents of 'http://ai2-website.s3.amazonaws.com/data/Charades_v1.zip' and annodir contains 'http://ai2-website.s3.amazonaws.com/data/Charades.zip'</p></div>
+<div class="desc"><p>Charades, provide paths such that datadir contains the contents of 'http://ai2-website.s3.amazonaws.com/data/Charades_v1.zip' and annodir contains 'http://ai2-website.s3.amazonaws.com/data/Charades.zip'.<br>
+These are license restructed and must be downloaded by the user</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/data/charades.py#L15-L74" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/data/charades.py#L15-L75" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Charades(object):
     def __init__(self, datadir, annodir):
-        &#34;&#34;&#34;Charades, provide paths such that datadir contains the contents of &#39;http://ai2-website.s3.amazonaws.com/data/Charades_v1.zip&#39; and annodir contains &#39;http://ai2-website.s3.amazonaws.com/data/Charades.zip&#39;&#34;&#34;&#34;
+        &#34;&#34;&#34;Charades, provide paths such that datadir contains the contents of &#39;http://ai2-website.s3.amazonaws.com/data/Charades_v1.zip&#39; and annodir contains &#39;http://ai2-website.s3.amazonaws.com/data/Charades.zip&#39;.  
+        These are license restructed and must be downloaded by the user&#34;&#34;&#34;
         self.datadir = datadir
         self.annodir = annodir
         if not self._isdownloaded():
@@ -196,7 +199,7 @@ class Charades(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/data/charades.py#L58-L59" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/data/charades.py#L59-L60" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def categories(self):
     return {x.split(&#39; &#39;, 1)[0]:x.split(&#39; &#39;, 1)[1].strip() for x in readlist(os.path.join(self.annodir, &#39;Charades_v1_classes.txt&#39;))}</code></pre>
@@ -210,7 +213,7 @@ class Charades(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/data/charades.py#L67-L74" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/data/charades.py#L68-L75" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def review(self, outfile=None, mindim=1024, n=25):
     &#34;&#34;&#34;Generate a standalone HTML file containing quicklooks for each annotated activity in the train set&#34;&#34;&#34;
@@ -230,7 +233,7 @@ class Charades(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/data/charades.py#L64-L65" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/data/charades.py#L65-L66" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def testset(self):
     return self._dataset(os.path.join(self.annodir, &#39;Charades_v1_test.csv&#39;))</code></pre>
@@ -244,7 +247,7 @@ class Charades(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/data/charades.py#L61-L62" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/data/charades.py#L62-L63" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def trainset(self):
     return self._dataset(os.path.join(self.annodir, &#39;Charades_v1_train.csv&#39;))</code></pre>
@@ -335,7 +338,7 @@ setTimeout(() => input.focus(), 100);
 </nav>
 </main>
 <footer id="footer">
-<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.10.0</a>.</p>
+<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.11.6</a>.</p>
 </footer>
 </body>
 </html>

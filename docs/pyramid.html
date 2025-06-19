@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
-<meta name="generator" content="pdoc 0.10.0" />
+<meta name="generator" content="pdoc 0.11.6" />
 <meta name="google-site-verification" content="aB8LkQegj94_TJPdrcJm2ldIRWyXY82Jp24Gtkdgyn0" />
 <title>vipy.pyramid API documentation</title>
 <meta name="description" content="" />
@@ -26,14 +26,16 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/pyramid.py#L1-L181" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/pyramid.py#L1-L332" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">import vipy
 import numpy as np
 import copy
+import math
 
 vipy.util.try_import(&#39;torch&#39;)
 import torch
+
 
 
 class GaussianPyramid():
@@ -163,7 +165,7 @@ class LaplacianPyramid():
 
     
 class Foveation(LaplacianPyramid):
-    def __init__(self, im, mode=&#39;log-circle&#39;, s=None):
+    def __init__(self, im, mode=&#39;log-circle&#39;, s=None):        
         super().__init__(im)
 
         (H,W) = (im.height(), im.width())
@@ -208,7 +210,156 @@ class Foveation(LaplacianPyramid):
         for (im,c) in zip(self._immasks, range(0, 255, len(self))):
             img = im.clone().mat2gray(min=0).numpy()
             imgmask += c*img
-        return vipy.image.Image(array=imgmask)</code></pre>
+        return vipy.image.Image(array=imgmask)
+
+    
+class SteerablePyramid():
+    def __init__(self, im):
+        vipy.util.try_import(&#39;pyrtools&#39;)
+        import pyrtools
+        
+        assert isinstance(im, vipy.image.Image)
+        assert im.mindim() &gt;= 32        
+        self._channels = [pyrtools.pyramids.SteerablePyramidFreq(imc.load().array().astype(float), height=&#39;auto&#39;, order=3) for imc in im.channel()]                
+        
+    @property
+    def num_scales(self):
+        return self._channels[0].num_scales
+
+    @property
+    def num_orientations(self):
+        return self._channels[0].num_orientations
+
+    @property
+    def num_channels(self):
+        return len(self._channels)           
+        
+    def bandpass(self, channel):
+        return [self._channels[channel].pyr_coeffs[(s,o)] for s in range(self.num_scales) for o in range(self.num_orientations)]
+    
+    def lowpass(self, channel):
+        return self._channels[channel].pyr_coeffs[&#39;residual_lowpass&#39;]
+
+    def highpass(self, channel):
+        return self._channels[channel].pyr_coeffs[&#39;residual_highpass&#39;]        
+    
+    def synthesis(self):        
+        return vipy.image.Image(array=np.stack([pyr.recon_pyr() for pyr in self._channels], axis=2).astype(np.float32)).mat2gray()
+
+    def multichannel(self):
+        &#34;&#34;&#34;a multichannel image is an image of the same shape as the input, but with channels from pyramid decomposition.  Coefficients are resized using bilinear interpolation.&#34;&#34;&#34;
+        (H,W) = self.highpass(0).shape
+        resizer = lambda x: np.array(torch.nn.functional.interpolate(torch.tensor(x).view(1,1,x.shape[0],x.shape[1]), size=(H,W), mode=&#39;bilinear&#39;)).squeeze()            
+        return vipy.image.Image(array=np.stack([resizer(x) for c in range(self.num_channels) for x in self.bandpass(c)+[self.lowpass(c),self.highpass(c)]], axis=2).astype(np.float32))
+
+    def montage(self):
+        &#34;&#34;&#34;scales by row, orientations by col, channels merged back into color image, last image is lowpass&#34;&#34;&#34;
+        imlist = [vipy.image.Image(array=np.stack([self._channels[c].pyr_coeffs[(s,o)] for c in range(self.num_channels)], axis=2).astype(np.float32)) for s in range(self.num_scales) for o in range(self.num_orientations)]
+        imlist += [vipy.image.Image(array=np.stack([self.lowpass(c) for c in range(self.num_channels)], axis=2).astype(np.float32))]
+        imlist += [vipy.image.Image(array=np.stack([self.highpass(c) for c in range(self.num_channels)], axis=2).astype(np.float32))]        
+        return vipy.visualize.montage([im.mat2gray().rgb() for im in imlist], gridrows=self.num_scales+1, gridcols=self.num_orientations)
+
+    
+
+class BatchSteerablePyramid():
+    def __init__(self, height, width, channels, device=&#39;cpu&#39;, orientations=4):
+        vipy.util.try_import(&#39;plenoptic&#39;)
+        import plenoptic as po
+
+        assert height &gt;= 32 and width &gt;= 32        
+        self._pyr = po.simulate.SteerablePyramidFreq(height=&#39;auto&#39;, image_shape=[height, width], twidth=1, order=orientations-1, downsample=False, is_complex=True).to(device)
+        self._pyr.eval()
+        self._imheight = height
+        self._imwidth = width
+        self._imchannels = channels
+        self._device = device
+        self._pyr_info = None
+        self._tensor = None
+        
+    def device(self, d=None):
+        if d is not None:
+            self._device = d  # check device in self._pyr._buffers[&#39;lo0mask&#39;], or just store here
+            self._pyr = self._pyr.cpu() if d == &#39;cpu&#39; else self._pyr.to(d)
+            return self
+        return self._device
+                
+    @property
+    def num_scales(self):
+        return self._pyr.num_scales
+
+    @property
+    def num_orientations(self):
+        return self._pyr.num_orientations
+
+    @property
+    def num_channels(self):
+        return (self._pyr.num_orientations*self._pyr.num_scales + 2)*self._imchannels
+
+    def to(self, dev):
+        return self.device(dev)    
+
+    def forward(self, x):
+        assert (torch.is_tensor(x) and x.ndim == 4) or isinstance(x, vipy.image.Image) or (isinstance(x, (list, tuple)) and all([isinstance(im, vipy.image.Image) for im in x]))
+
+        x = torch.stack([im.torch(&#39;CHW&#39;) for im in vipy.util.tolist(x)]) if not torch.is_tensor(x) else x
+        assert x.shape[2] == self._imheight and x.shape[3] == self._imwidth, &#34;wrong input shape&#34;
+        assert x.shape[1] == self._imchannels, &#34;wrong input channels&#34;
+
+        with torch.no_grad():        
+            (self._tensor, self._pyr_info) =  self._pyr.convert_pyr_to_tensor(self._pyr.forward(x.to(self.device())))
+        return self
+
+    def forwarded(self):
+        return self._tensor is not None
+    
+    def tensor(self):
+        &#34;&#34;&#34;a pyramid tensor is an NxCxHxW tensor (same shape as the input), but with channels from complex (even, odd) pyramid coefficients
+        The first channel will be the residual highpass and the last will be the residual lowpass. Each band is then a separate channel in (scale, orientation) order
+
+        input is NxCxHxW tensor
+        &#34;&#34;&#34;
+        assert self.forwarded() 
+        return self._tensor
+
+    def band(self, scale, orientation):
+        assert scale &lt;= self.num_scales and orientation &lt;= self.num_orientations
+        return self.tensor()[:, 1+scale*self.num_orientations + orientation,:,:]
+
+    def magnitude(self):
+        &#34;&#34;&#34;return magnitude component of complex steerable pyramid&#34;&#34;&#34;
+        return self.tensor().abs()
+
+    def phase(self):
+        &#34;&#34;&#34;return phase component of complex steerable pyramid&#34;&#34;&#34;
+        return self.tensor().angle()        
+    
+    def montage(self, x):
+        &#34;&#34;&#34;return a montage visualization of the pyramid, scales by row, orientations by col, channels merged back into color image, last row is highpass and lowpass&#34;&#34;&#34;
+        assert self.forwarded()
+        assert torch.is_tensor(x) and x.ndim == 4 and x.shape == self._tensor.shape
+        
+        (C,N) = (x.shape[1], x.shape[1]//self._imchannels)
+        return vipy.visualize.montage([vipy.image.Image.fromtorch(x[0,j::N,:,:]).mat2gray().rgb() for j in list(range(1,N-1))+[0,N-1]],
+                                       gridrows=self.num_scales+1, gridcols=self.num_orientations)                
+
+        
+    def synthesis(self, x):
+        &#34;&#34;&#34;Generate a synthesis of the multichannel tensor x&#34;&#34;&#34;
+        assert self.forwarded()
+        assert torch.is_tensor(x) and x.ndim == 4 and x.shape == self._tensor.shape
+
+        img = self._pyr.recon_pyr(self._pyr.convert_tensor_to_pyr(x, pyr_keys=self._pyr_info[2], num_channels=self._pyr_info[0], split_complex=self._pyr_info[1]))
+        return [vipy.image.Image.fromtorch(t) for t in img]  # one image per batch element
+
+    
+    def phase_congruency(self, eps=1E-6):
+        (M,P) = (self.magnitude()[:,1:-1,:,:], self.phase()[:,1:-1,:,:])
+        return torch.sum( M * torch.cos(P - ((M*P).sum(dim=1, keepdims=True) / (eps + M.sum(dim=1, keepdims=True)))), dim=1, keepdims=True) / (eps + torch.sum(M, dim=1, keepdims=True))
+
+    def zero_crossing(self, eps=1E-6):
+        (M,P) = (self.magnitude()[:,1:-1,:,:], self.phase()[:,1:-1,:,:])
+        return torch.sum( M*torch.nn.functional.relu(torch.cos(P)), dim=1, keepdims=True)
+    </code></pre>
 </details>
 </section>
 <section>
@@ -220,6 +371,366 @@ class Foveation(LaplacianPyramid):
 <section>
 <h2 class="section-title" id="header-classes">Classes</h2>
 <dl>
+<dt id="vipy.pyramid.BatchSteerablePyramid"><code class="flex name class">
+<span>class <span class="ident">BatchSteerablePyramid</span></span>
+<span>(</span><span>height, width, channels, device='cpu', orientations=4)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/pyramid.py#L234-L331" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">class BatchSteerablePyramid():
+    def __init__(self, height, width, channels, device=&#39;cpu&#39;, orientations=4):
+        vipy.util.try_import(&#39;plenoptic&#39;)
+        import plenoptic as po
+
+        assert height &gt;= 32 and width &gt;= 32        
+        self._pyr = po.simulate.SteerablePyramidFreq(height=&#39;auto&#39;, image_shape=[height, width], twidth=1, order=orientations-1, downsample=False, is_complex=True).to(device)
+        self._pyr.eval()
+        self._imheight = height
+        self._imwidth = width
+        self._imchannels = channels
+        self._device = device
+        self._pyr_info = None
+        self._tensor = None
+        
+    def device(self, d=None):
+        if d is not None:
+            self._device = d  # check device in self._pyr._buffers[&#39;lo0mask&#39;], or just store here
+            self._pyr = self._pyr.cpu() if d == &#39;cpu&#39; else self._pyr.to(d)
+            return self
+        return self._device
+                
+    @property
+    def num_scales(self):
+        return self._pyr.num_scales
+
+    @property
+    def num_orientations(self):
+        return self._pyr.num_orientations
+
+    @property
+    def num_channels(self):
+        return (self._pyr.num_orientations*self._pyr.num_scales + 2)*self._imchannels
+
+    def to(self, dev):
+        return self.device(dev)    
+
+    def forward(self, x):
+        assert (torch.is_tensor(x) and x.ndim == 4) or isinstance(x, vipy.image.Image) or (isinstance(x, (list, tuple)) and all([isinstance(im, vipy.image.Image) for im in x]))
+
+        x = torch.stack([im.torch(&#39;CHW&#39;) for im in vipy.util.tolist(x)]) if not torch.is_tensor(x) else x
+        assert x.shape[2] == self._imheight and x.shape[3] == self._imwidth, &#34;wrong input shape&#34;
+        assert x.shape[1] == self._imchannels, &#34;wrong input channels&#34;
+
+        with torch.no_grad():        
+            (self._tensor, self._pyr_info) =  self._pyr.convert_pyr_to_tensor(self._pyr.forward(x.to(self.device())))
+        return self
+
+    def forwarded(self):
+        return self._tensor is not None
+    
+    def tensor(self):
+        &#34;&#34;&#34;a pyramid tensor is an NxCxHxW tensor (same shape as the input), but with channels from complex (even, odd) pyramid coefficients
+        The first channel will be the residual highpass and the last will be the residual lowpass. Each band is then a separate channel in (scale, orientation) order
+
+        input is NxCxHxW tensor
+        &#34;&#34;&#34;
+        assert self.forwarded() 
+        return self._tensor
+
+    def band(self, scale, orientation):
+        assert scale &lt;= self.num_scales and orientation &lt;= self.num_orientations
+        return self.tensor()[:, 1+scale*self.num_orientations + orientation,:,:]
+
+    def magnitude(self):
+        &#34;&#34;&#34;return magnitude component of complex steerable pyramid&#34;&#34;&#34;
+        return self.tensor().abs()
+
+    def phase(self):
+        &#34;&#34;&#34;return phase component of complex steerable pyramid&#34;&#34;&#34;
+        return self.tensor().angle()        
+    
+    def montage(self, x):
+        &#34;&#34;&#34;return a montage visualization of the pyramid, scales by row, orientations by col, channels merged back into color image, last row is highpass and lowpass&#34;&#34;&#34;
+        assert self.forwarded()
+        assert torch.is_tensor(x) and x.ndim == 4 and x.shape == self._tensor.shape
+        
+        (C,N) = (x.shape[1], x.shape[1]//self._imchannels)
+        return vipy.visualize.montage([vipy.image.Image.fromtorch(x[0,j::N,:,:]).mat2gray().rgb() for j in list(range(1,N-1))+[0,N-1]],
+                                       gridrows=self.num_scales+1, gridcols=self.num_orientations)                
+
+        
+    def synthesis(self, x):
+        &#34;&#34;&#34;Generate a synthesis of the multichannel tensor x&#34;&#34;&#34;
+        assert self.forwarded()
+        assert torch.is_tensor(x) and x.ndim == 4 and x.shape == self._tensor.shape
+
+        img = self._pyr.recon_pyr(self._pyr.convert_tensor_to_pyr(x, pyr_keys=self._pyr_info[2], num_channels=self._pyr_info[0], split_complex=self._pyr_info[1]))
+        return [vipy.image.Image.fromtorch(t) for t in img]  # one image per batch element
+
+    
+    def phase_congruency(self, eps=1E-6):
+        (M,P) = (self.magnitude()[:,1:-1,:,:], self.phase()[:,1:-1,:,:])
+        return torch.sum( M * torch.cos(P - ((M*P).sum(dim=1, keepdims=True) / (eps + M.sum(dim=1, keepdims=True)))), dim=1, keepdims=True) / (eps + torch.sum(M, dim=1, keepdims=True))
+
+    def zero_crossing(self, eps=1E-6):
+        (M,P) = (self.magnitude()[:,1:-1,:,:], self.phase()[:,1:-1,:,:])
+        return torch.sum( M*torch.nn.functional.relu(torch.cos(P)), dim=1, keepdims=True)</code></pre>
+</details>
+<h3>Instance variables</h3>
+<dl>
+<dt id="vipy.pyramid.BatchSteerablePyramid.num_channels"><code class="name">var <span class="ident">num_channels</span></code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/pyramid.py#L264-L266" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">@property
+def num_channels(self):
+    return (self._pyr.num_orientations*self._pyr.num_scales + 2)*self._imchannels</code></pre>
+</details>
+</dd>
+<dt id="vipy.pyramid.BatchSteerablePyramid.num_orientations"><code class="name">var <span class="ident">num_orientations</span></code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/pyramid.py#L260-L262" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">@property
+def num_orientations(self):
+    return self._pyr.num_orientations</code></pre>
+</details>
+</dd>
+<dt id="vipy.pyramid.BatchSteerablePyramid.num_scales"><code class="name">var <span class="ident">num_scales</span></code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/pyramid.py#L256-L258" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">@property
+def num_scales(self):
+    return self._pyr.num_scales</code></pre>
+</details>
+</dd>
+</dl>
+<h3>Methods</h3>
+<dl>
+<dt id="vipy.pyramid.BatchSteerablePyramid.band"><code class="name flex">
+<span>def <span class="ident">band</span></span>(<span>self, scale, orientation)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/pyramid.py#L294-L296" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def band(self, scale, orientation):
+    assert scale &lt;= self.num_scales and orientation &lt;= self.num_orientations
+    return self.tensor()[:, 1+scale*self.num_orientations + orientation,:,:]</code></pre>
+</details>
+</dd>
+<dt id="vipy.pyramid.BatchSteerablePyramid.device"><code class="name flex">
+<span>def <span class="ident">device</span></span>(<span>self, d=None)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/pyramid.py#L249-L254" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def device(self, d=None):
+    if d is not None:
+        self._device = d  # check device in self._pyr._buffers[&#39;lo0mask&#39;], or just store here
+        self._pyr = self._pyr.cpu() if d == &#39;cpu&#39; else self._pyr.to(d)
+        return self
+    return self._device</code></pre>
+</details>
+</dd>
+<dt id="vipy.pyramid.BatchSteerablePyramid.forward"><code class="name flex">
+<span>def <span class="ident">forward</span></span>(<span>self, x)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/pyramid.py#L271-L280" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def forward(self, x):
+    assert (torch.is_tensor(x) and x.ndim == 4) or isinstance(x, vipy.image.Image) or (isinstance(x, (list, tuple)) and all([isinstance(im, vipy.image.Image) for im in x]))
+
+    x = torch.stack([im.torch(&#39;CHW&#39;) for im in vipy.util.tolist(x)]) if not torch.is_tensor(x) else x
+    assert x.shape[2] == self._imheight and x.shape[3] == self._imwidth, &#34;wrong input shape&#34;
+    assert x.shape[1] == self._imchannels, &#34;wrong input channels&#34;
+
+    with torch.no_grad():        
+        (self._tensor, self._pyr_info) =  self._pyr.convert_pyr_to_tensor(self._pyr.forward(x.to(self.device())))
+    return self</code></pre>
+</details>
+</dd>
+<dt id="vipy.pyramid.BatchSteerablePyramid.forwarded"><code class="name flex">
+<span>def <span class="ident">forwarded</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/pyramid.py#L282-L283" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def forwarded(self):
+    return self._tensor is not None</code></pre>
+</details>
+</dd>
+<dt id="vipy.pyramid.BatchSteerablePyramid.magnitude"><code class="name flex">
+<span>def <span class="ident">magnitude</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>return magnitude component of complex steerable pyramid</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/pyramid.py#L298-L300" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def magnitude(self):
+    &#34;&#34;&#34;return magnitude component of complex steerable pyramid&#34;&#34;&#34;
+    return self.tensor().abs()</code></pre>
+</details>
+</dd>
+<dt id="vipy.pyramid.BatchSteerablePyramid.montage"><code class="name flex">
+<span>def <span class="ident">montage</span></span>(<span>self, x)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>return a montage visualization of the pyramid, scales by row, orientations by col, channels merged back into color image, last row is highpass and lowpass</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/pyramid.py#L306-L313" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def montage(self, x):
+    &#34;&#34;&#34;return a montage visualization of the pyramid, scales by row, orientations by col, channels merged back into color image, last row is highpass and lowpass&#34;&#34;&#34;
+    assert self.forwarded()
+    assert torch.is_tensor(x) and x.ndim == 4 and x.shape == self._tensor.shape
+    
+    (C,N) = (x.shape[1], x.shape[1]//self._imchannels)
+    return vipy.visualize.montage([vipy.image.Image.fromtorch(x[0,j::N,:,:]).mat2gray().rgb() for j in list(range(1,N-1))+[0,N-1]],
+                                   gridrows=self.num_scales+1, gridcols=self.num_orientations)                </code></pre>
+</details>
+</dd>
+<dt id="vipy.pyramid.BatchSteerablePyramid.phase"><code class="name flex">
+<span>def <span class="ident">phase</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>return phase component of complex steerable pyramid</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/pyramid.py#L302-L304" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def phase(self):
+    &#34;&#34;&#34;return phase component of complex steerable pyramid&#34;&#34;&#34;
+    return self.tensor().angle()        </code></pre>
+</details>
+</dd>
+<dt id="vipy.pyramid.BatchSteerablePyramid.phase_congruency"><code class="name flex">
+<span>def <span class="ident">phase_congruency</span></span>(<span>self, eps=1e-06)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/pyramid.py#L325-L327" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def phase_congruency(self, eps=1E-6):
+    (M,P) = (self.magnitude()[:,1:-1,:,:], self.phase()[:,1:-1,:,:])
+    return torch.sum( M * torch.cos(P - ((M*P).sum(dim=1, keepdims=True) / (eps + M.sum(dim=1, keepdims=True)))), dim=1, keepdims=True) / (eps + torch.sum(M, dim=1, keepdims=True))</code></pre>
+</details>
+</dd>
+<dt id="vipy.pyramid.BatchSteerablePyramid.synthesis"><code class="name flex">
+<span>def <span class="ident">synthesis</span></span>(<span>self, x)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Generate a synthesis of the multichannel tensor x</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/pyramid.py#L316-L322" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def synthesis(self, x):
+    &#34;&#34;&#34;Generate a synthesis of the multichannel tensor x&#34;&#34;&#34;
+    assert self.forwarded()
+    assert torch.is_tensor(x) and x.ndim == 4 and x.shape == self._tensor.shape
+
+    img = self._pyr.recon_pyr(self._pyr.convert_tensor_to_pyr(x, pyr_keys=self._pyr_info[2], num_channels=self._pyr_info[0], split_complex=self._pyr_info[1]))
+    return [vipy.image.Image.fromtorch(t) for t in img]  # one image per batch element</code></pre>
+</details>
+</dd>
+<dt id="vipy.pyramid.BatchSteerablePyramid.tensor"><code class="name flex">
+<span>def <span class="ident">tensor</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>a pyramid tensor is an NxCxHxW tensor (same shape as the input), but with channels from complex (even, odd) pyramid coefficients
+The first channel will be the residual highpass and the last will be the residual lowpass. Each band is then a separate channel in (scale, orientation) order</p>
+<p>input is NxCxHxW tensor</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/pyramid.py#L285-L292" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def tensor(self):
+    &#34;&#34;&#34;a pyramid tensor is an NxCxHxW tensor (same shape as the input), but with channels from complex (even, odd) pyramid coefficients
+    The first channel will be the residual highpass and the last will be the residual lowpass. Each band is then a separate channel in (scale, orientation) order
+
+    input is NxCxHxW tensor
+    &#34;&#34;&#34;
+    assert self.forwarded() 
+    return self._tensor</code></pre>
+</details>
+</dd>
+<dt id="vipy.pyramid.BatchSteerablePyramid.to"><code class="name flex">
+<span>def <span class="ident">to</span></span>(<span>self, dev)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/pyramid.py#L268-L269" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def to(self, dev):
+    return self.device(dev)    </code></pre>
+</details>
+</dd>
+<dt id="vipy.pyramid.BatchSteerablePyramid.zero_crossing"><code class="name flex">
+<span>def <span class="ident">zero_crossing</span></span>(<span>self, eps=1e-06)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/pyramid.py#L329-L331" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def zero_crossing(self, eps=1E-6):
+    (M,P) = (self.magnitude()[:,1:-1,:,:], self.phase()[:,1:-1,:,:])
+    return torch.sum( M*torch.nn.functional.relu(torch.cos(P)), dim=1, keepdims=True)</code></pre>
+</details>
+</dd>
+</dl>
+</dd>
 <dt id="vipy.pyramid.Foveation"><code class="flex name class">
 <span>class <span class="ident">Foveation</span></span>
 <span>(</span><span>im, mode='log-circle', s=None)</span>
@@ -229,10 +740,10 @@ class Foveation(LaplacianPyramid):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/pyramid.py#L135-L181" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/pyramid.py#L137-L183" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Foveation(LaplacianPyramid):
-    def __init__(self, im, mode=&#39;log-circle&#39;, s=None):
+    def __init__(self, im, mode=&#39;log-circle&#39;, s=None):        
         super().__init__(im)
 
         (H,W) = (im.height(), im.width())
@@ -293,7 +804,7 @@ class Foveation(LaplacianPyramid):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/pyramid.py#L171-L173" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/pyramid.py#L173-L175" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def foveate(self, tx=0, ty=0):
     &#34;&#34;&#34;Foveate the input image at location (tx, ty) in scaled image coordinates where (0,0) is the center and (1,1) is the upper left&#34;&#34;&#34;        
@@ -308,7 +819,7 @@ class Foveation(LaplacianPyramid):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/pyramid.py#L175-L181" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/pyramid.py#L177-L183" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def visualize(self):
     &#34;&#34;&#34;Show the fovea density&#34;&#34;&#34;
@@ -338,7 +849,7 @@ class Foveation(LaplacianPyramid):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/pyramid.py#L9-L45" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/pyramid.py#L11-L47" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class GaussianPyramid():
     &#34;&#34;&#34;vipy.pyramid.GaussianPyramid() class&#34;&#34;&#34;
@@ -388,7 +899,7 @@ class Foveation(LaplacianPyramid):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/pyramid.py#L41-L42" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/pyramid.py#L43-L44" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def band(self, k):
     return self[k]</code></pre>
@@ -402,7 +913,7 @@ class Foveation(LaplacianPyramid):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/pyramid.py#L44-L45" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/pyramid.py#L46-L47" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def show(self, mindim=256):
     return vipy.visualize.montage([im.maxsquare() for im in self], mindim, mindim).show()</code></pre>
@@ -419,7 +930,7 @@ class Foveation(LaplacianPyramid):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/pyramid.py#L48-L132" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/pyramid.py#L50-L134" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class LaplacianPyramid():
     &#34;&#34;&#34;vipy.pyramid.LaplacianPyramid() class&#34;&#34;&#34;    
@@ -521,7 +1032,7 @@ class Foveation(LaplacianPyramid):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/pyramid.py#L127-L132" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/pyramid.py#L129-L134" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">@staticmethod
 def fromtensor(bands):
@@ -542,7 +1053,7 @@ def fromtensor(bands):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/pyramid.py#L98-L99" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/pyramid.py#L100-L101" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def band(self, k):
     return self[k]</code></pre>
@@ -556,7 +1067,7 @@ def fromtensor(bands):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/pyramid.py#L119-L120" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/pyramid.py#L121-L122" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def channels(self):
     return self._im.channels()</code></pre>
@@ -570,7 +1081,7 @@ def fromtensor(bands):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/pyramid.py#L115-L116" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/pyramid.py#L117-L118" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def height(self):
     return self._im.height()</code></pre>
@@ -584,7 +1095,7 @@ def fromtensor(bands):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/pyramid.py#L101-L110" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/pyramid.py#L103-L112" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def reconstruct(self):
     x = self._band[-1]
@@ -606,7 +1117,7 @@ def fromtensor(bands):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/pyramid.py#L121-L122" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/pyramid.py#L123-L124" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def scales(self):
     return len(self)</code></pre>
@@ -620,7 +1131,7 @@ def fromtensor(bands):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/pyramid.py#L112-L113" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/pyramid.py#L114-L115" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def show(self, mindim=256):
     return vipy.visualize.montage([im.maxsquare().resize(mindim, mindim, interp=&#39;nearest&#39;) for im in self], mindim, mindim).show()</code></pre>
@@ -634,7 +1145,7 @@ def fromtensor(bands):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/pyramid.py#L124-L125" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/pyramid.py#L126-L127" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def tensor(self, interp=&#39;nearest&#39;):
     return torch.stack([im.resize(self.height(), self.width(), interp=interp).torch(order=&#39;CHW&#39;) for im in self])  # scales() x channels() x height() x width()</code></pre>
@@ -648,10 +1159,205 @@ def fromtensor(bands):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/pyramid.py#L117-L118" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/pyramid.py#L119-L120" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def width(self):
     return self._im.width()</code></pre>
+</details>
+</dd>
+</dl>
+</dd>
+<dt id="vipy.pyramid.SteerablePyramid"><code class="flex name class">
+<span>class <span class="ident">SteerablePyramid</span></span>
+<span>(</span><span>im)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/pyramid.py#L186-L230" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">class SteerablePyramid():
+    def __init__(self, im):
+        vipy.util.try_import(&#39;pyrtools&#39;)
+        import pyrtools
+        
+        assert isinstance(im, vipy.image.Image)
+        assert im.mindim() &gt;= 32        
+        self._channels = [pyrtools.pyramids.SteerablePyramidFreq(imc.load().array().astype(float), height=&#39;auto&#39;, order=3) for imc in im.channel()]                
+        
+    @property
+    def num_scales(self):
+        return self._channels[0].num_scales
+
+    @property
+    def num_orientations(self):
+        return self._channels[0].num_orientations
+
+    @property
+    def num_channels(self):
+        return len(self._channels)           
+        
+    def bandpass(self, channel):
+        return [self._channels[channel].pyr_coeffs[(s,o)] for s in range(self.num_scales) for o in range(self.num_orientations)]
+    
+    def lowpass(self, channel):
+        return self._channels[channel].pyr_coeffs[&#39;residual_lowpass&#39;]
+
+    def highpass(self, channel):
+        return self._channels[channel].pyr_coeffs[&#39;residual_highpass&#39;]        
+    
+    def synthesis(self):        
+        return vipy.image.Image(array=np.stack([pyr.recon_pyr() for pyr in self._channels], axis=2).astype(np.float32)).mat2gray()
+
+    def multichannel(self):
+        &#34;&#34;&#34;a multichannel image is an image of the same shape as the input, but with channels from pyramid decomposition.  Coefficients are resized using bilinear interpolation.&#34;&#34;&#34;
+        (H,W) = self.highpass(0).shape
+        resizer = lambda x: np.array(torch.nn.functional.interpolate(torch.tensor(x).view(1,1,x.shape[0],x.shape[1]), size=(H,W), mode=&#39;bilinear&#39;)).squeeze()            
+        return vipy.image.Image(array=np.stack([resizer(x) for c in range(self.num_channels) for x in self.bandpass(c)+[self.lowpass(c),self.highpass(c)]], axis=2).astype(np.float32))
+
+    def montage(self):
+        &#34;&#34;&#34;scales by row, orientations by col, channels merged back into color image, last image is lowpass&#34;&#34;&#34;
+        imlist = [vipy.image.Image(array=np.stack([self._channels[c].pyr_coeffs[(s,o)] for c in range(self.num_channels)], axis=2).astype(np.float32)) for s in range(self.num_scales) for o in range(self.num_orientations)]
+        imlist += [vipy.image.Image(array=np.stack([self.lowpass(c) for c in range(self.num_channels)], axis=2).astype(np.float32))]
+        imlist += [vipy.image.Image(array=np.stack([self.highpass(c) for c in range(self.num_channels)], axis=2).astype(np.float32))]        
+        return vipy.visualize.montage([im.mat2gray().rgb() for im in imlist], gridrows=self.num_scales+1, gridcols=self.num_orientations)</code></pre>
+</details>
+<h3>Instance variables</h3>
+<dl>
+<dt id="vipy.pyramid.SteerablePyramid.num_channels"><code class="name">var <span class="ident">num_channels</span></code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/pyramid.py#L203-L205" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">@property
+def num_channels(self):
+    return len(self._channels)           </code></pre>
+</details>
+</dd>
+<dt id="vipy.pyramid.SteerablePyramid.num_orientations"><code class="name">var <span class="ident">num_orientations</span></code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/pyramid.py#L199-L201" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">@property
+def num_orientations(self):
+    return self._channels[0].num_orientations</code></pre>
+</details>
+</dd>
+<dt id="vipy.pyramid.SteerablePyramid.num_scales"><code class="name">var <span class="ident">num_scales</span></code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/pyramid.py#L195-L197" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">@property
+def num_scales(self):
+    return self._channels[0].num_scales</code></pre>
+</details>
+</dd>
+</dl>
+<h3>Methods</h3>
+<dl>
+<dt id="vipy.pyramid.SteerablePyramid.bandpass"><code class="name flex">
+<span>def <span class="ident">bandpass</span></span>(<span>self, channel)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/pyramid.py#L207-L208" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def bandpass(self, channel):
+    return [self._channels[channel].pyr_coeffs[(s,o)] for s in range(self.num_scales) for o in range(self.num_orientations)]</code></pre>
+</details>
+</dd>
+<dt id="vipy.pyramid.SteerablePyramid.highpass"><code class="name flex">
+<span>def <span class="ident">highpass</span></span>(<span>self, channel)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/pyramid.py#L213-L214" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def highpass(self, channel):
+    return self._channels[channel].pyr_coeffs[&#39;residual_highpass&#39;]        </code></pre>
+</details>
+</dd>
+<dt id="vipy.pyramid.SteerablePyramid.lowpass"><code class="name flex">
+<span>def <span class="ident">lowpass</span></span>(<span>self, channel)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/pyramid.py#L210-L211" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def lowpass(self, channel):
+    return self._channels[channel].pyr_coeffs[&#39;residual_lowpass&#39;]</code></pre>
+</details>
+</dd>
+<dt id="vipy.pyramid.SteerablePyramid.montage"><code class="name flex">
+<span>def <span class="ident">montage</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>scales by row, orientations by col, channels merged back into color image, last image is lowpass</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/pyramid.py#L225-L230" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def montage(self):
+    &#34;&#34;&#34;scales by row, orientations by col, channels merged back into color image, last image is lowpass&#34;&#34;&#34;
+    imlist = [vipy.image.Image(array=np.stack([self._channels[c].pyr_coeffs[(s,o)] for c in range(self.num_channels)], axis=2).astype(np.float32)) for s in range(self.num_scales) for o in range(self.num_orientations)]
+    imlist += [vipy.image.Image(array=np.stack([self.lowpass(c) for c in range(self.num_channels)], axis=2).astype(np.float32))]
+    imlist += [vipy.image.Image(array=np.stack([self.highpass(c) for c in range(self.num_channels)], axis=2).astype(np.float32))]        
+    return vipy.visualize.montage([im.mat2gray().rgb() for im in imlist], gridrows=self.num_scales+1, gridcols=self.num_orientations)</code></pre>
+</details>
+</dd>
+<dt id="vipy.pyramid.SteerablePyramid.multichannel"><code class="name flex">
+<span>def <span class="ident">multichannel</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>a multichannel image is an image of the same shape as the input, but with channels from pyramid decomposition.
+Coefficients are resized using bilinear interpolation.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/pyramid.py#L219-L223" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def multichannel(self):
+    &#34;&#34;&#34;a multichannel image is an image of the same shape as the input, but with channels from pyramid decomposition.  Coefficients are resized using bilinear interpolation.&#34;&#34;&#34;
+    (H,W) = self.highpass(0).shape
+    resizer = lambda x: np.array(torch.nn.functional.interpolate(torch.tensor(x).view(1,1,x.shape[0],x.shape[1]), size=(H,W), mode=&#39;bilinear&#39;)).squeeze()            
+    return vipy.image.Image(array=np.stack([resizer(x) for c in range(self.num_channels) for x in self.bandpass(c)+[self.lowpass(c),self.highpass(c)]], axis=2).astype(np.float32))</code></pre>
+</details>
+</dd>
+<dt id="vipy.pyramid.SteerablePyramid.synthesis"><code class="name flex">
+<span>def <span class="ident">synthesis</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/pyramid.py#L216-L217" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def synthesis(self):        
+    return vipy.image.Image(array=np.stack([pyr.recon_pyr() for pyr in self._channels], axis=2).astype(np.float32)).mat2gray()</code></pre>
 </details>
 </dd>
 </dl>
@@ -725,6 +1431,26 @@ setTimeout(() => input.focus(), 100);
 <li><h3><a href="#header-classes">Classes</a></h3>
 <ul>
 <li>
+<h4><code><a title="vipy.pyramid.BatchSteerablePyramid" href="#vipy.pyramid.BatchSteerablePyramid">BatchSteerablePyramid</a></code></h4>
+<ul class="two-column">
+<li><code><a title="vipy.pyramid.BatchSteerablePyramid.band" href="#vipy.pyramid.BatchSteerablePyramid.band">band</a></code></li>
+<li><code><a title="vipy.pyramid.BatchSteerablePyramid.device" href="#vipy.pyramid.BatchSteerablePyramid.device">device</a></code></li>
+<li><code><a title="vipy.pyramid.BatchSteerablePyramid.forward" href="#vipy.pyramid.BatchSteerablePyramid.forward">forward</a></code></li>
+<li><code><a title="vipy.pyramid.BatchSteerablePyramid.forwarded" href="#vipy.pyramid.BatchSteerablePyramid.forwarded">forwarded</a></code></li>
+<li><code><a title="vipy.pyramid.BatchSteerablePyramid.magnitude" href="#vipy.pyramid.BatchSteerablePyramid.magnitude">magnitude</a></code></li>
+<li><code><a title="vipy.pyramid.BatchSteerablePyramid.montage" href="#vipy.pyramid.BatchSteerablePyramid.montage">montage</a></code></li>
+<li><code><a title="vipy.pyramid.BatchSteerablePyramid.num_channels" href="#vipy.pyramid.BatchSteerablePyramid.num_channels">num_channels</a></code></li>
+<li><code><a title="vipy.pyramid.BatchSteerablePyramid.num_orientations" href="#vipy.pyramid.BatchSteerablePyramid.num_orientations">num_orientations</a></code></li>
+<li><code><a title="vipy.pyramid.BatchSteerablePyramid.num_scales" href="#vipy.pyramid.BatchSteerablePyramid.num_scales">num_scales</a></code></li>
+<li><code><a title="vipy.pyramid.BatchSteerablePyramid.phase" href="#vipy.pyramid.BatchSteerablePyramid.phase">phase</a></code></li>
+<li><code><a title="vipy.pyramid.BatchSteerablePyramid.phase_congruency" href="#vipy.pyramid.BatchSteerablePyramid.phase_congruency">phase_congruency</a></code></li>
+<li><code><a title="vipy.pyramid.BatchSteerablePyramid.synthesis" href="#vipy.pyramid.BatchSteerablePyramid.synthesis">synthesis</a></code></li>
+<li><code><a title="vipy.pyramid.BatchSteerablePyramid.tensor" href="#vipy.pyramid.BatchSteerablePyramid.tensor">tensor</a></code></li>
+<li><code><a title="vipy.pyramid.BatchSteerablePyramid.to" href="#vipy.pyramid.BatchSteerablePyramid.to">to</a></code></li>
+<li><code><a title="vipy.pyramid.BatchSteerablePyramid.zero_crossing" href="#vipy.pyramid.BatchSteerablePyramid.zero_crossing">zero_crossing</a></code></li>
+</ul>
+</li>
+<li>
 <h4><code><a title="vipy.pyramid.Foveation" href="#vipy.pyramid.Foveation">Foveation</a></code></h4>
 <ul class="">
 <li><code><a title="vipy.pyramid.Foveation.foveate" href="#vipy.pyramid.Foveation.foveate">foveate</a></code></li>
@@ -752,13 +1478,27 @@ setTimeout(() => input.focus(), 100);
 <li><code><a title="vipy.pyramid.LaplacianPyramid.width" href="#vipy.pyramid.LaplacianPyramid.width">width</a></code></li>
 </ul>
 </li>
+<li>
+<h4><code><a title="vipy.pyramid.SteerablePyramid" href="#vipy.pyramid.SteerablePyramid">SteerablePyramid</a></code></h4>
+<ul class="two-column">
+<li><code><a title="vipy.pyramid.SteerablePyramid.bandpass" href="#vipy.pyramid.SteerablePyramid.bandpass">bandpass</a></code></li>
+<li><code><a title="vipy.pyramid.SteerablePyramid.highpass" href="#vipy.pyramid.SteerablePyramid.highpass">highpass</a></code></li>
+<li><code><a title="vipy.pyramid.SteerablePyramid.lowpass" href="#vipy.pyramid.SteerablePyramid.lowpass">lowpass</a></code></li>
+<li><code><a title="vipy.pyramid.SteerablePyramid.montage" href="#vipy.pyramid.SteerablePyramid.montage">montage</a></code></li>
+<li><code><a title="vipy.pyramid.SteerablePyramid.multichannel" href="#vipy.pyramid.SteerablePyramid.multichannel">multichannel</a></code></li>
+<li><code><a title="vipy.pyramid.SteerablePyramid.num_channels" href="#vipy.pyramid.SteerablePyramid.num_channels">num_channels</a></code></li>
+<li><code><a title="vipy.pyramid.SteerablePyramid.num_orientations" href="#vipy.pyramid.SteerablePyramid.num_orientations">num_orientations</a></code></li>
+<li><code><a title="vipy.pyramid.SteerablePyramid.num_scales" href="#vipy.pyramid.SteerablePyramid.num_scales">num_scales</a></code></li>
+<li><code><a title="vipy.pyramid.SteerablePyramid.synthesis" href="#vipy.pyramid.SteerablePyramid.synthesis">synthesis</a></code></li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>
 </nav>
 </main>
 <footer id="footer">
-<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.10.0</a>.</p>
+<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.11.6</a>.</p>
 </footer>
 </body>
 </html>

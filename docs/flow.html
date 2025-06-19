@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
-<meta name="generator" content="pdoc 0.10.0" />
+<meta name="generator" content="pdoc 0.11.6" />
 <meta name="google-site-verification" content="aB8LkQegj94_TJPdrcJm2ldIRWyXY82Jp24Gtkdgyn0" />
 <title>vipy.flow API documentation</title>
 <meta name="description" content="" />
@@ -26,9 +26,9 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/flow.py#L1-L526" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/flow.py#L1-L526" class="git-link">Browse git</a>
 </summary>
-<pre><code class="python">from vipy.globals import print
+<pre><code class="python">from vipy.globals import log
 from vipy.util import mat2gray, try_import, string_to_pil_interpolation, Stopwatch, isnumpy, clockstamp, tempMP4, premkdir
 try_import(&#39;cv2&#39;, &#39;opencv-python opencv-contrib-python&#39;); import cv2
 import vipy.image
@@ -181,7 +181,7 @@ class Image(object):
         return copy.deepcopy(self)
 
     def print(self, outstring=None):
-        print(outstring if outstring is not None else str(self))
+        log.info(outstring if outstring is not None else str(self))
         return self
 
     
@@ -247,7 +247,7 @@ class Video(vipy.video.Video):
         return self.colorflow().show()
 
     def print(self, outstring=None):
-        print(outstring if outstring is not None else str(self))
+        log.info(outstring if outstring is not None else str(self))
         return self
 
     
@@ -464,7 +464,7 @@ class Flow(object):
         imstabilized = vv.preview(0).rgb().zeropad(padwidth, padheight)  # single frame fetch
         duration = len(vv)  # requires preload, duration computed at stabilization framerate
         if duration &lt; keystep:
-            print(&#39;[vipy.flow.stabilize]: ERROR - video not long enough for stabilization, returning original video &#34;%s&#34;&#39; % str(v))
+            log.warning(&#39;[vipy.flow.stabilize]: video not long enough for stabilization, returning original video &#34;%s&#34;&#39; % str(v))
             return v.clone().setattribute(&#39;unstabilized&#39;)
         r_coarse = []
         frames = []                        
@@ -473,7 +473,7 @@ class Flow(object):
         # Stabilization
         for k in range(0, duration):  
             if verbose and k==0:
-                print(&#39;[vipy.flow.stabilize]: %s coarse to fine stabilization ...&#39; % (&#39;Euclidean&#39; if rigid else &#39;Affine&#39; if affine else &#39;Projective&#39;))                
+                log.info(&#39;[vipy.flow.stabilize]: %s coarse to fine stabilization ...&#39; % (&#39;Euclidean&#39; if rigid else &#39;Affine&#39; if affine else &#39;Projective&#39;))                
 
             # Optical flow (3x): use downsampled video, do not precompute to save on memory, requires random access to downsampled video
             im = vv.frame(k)  # native resolution
@@ -492,7 +492,7 @@ class Flow(object):
                 r_coarse.append(np.mean(np.sqrt(np.sum(np.square(M.dot(homogenize(xy_src[::8].transpose())) - homogenize(xy_dst[::8].transpose())), axis=0))) if (residual and len(xy_src)&gt;8) else 0)
             except Exception as e:
                 if not strict:
-                    print(&#39;[vipy.flow.stabilize]: ERROR - coarse alignment failed with error &#34;%s&#34;, returning original video &#34;%s&#34;&#39; % (str(e), str(v)))
+                    log.warning(&#39;[vipy.flow.stabilize]: coarse alignment failed with error &#34;%s&#34;, returning original video &#34;%s&#34;&#39; % (str(e), str(v)))
                     return v.clone().setattribute(&#39;unstabilized&#39;)  # for provenance
                 raise
 
@@ -506,7 +506,7 @@ class Flow(object):
                 F = f_estimate_fine(xy_src.transpose()-np.array([padwidth, padheight]), xy_dst.transpose()-np.array([padwidth, padheight]), method=cv2.RANSAC, confidence=0.99999, ransacReprojThreshold=0.1, refineIters=64, maxIters=3000)  
             except Exception as e:
                 if not strict:
-                    print(&#39;[vipy.flow.stabilize]: ERROR - fine alignment failed with error &#34;%s&#34;, returning original video &#34;%s&#34;&#39; % (str(e), str(v)))                    
+                    log.warning(&#39;[vipy.flow.stabilize]: fine alignment failed with error &#34;%s&#34;, returning original video &#34;%s&#34;&#39; % (str(e), str(v)))                    
                     return v.clone().setattribute(&#39;unstabilized&#39;)  # for provenance
                 else:
                     raise ValueError(&#39;[vipy.flow.stabilize]: ERROR - fine alignment failed due to correspondence error&#39;)
@@ -547,7 +547,7 @@ class Flow(object):
                 im = im.objectmap(lambda o: o.projective(T.dot(A)))  # apply object transformation
                 if any([not o.isvalid() for o in im.objects()]):  
                     if not strict:
-                        print(&#39;[vipy.flow.stabilize]: ERROR - object alignment returned degenerate bounding box, returning original video &#34;%s&#34;&#39; % str(v))
+                        log.warning(&#39;[vipy.flow.stabilize]: object alignment returned degenerate bounding box, returning original video &#34;%s&#34;&#39; % str(v))
                         return v.clone().setattribute(&#39;unstabilized&#39;)  # for provenance
                     else:
                         raise ValueError(&#39;[vipy.flow.stabilize]: ERROR - object alignment returned degenerate bounding box for video &#34;%s&#34;&#39; % str(v))                    
@@ -574,7 +574,7 @@ class Flow(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/flow.py#L224-L526" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/flow.py#L224-L526" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Flow(object):
     &#34;&#34;&#34;vipy.flow.Flow() class&#34;&#34;&#34;
@@ -789,7 +789,7 @@ class Flow(object):
         imstabilized = vv.preview(0).rgb().zeropad(padwidth, padheight)  # single frame fetch
         duration = len(vv)  # requires preload, duration computed at stabilization framerate
         if duration &lt; keystep:
-            print(&#39;[vipy.flow.stabilize]: ERROR - video not long enough for stabilization, returning original video &#34;%s&#34;&#39; % str(v))
+            log.warning(&#39;[vipy.flow.stabilize]: video not long enough for stabilization, returning original video &#34;%s&#34;&#39; % str(v))
             return v.clone().setattribute(&#39;unstabilized&#39;)
         r_coarse = []
         frames = []                        
@@ -798,7 +798,7 @@ class Flow(object):
         # Stabilization
         for k in range(0, duration):  
             if verbose and k==0:
-                print(&#39;[vipy.flow.stabilize]: %s coarse to fine stabilization ...&#39; % (&#39;Euclidean&#39; if rigid else &#39;Affine&#39; if affine else &#39;Projective&#39;))                
+                log.info(&#39;[vipy.flow.stabilize]: %s coarse to fine stabilization ...&#39; % (&#39;Euclidean&#39; if rigid else &#39;Affine&#39; if affine else &#39;Projective&#39;))                
 
             # Optical flow (3x): use downsampled video, do not precompute to save on memory, requires random access to downsampled video
             im = vv.frame(k)  # native resolution
@@ -817,7 +817,7 @@ class Flow(object):
                 r_coarse.append(np.mean(np.sqrt(np.sum(np.square(M.dot(homogenize(xy_src[::8].transpose())) - homogenize(xy_dst[::8].transpose())), axis=0))) if (residual and len(xy_src)&gt;8) else 0)
             except Exception as e:
                 if not strict:
-                    print(&#39;[vipy.flow.stabilize]: ERROR - coarse alignment failed with error &#34;%s&#34;, returning original video &#34;%s&#34;&#39; % (str(e), str(v)))
+                    log.warning(&#39;[vipy.flow.stabilize]: coarse alignment failed with error &#34;%s&#34;, returning original video &#34;%s&#34;&#39; % (str(e), str(v)))
                     return v.clone().setattribute(&#39;unstabilized&#39;)  # for provenance
                 raise
 
@@ -831,7 +831,7 @@ class Flow(object):
                 F = f_estimate_fine(xy_src.transpose()-np.array([padwidth, padheight]), xy_dst.transpose()-np.array([padwidth, padheight]), method=cv2.RANSAC, confidence=0.99999, ransacReprojThreshold=0.1, refineIters=64, maxIters=3000)  
             except Exception as e:
                 if not strict:
-                    print(&#39;[vipy.flow.stabilize]: ERROR - fine alignment failed with error &#34;%s&#34;, returning original video &#34;%s&#34;&#39; % (str(e), str(v)))                    
+                    log.warning(&#39;[vipy.flow.stabilize]: fine alignment failed with error &#34;%s&#34;, returning original video &#34;%s&#34;&#39; % (str(e), str(v)))                    
                     return v.clone().setattribute(&#39;unstabilized&#39;)  # for provenance
                 else:
                     raise ValueError(&#39;[vipy.flow.stabilize]: ERROR - fine alignment failed due to correspondence error&#39;)
@@ -872,7 +872,7 @@ class Flow(object):
                 im = im.objectmap(lambda o: o.projective(T.dot(A)))  # apply object transformation
                 if any([not o.isvalid() for o in im.objects()]):  
                     if not strict:
-                        print(&#39;[vipy.flow.stabilize]: ERROR - object alignment returned degenerate bounding box, returning original video &#34;%s&#34;&#39; % str(v))
+                        log.warning(&#39;[vipy.flow.stabilize]: object alignment returned degenerate bounding box, returning original video &#34;%s&#34;&#39; % str(v))
                         return v.clone().setattribute(&#39;unstabilized&#39;)  # for provenance
                     else:
                         raise ValueError(&#39;[vipy.flow.stabilize]: ERROR - object alignment returned degenerate bounding box for video &#34;%s&#34;&#39; % str(v))                    
@@ -890,7 +890,7 @@ class Flow(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/flow.py#L327-L333" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/flow.py#L327-L333" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def affineflow(self, A, H, W):
     &#34;&#34;&#34;Return a flow field of size (height=H, width=W) consistent with a 2x3 affine transformation A&#34;&#34;&#34;
@@ -909,7 +909,7 @@ class Flow(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/flow.py#L335-L337" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/flow.py#L335-L337" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def euclideanflow(self, R, t, H, W):
     &#34;&#34;&#34;Return a flow field of size (height=H, width=W) consistent with an Euclidean transform parameterized by a 2x2 Rotation and 2x1 translation&#34;&#34;&#34;  
@@ -925,7 +925,7 @@ This should be overloaded</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/flow.py#L289-L296" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/flow.py#L289-L296" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def imageflow(self, im, imprev):
     &#34;&#34;&#34;Default opencv dense flow, from im to imprev.  This should be overloaded&#34;&#34;&#34;        
@@ -945,7 +945,7 @@ This should be overloaded</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/flow.py#L311-L317" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/flow.py#L311-L317" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def keyflow(self, v, keystep=None):
     &#34;&#34;&#34;Compute optical flow for a video framewise relative to keyframes separated by keystep&#34;&#34;&#34;
@@ -964,7 +964,7 @@ This should be overloaded</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/flow.py#L319-L325" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/flow.py#L319-L325" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def keyflowframe(self, v, frame, duration, keystep=None):
     &#34;&#34;&#34;Compute the keyflow for a single frame&#34;&#34;&#34;
@@ -1051,7 +1051,7 @@ Be careful with stabilizing long videos.</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/flow.py#L365-L526" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/flow.py#L365-L526" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def stabilize(self, v, keystep=20, padheightfrac=0.125, padwidthfrac=0.25, padheightpx=None, padwidthpx=None, border=0.1, dilate=1.0, contrast=16.0/255.0, rigid=False, affine=True, verbose=True, strict=True, residual=False, maxflow=None, outfile=None, preload=True, framerate=5): 
     &#34;&#34;&#34;Affine stabilization to frame zero using multi-scale optical flow correspondence with foreground object keepouts.  
@@ -1125,7 +1125,7 @@ Be careful with stabilizing long videos.</li>
     imstabilized = vv.preview(0).rgb().zeropad(padwidth, padheight)  # single frame fetch
     duration = len(vv)  # requires preload, duration computed at stabilization framerate
     if duration &lt; keystep:
-        print(&#39;[vipy.flow.stabilize]: ERROR - video not long enough for stabilization, returning original video &#34;%s&#34;&#39; % str(v))
+        log.warning(&#39;[vipy.flow.stabilize]: video not long enough for stabilization, returning original video &#34;%s&#34;&#39; % str(v))
         return v.clone().setattribute(&#39;unstabilized&#39;)
     r_coarse = []
     frames = []                        
@@ -1134,7 +1134,7 @@ Be careful with stabilizing long videos.</li>
     # Stabilization
     for k in range(0, duration):  
         if verbose and k==0:
-            print(&#39;[vipy.flow.stabilize]: %s coarse to fine stabilization ...&#39; % (&#39;Euclidean&#39; if rigid else &#39;Affine&#39; if affine else &#39;Projective&#39;))                
+            log.info(&#39;[vipy.flow.stabilize]: %s coarse to fine stabilization ...&#39; % (&#39;Euclidean&#39; if rigid else &#39;Affine&#39; if affine else &#39;Projective&#39;))                
 
         # Optical flow (3x): use downsampled video, do not precompute to save on memory, requires random access to downsampled video
         im = vv.frame(k)  # native resolution
@@ -1153,7 +1153,7 @@ Be careful with stabilizing long videos.</li>
             r_coarse.append(np.mean(np.sqrt(np.sum(np.square(M.dot(homogenize(xy_src[::8].transpose())) - homogenize(xy_dst[::8].transpose())), axis=0))) if (residual and len(xy_src)&gt;8) else 0)
         except Exception as e:
             if not strict:
-                print(&#39;[vipy.flow.stabilize]: ERROR - coarse alignment failed with error &#34;%s&#34;, returning original video &#34;%s&#34;&#39; % (str(e), str(v)))
+                log.warning(&#39;[vipy.flow.stabilize]: coarse alignment failed with error &#34;%s&#34;, returning original video &#34;%s&#34;&#39; % (str(e), str(v)))
                 return v.clone().setattribute(&#39;unstabilized&#39;)  # for provenance
             raise
 
@@ -1167,7 +1167,7 @@ Be careful with stabilizing long videos.</li>
             F = f_estimate_fine(xy_src.transpose()-np.array([padwidth, padheight]), xy_dst.transpose()-np.array([padwidth, padheight]), method=cv2.RANSAC, confidence=0.99999, ransacReprojThreshold=0.1, refineIters=64, maxIters=3000)  
         except Exception as e:
             if not strict:
-                print(&#39;[vipy.flow.stabilize]: ERROR - fine alignment failed with error &#34;%s&#34;, returning original video &#34;%s&#34;&#39; % (str(e), str(v)))                    
+                log.warning(&#39;[vipy.flow.stabilize]: fine alignment failed with error &#34;%s&#34;, returning original video &#34;%s&#34;&#39; % (str(e), str(v)))                    
                 return v.clone().setattribute(&#39;unstabilized&#39;)  # for provenance
             else:
                 raise ValueError(&#39;[vipy.flow.stabilize]: ERROR - fine alignment failed due to correspondence error&#39;)
@@ -1208,7 +1208,7 @@ Be careful with stabilizing long videos.</li>
             im = im.objectmap(lambda o: o.projective(T.dot(A)))  # apply object transformation
             if any([not o.isvalid() for o in im.objects()]):  
                 if not strict:
-                    print(&#39;[vipy.flow.stabilize]: ERROR - object alignment returned degenerate bounding box, returning original video &#34;%s&#34;&#39; % str(v))
+                    log.warning(&#39;[vipy.flow.stabilize]: object alignment returned degenerate bounding box, returning original video &#34;%s&#34;&#39; % str(v))
                     return v.clone().setattribute(&#39;unstabilized&#39;)  # for provenance
                 else:
                     raise ValueError(&#39;[vipy.flow.stabilize]: ERROR - object alignment returned degenerate bounding box for video &#34;%s&#34;&#39; % str(v))                    
@@ -1225,7 +1225,7 @@ Be careful with stabilizing long videos.</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/flow.py#L298-L302" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/flow.py#L298-L302" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def videoflow(self, v, flowstep=1, framestep=1, keyframe=None):
     &#34;&#34;&#34;Compute optical flow for a video framewise skipping framestep frames, compute optical flow acrsos flowstep frames, &#34;&#34;&#34;
@@ -1242,7 +1242,7 @@ Be careful with stabilizing long videos.</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/flow.py#L304-L309" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/flow.py#L304-L309" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def videoflowframe(self, v, frame, duration, flowstep=1, framestep=1, keyframe=None):
     &#34;&#34;&#34;Computer the videoflow for a single frame&#34;&#34;&#34;
@@ -1263,7 +1263,7 @@ Be careful with stabilizing long videos.</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/flow.py#L18-L155" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/flow.py#L18-L155" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Image(object):
     &#34;&#34;&#34;vipy.flow.Image() class&#34;&#34;&#34;
@@ -1401,7 +1401,7 @@ Be careful with stabilizing long videos.</li>
         return copy.deepcopy(self)
 
     def print(self, outstring=None):
-        print(outstring if outstring is not None else str(self))
+        log.info(outstring if outstring is not None else str(self))
         return self</code></pre>
 </details>
 <h3>Methods</h3>
@@ -1414,7 +1414,7 @@ Be careful with stabilizing long videos.</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/flow.py#L99-L104" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/flow.py#L99-L104" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def alphapad(self, pad=None, to=None, like=None):
     assert pad is not None or to is not None or like is not None
@@ -1432,7 +1432,7 @@ Be careful with stabilizing long videos.</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/flow.py#L147-L148" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/flow.py#L147-L148" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def angle(self):
     return cartesian_to_polar(self.dx(), self.dy())[1]</code></pre>
@@ -1446,7 +1446,7 @@ Be careful with stabilizing long videos.</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/flow.py#L150-L151" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/flow.py#L150-L151" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def clone(self):
     return copy.deepcopy(self)</code></pre>
@@ -1460,7 +1460,7 @@ Be careful with stabilizing long videos.</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/flow.py#L76-L84" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/flow.py#L76-L84" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def colorflow(self, minmag=None, maxmag=None):
     &#34;&#34;&#34;Flow visualization image (HSV: H=flow angle, V=flow magnitude), returns vipy.image.Image()&#34;&#34;&#34;
@@ -1481,7 +1481,7 @@ Be careful with stabilizing long videos.</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/flow.py#L113-L115" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/flow.py#L113-L115" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def dx(self):
     &#34;&#34;&#34;Return dx (horizontal) component of flow&#34;&#34;&#34;
@@ -1496,7 +1496,7 @@ Be careful with stabilizing long videos.</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/flow.py#L117-L119" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/flow.py#L117-L119" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def dy(self):
     &#34;&#34;&#34;Return dy (vertical) component of flow&#34;&#34;&#34;        
@@ -1511,7 +1511,7 @@ Be careful with stabilizing long videos.</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/flow.py#L69-L74" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/flow.py#L69-L74" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def flow(self, array=None):
     if array is None:
@@ -1529,7 +1529,7 @@ Be careful with stabilizing long videos.</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/flow.py#L63-L64" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/flow.py#L63-L64" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def height(self):
     return self._array.shape[0]</code></pre>
@@ -1543,7 +1543,7 @@ Be careful with stabilizing long videos.</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/flow.py#L144-L145" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/flow.py#L144-L145" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def magnitude(self):
     return cartesian_to_polar(self.dx(), self.dy())[0]</code></pre>
@@ -1557,7 +1557,7 @@ Be careful with stabilizing long videos.</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/flow.py#L43-L48" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/flow.py#L43-L48" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def max(self, maxflow=None):
     if maxflow is None:
@@ -1575,7 +1575,7 @@ Be careful with stabilizing long videos.</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/flow.py#L36-L41" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/flow.py#L36-L41" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def min(self, minflow=None):
     if minflow is None:
@@ -1593,10 +1593,10 @@ Be careful with stabilizing long videos.</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/flow.py#L153-L155" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/flow.py#L153-L155" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def print(self, outstring=None):
-    print(outstring if outstring is not None else str(self))
+    log.info(outstring if outstring is not None else str(self))
     return self</code></pre>
 </details>
 </dd>
@@ -1608,7 +1608,7 @@ Be careful with stabilizing long videos.</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/flow.py#L128-L130" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/flow.py#L128-L130" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def rescale(self, scale, interp=&#39;bicubic&#39;):
     (height, width) = self.shape()
@@ -1623,7 +1623,7 @@ Be careful with stabilizing long videos.</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/flow.py#L137-L142" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/flow.py#L137-L142" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def resize(self, height, width, interp=&#39;bicubic&#39;):
     assert height &gt; 0 and width &gt; 0, &#34;Invalid input&#34;
@@ -1641,7 +1641,7 @@ Be careful with stabilizing long videos.</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/flow.py#L132-L135" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/flow.py#L132-L135" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def resize_like(self, im, interp=&#39;bicubic&#39;):
     &#34;&#34;&#34;Resize flow buffer to be the same size as the provided vipy.image.Image()&#34;&#34;&#34;
@@ -1657,7 +1657,7 @@ Be careful with stabilizing long videos.</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/flow.py#L50-L52" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/flow.py#L50-L52" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def scale(self, s):
     self._array *= s
@@ -1672,7 +1672,7 @@ Be careful with stabilizing long videos.</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/flow.py#L66-L67" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/flow.py#L66-L67" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def shape(self):
     return (self.height(), self.width())</code></pre>
@@ -1686,7 +1686,7 @@ Be careful with stabilizing long videos.</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/flow.py#L121-L123" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/flow.py#L121-L123" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def shift(self, f):
     self._array += f
@@ -1701,7 +1701,7 @@ Be careful with stabilizing long videos.</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/flow.py#L125-L126" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/flow.py#L125-L126" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def show(self, figure=None, nowindow=False):
     self.colorflow().show(figure=figure, nowindow=nowindow)</code></pre>
@@ -1715,7 +1715,7 @@ Be careful with stabilizing long videos.</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/flow.py#L54-L58" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/flow.py#L54-L58" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def threshold(self, t):
     m = np.float32(self.magnitude() &lt; t)
@@ -1732,7 +1732,7 @@ Be careful with stabilizing long videos.</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/flow.py#L86-L97" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/flow.py#L86-L97" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def warp(self, imfrom, imto=None):
     &#34;&#34;&#34;Warp image imfrom=vipy.image.Image() to imto=vipy.image.Image() using flow computed as imfrom-&gt;imto, updating objects&#34;&#34;&#34;
@@ -1756,7 +1756,7 @@ Be careful with stabilizing long videos.</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/flow.py#L60-L61" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/flow.py#L60-L61" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def width(self):
     return self._array.shape[1]</code></pre>
@@ -1770,7 +1770,7 @@ Be careful with stabilizing long videos.</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/flow.py#L106-L111" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/flow.py#L106-L111" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def zeropad(self, pad=None, to=None, like=None):
     assert pad is not None or to is not None or like is not None
@@ -1791,7 +1791,7 @@ Be careful with stabilizing long videos.</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/flow.py#L158-L221" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/flow.py#L158-L221" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Video(vipy.video.Video):
     &#34;&#34;&#34;vipy.flow.Video() class&#34;&#34;&#34;
@@ -1855,7 +1855,7 @@ Be careful with stabilizing long videos.</li>
         return self.colorflow().show()
 
     def print(self, outstring=None):
-        print(outstring if outstring is not None else str(self))
+        log.info(outstring if outstring is not None else str(self))
         return self</code></pre>
 </details>
 <h3>Ancestors</h3>
@@ -1872,7 +1872,7 @@ Be careful with stabilizing long videos.</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/flow.py#L208-L211" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/flow.py#L208-L211" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def colorflow(self):
     &#34;&#34;&#34;Flow visualization video&#34;&#34;&#34;
@@ -1888,7 +1888,7 @@ Be careful with stabilizing long videos.</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/flow.py#L205-L206" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/flow.py#L205-L206" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def flow(self):
     return self._array</code></pre>
@@ -1902,7 +1902,7 @@ Be careful with stabilizing long videos.</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/flow.py#L213-L214" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/flow.py#L213-L214" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def magnitude(self):
     return np.stack([cartesian_to_polar(f[:,:,0], f[:,:,1])[0] for f in self.flow()])</code></pre>
@@ -1916,7 +1916,7 @@ Be careful with stabilizing long videos.</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/flow.py#L196-L197" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/flow.py#L196-L197" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def max(self):
     return np.max(self._array)</code></pre>
@@ -1930,7 +1930,7 @@ Be careful with stabilizing long videos.</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/flow.py#L193-L194" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/108adf37dddb6863992360c9360c5c6317ace42e/vipy/flow.py#L193-L194" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def min(self):
     return np.min(self._array)</code></pre>
@@ -1953,6 +1953,7 @@ Be careful with stabilizing long videos.</li>
 <li><code><a title="vipy.video.Video.channels" href="video.html#vipy.video.Video.channels">channels</a></code></li>
 <li><code><a title="vipy.video.Video.channelshape" href="video.html#vipy.video.Video.channelshape">channelshape</a></code></li>
 <li><code><a title="vipy.video.Video.clear" href="video.html#vipy.video.Video.clear">clear</a></code></li>
+<li><code><a title="vipy.video.Video.clear_attributes" href="video.html#vipy.video.Video.clear_attributes">clear_attributes</a></code></li>
 <li><code><a title="vipy.video.Video.clearattributes" href="video.html#vipy.video.Video.clearattributes">clearattributes</a></code></li>
 <li><code><a title="vipy.video.Video.clip" href="video.html#vipy.video.Video.clip">clip</a></code></li>
 <li><code><a title="vipy.video.Video.cliprange" href="video.html#vipy.video.Video.cliprange">cliprange</a></code></li>
@@ -1982,18 +1983,21 @@ Be careful with stabilizing long videos.</li>
 <li><code><a title="vipy.video.Video.framerate" href="video.html#vipy.video.Video.framerate">framerate</a></code></li>
 <li><code><a title="vipy.video.Video.framerate_of_videofile" href="video.html#vipy.video.Video.framerate_of_videofile">framerate_of_videofile</a></code></li>
 <li><code><a title="vipy.video.Video.frames" href="video.html#vipy.video.Video.frames">frames</a></code></li>
+<li><code><a title="vipy.video.Video.from_annotation_sequence" href="video.html#vipy.video.Video.from_annotation_sequence">from_annotation_sequence</a></code></li>
+<li><code><a title="vipy.video.Video.from_array" href="video.html#vipy.video.Video.from_array">from_array</a></code></li>
+<li><code><a title="vipy.video.Video.from_directory" href="video.html#vipy.video.Video.from_directory">from_directory</a></code></li>
+<li><code><a title="vipy.video.Video.from_frames" href="video.html#vipy.video.Video.from_frames">from_frames</a></code></li>
 <li><code><a title="vipy.video.Video.from_json" href="video.html#vipy.video.Video.from_json">from_json</a></code></li>
-<li><code><a title="vipy.video.Video.fromarray" href="video.html#vipy.video.Video.fromarray">fromarray</a></code></li>
-<li><code><a title="vipy.video.Video.fromdirectory" href="video.html#vipy.video.Video.fromdirectory">fromdirectory</a></code></li>
-<li><code><a title="vipy.video.Video.fromframes" href="video.html#vipy.video.Video.fromframes">fromframes</a></code></li>
 <li><code><a title="vipy.video.Video.gain" href="video.html#vipy.video.Video.gain">gain</a></code></li>
-<li><code><a title="vipy.video.Video.getattribute" href="video.html#vipy.video.Video.getattribute">getattribute</a></code></li>
+<li><code><a title="vipy.video.Video.get_attribute" href="video.html#vipy.video.Video.get_attribute">get_attribute</a></code></li>
 <li><code><a title="vipy.video.Video.gif" href="video.html#vipy.video.Video.gif">gif</a></code></li>
 <li><code><a title="vipy.video.Video.hasattribute" href="video.html#vipy.video.Video.hasattribute">hasattribute</a></code></li>
 <li><code><a title="vipy.video.Video.hasfilename" href="video.html#vipy.video.Video.hasfilename">hasfilename</a></code></li>
 <li><code><a title="vipy.video.Video.hasurl" href="video.html#vipy.video.Video.hasurl">hasurl</a></code></li>
 <li><code><a title="vipy.video.Video.height" href="video.html#vipy.video.Video.height">height</a></code></li>
 <li><code><a title="vipy.video.Video.iframes" href="video.html#vipy.video.Video.iframes">iframes</a></code></li>
+<li><code><a title="vipy.video.Video.is_downloaded" href="video.html#vipy.video.Video.is_downloaded">is_downloaded</a></code></li>
+<li><code><a title="vipy.video.Video.is_loaded" href="video.html#vipy.video.Video.is_loaded">is_loaded</a></code></li>
 <li><code><a title="vipy.video.Video.iscolor" href="video.html#vipy.video.Video.iscolor">iscolor</a></code></li>
 <li><code><a title="vipy.video.Video.isdownloaded" href="video.html#vipy.video.Video.isdownloaded">isdownloaded</a></code></li>
 <li><code><a title="vipy.video.Video.isgrayscale" href="video.html#vipy.video.Video.isgrayscale">isgrayscale</a></code></li>
@@ -2035,9 +2039,10 @@ Be careful with stabilizing long videos.</li>
 <li><code><a title="vipy.video.Video.rot90ccw" href="video.html#vipy.video.Video.rot90ccw">rot90ccw</a></code></li>
 <li><code><a title="vipy.video.Video.rot90cw" href="video.html#vipy.video.Video.rot90cw">rot90cw</a></code></li>
 <li><code><a title="vipy.video.Video.sanitize" href="video.html#vipy.video.Video.sanitize">sanitize</a></code></li>
+<li><code><a title="vipy.video.Video.save" href="video.html#vipy.video.Video.save">save</a></code></li>
 <li><code><a title="vipy.video.Video.saveas" href="video.html#vipy.video.Video.saveas">saveas</a></code></li>
-<li><code><a title="vipy.video.Video.savetemp" href="video.html#vipy.video.Video.savetemp">savetemp</a></code></li>
 <li><code><a title="vipy.video.Video.savetmp" href="video.html#vipy.video.Video.savetmp">savetmp</a></code></li>
+<li><code><a title="vipy.video.Video.set_mindim" href="video.html#vipy.video.Video.set_mindim">set_mindim</a></code></li>
 <li><code><a title="vipy.video.Video.shape" href="video.html#vipy.video.Video.shape">shape</a></code></li>
 <li><code><a title="vipy.video.Video.show" href="video.html#vipy.video.Video.show">show</a></code></li>
 <li><code><a title="vipy.video.Video.speed" href="video.html#vipy.video.Video.speed">speed</a></code></li>
@@ -2045,9 +2050,10 @@ Be careful with stabilizing long videos.</li>
 <li><code><a title="vipy.video.Video.stream" href="video.html#vipy.video.Video.stream">stream</a></code></li>
 <li><code><a title="vipy.video.Video.take" href="video.html#vipy.video.Video.take">take</a></code></li>
 <li><code><a title="vipy.video.Video.thumbnail" href="video.html#vipy.video.Video.thumbnail">thumbnail</a></code></li>
-<li><code><a title="vipy.video.Video.tocache" href="video.html#vipy.video.Video.tocache">tocache</a></code></li>
-<li><code><a title="vipy.video.Video.tonumpy" href="video.html#vipy.video.Video.tonumpy">tonumpy</a></code></li>
+<li><code><a title="vipy.video.Video.to_numpy" href="video.html#vipy.video.Video.to_numpy">to_numpy</a></code></li>
 <li><code><a title="vipy.video.Video.torch" href="video.html#vipy.video.Video.torch">torch</a></code></li>
+<li><code><a title="vipy.video.Video.uncache" href="video.html#vipy.video.Video.uncache">uncache</a></code></li>
+<li><code><a title="vipy.video.Video.unload" href="video.html#vipy.video.Video.unload">unload</a></code></li>
 <li><code><a title="vipy.video.Video.unstore" href="video.html#vipy.video.Video.unstore">unstore</a></code></li>
 <li><code><a title="vipy.video.Video.url" href="video.html#vipy.video.Video.url">url</a></code></li>
 <li><code><a title="vipy.video.Video.videoid" href="video.html#vipy.video.Video.videoid">videoid</a></code></li>
@@ -2184,7 +2190,7 @@ setTimeout(() => input.focus(), 100);
 </nav>
 </main>
 <footer id="footer">
-<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.10.0</a>.</p>
+<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.11.6</a>.</p>
 </footer>
 </body>
 </html>

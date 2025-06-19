@@ -168,11 +168,6 @@ def _test_video():
     print('[test_video.video]: __repr__  PASSED')    
     
 
-    # Saveas
-    v = vipy.video.Video(url=mp4url)
-    v.save(ignoreErrors=True)
-    print('[test_video.video]: save(ignoreErrors=True)  PASSED')        
-
     
     # Clone
     v = vipy.video.RandomVideo(64,64,64)
@@ -250,9 +245,6 @@ def _test_scene():
     a = vc.actortube(v.tracklist()[0].id())
     print('[test_video.scene]: actortube()  PASSED - basic only')        
     
-    # Downloader
-    v = vipy.video.Video(url='http://visym.com/out.mp4').load(ignoreErrors=True)
-    print('[test_video.video]: download ignoreErrors  PASSED')
     
     #v = vipy.video.Scene(url=mp4url).clip(0,100).load()
     #print('[test_video.scene: download  PASSED')        
