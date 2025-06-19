@@ -26,7 +26,7 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/f10b3f6aec0ef011e86ee11667579388379a8ac3/vipy/data/meva.py#L1-L454" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/data/meva.py#L1-L454" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">import os
 from vipy.util import remkdir, readjson, readyaml, findyaml, findvideo, filetail, findjson, filebase, readlist, groupbyasdict, save, flatlist, isstring, tempdir, readcsv, delpath, temphtml, tolist
@@ -549,7 +549,7 @@ Kwiver packet format: <a href="https://gitlab.kitware.com/meva/meva-data-repo/bl
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/f10b3f6aec0ef011e86ee11667579388379a8ac3/vipy/data/meva.py#L55-L454" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/data/meva.py#L55-L454" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class KF1():
     def __init__(self, datadir, contrib=False, stride=1, verbose=True, n_videos=None, withprefix=None, d_category_to_shortlabel=None, merge=False, actor=False, disjoint=False, unpad=False):
@@ -962,7 +962,7 @@ Kwiver packet format: <a href="https://gitlab.kitware.com/meva/meva-data-repo/bl
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/f10b3f6aec0ef011e86ee11667579388379a8ac3/vipy/data/meva.py#L373-L444" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/data/meva.py#L373-L444" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def analysis(self, outdir=None):
     &#34;&#34;&#34;Analyze the MEVA dataset to return helpful statistics and plots&#34;&#34;&#34;
@@ -1046,7 +1046,7 @@ Kwiver packet format: <a href="https://gitlab.kitware.com/meva/meva-data-repo/bl
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/f10b3f6aec0ef011e86ee11667579388379a8ac3/vipy/data/meva.py#L369-L371" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/data/meva.py#L369-L371" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def categories(self):
     &#34;&#34;&#34;Return a list of activity categories&#34;&#34;&#34;
@@ -1061,7 +1061,7 @@ Kwiver packet format: <a href="https://gitlab.kitware.com/meva/meva-data-repo/bl
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/f10b3f6aec0ef011e86ee11667579388379a8ac3/vipy/data/meva.py#L359-L360" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/data/meva.py#L359-L360" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def dataset(self):
     return vipy.dataset.Dataset(self.videos(), &#39;meva_KF1&#39;)</code></pre>
@@ -1075,7 +1075,7 @@ Kwiver packet format: <a href="https://gitlab.kitware.com/meva/meva-data-repo/bl
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/f10b3f6aec0ef011e86ee11667579388379a8ac3/vipy/data/meva.py#L365-L367" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/data/meva.py#L365-L367" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def instances(self, padframes=0):
     &#34;&#34;&#34;Return list of activity instances&#34;&#34;&#34;
@@ -1090,7 +1090,7 @@ Kwiver packet format: <a href="https://gitlab.kitware.com/meva/meva-data-repo/bl
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/f10b3f6aec0ef011e86ee11667579388379a8ac3/vipy/data/meva.py#L446-L454" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/data/meva.py#L446-L454" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def review(self, outfile=None, mindim=512):        
     &#34;&#34;&#34;Generate a standalone HTML file containing quicklooks for each annotated activity in dataset, along with some helpful provenance information for where the annotation came from&#34;&#34;&#34;
@@ -1111,7 +1111,7 @@ Kwiver packet format: <a href="https://gitlab.kitware.com/meva/meva-data-repo/bl
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/f10b3f6aec0ef011e86ee11667579388379a8ac3/vipy/data/meva.py#L362-L363" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/data/meva.py#L362-L363" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def tolist(self):
     return self.videos()</code></pre>
@@ -1125,7 +1125,7 @@ Kwiver packet format: <a href="https://gitlab.kitware.com/meva/meva-data-repo/bl
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/f10b3f6aec0ef011e86ee11667579388379a8ac3/vipy/data/meva.py#L355-L357" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/data/meva.py#L355-L357" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def videos(self):
     &#34;&#34;&#34;Return list of activity videos&#34;&#34;&#34;

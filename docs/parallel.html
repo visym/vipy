@@ -26,7 +26,7 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/f10b3f6aec0ef011e86ee11667579388379a8ac3/vipy/parallel.py#L1-L88" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/parallel.py#L1-L88" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">import vipy
 import concurrent.futures as cf
@@ -133,7 +133,7 @@ def ordered_map(f, ingen):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/f10b3f6aec0ef011e86ee11667579388379a8ac3/vipy/parallel.py#L16-L17" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/parallel.py#L16-L17" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def identity(x):
     return x</code></pre>
@@ -159,7 +159,7 @@ accepter [callable]: A function which returns true or false, such that the itera
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/f10b3f6aec0ef011e86ee11667579388379a8ac3/vipy/parallel.py#L20-L76" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/parallel.py#L20-L76" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def iter(ingen, mapper=identity, bufsize=1024, progress=False, accepter=None):
     &#34;&#34;&#34;Return an iterator on the input generator that will apply the mapper to each object and yield only those elements where the accepter is true
@@ -229,7 +229,7 @@ Function cannot be anonymous if cf executor is multiprocess</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/f10b3f6aec0ef011e86ee11667579388379a8ac3/vipy/parallel.py#L9-L14" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/parallel.py#L9-L14" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def map(f, ingen, reducer=None):
     &#34;&#34;&#34;Apply the function f to each element in the iterator, returning the results unordered.  Function cannot be anonymous if cf executor is multiprocess &#34;&#34;&#34;
@@ -247,7 +247,7 @@ Function cannot be anonymous if cf executor is multiprocess</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/f10b3f6aec0ef011e86ee11667579388379a8ac3/vipy/parallel.py#L79-L83" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/parallel.py#L79-L83" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def ordered_map(f, ingen):
     &#34;&#34;&#34;Apply the function f to each element in the iterator, returning tuples (order, result) results sorted by order&#34;&#34;&#34;

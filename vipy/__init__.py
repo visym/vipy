@@ -9,7 +9,7 @@ VIPY provides:
 * Lazy loading of images and videos suitable for distributed procesing (e.g. dask, spark)
 * Straightforward integration into machine learning toolchains (e.g. torch, numpy)
 * Fluent interface for chaining operations on videos and images
-* Dataset download, unpack and import (e.g. Charades, AVA, ActivityNet, Kinetics, Moments in Time)
+* Visual dataset download, unpack and import (e.g. Imagenet21k, Coco 2014, Visual Genome, Open Images V7, Kinetics700, YoutubeBB, ActivityNet, ... )
 * Video and image web search tools with URL downloading and caching
 * Minimum dependencies for easy installation (e.g. AWS Lambda)
 
@@ -89,7 +89,7 @@ See the [demos](https://github.com/visym/vipy/tree/master/demo) for more example
 
 ## Parallelization
 
-Vipy includes integration with [Dask Distributed](https://distributed.dask.org) for parallel processing of video and images.   This is useful for video preprocessing of datasets to prepare them for training.  
+Vipy includes integration with [concurrent futures](https://docs.python.org/3/library/concurrent.futures.html) and [Dask Distributed](https://distributed.dask.org) for parallel processing of video and images.   This is useful for preprocessing of datasets to prepare them for training.  
 
 For example, we can construct a `vipy.dataset.Dataset` object from one or more videos.  This dataset can be transformed in parallel using two processes:
 
@@ -105,7 +105,7 @@ VIPY supports integration with distributed schedulers for massively parallel ope
 
 ```python
 D = vipy.dataset.Dataset('/path/to/directory/of/jsonfiles')
-with vipy.globals.parallel(scheduler='10.0.0.1:8785'):
+with vipy.globals.dask(scheduler='10.0.0.1:8785'):
     R = D.map(lambda v, outdir='/newpath/to': vipy.util.bz2pkl(os.path.join(outdir, '%s.pkl.bz2' % v.videoid()), v.trackcrop().mindim(128).normalize(mean=(128,128,128)).torch()))
 ```
 
@@ -117,7 +117,9 @@ Vipy was designed to define annotated videos and imagery as collections of pytho
 
 * [vipy.image.Scene](image.html#vipy.image.Scene)
 * [vipy.object.Detection](object.html#vipy.object.Detection)
+* [vipy.object.Keypoint2d](object.html#vipy.object.Keypoint2d)
 * [vipy.geometry.BoundingBox](geometry.html#vipy.geometry.BoundingBox)
+* [vipy.geometry.Point2d](geometry.html#vipy.geometry.Point2d)
 
 The core objects for videos:
 
@@ -125,7 +127,7 @@ The core objects for videos:
 * [vipy.object.Track](object.html#vipy.object.Track)
 * [vipy.activity.Activity](activity.html#vipy.activity.Activity)
 
-See the documentation for each object for how to construct them.  Alternatively, see our [open source visual analytics](https://github.com/visym/heyvi) for construction of vipy objects from activity and object detectors.
+See the documentation for each object for how to construct them.  
 
 
 ## Export
@@ -154,6 +156,7 @@ This will output an image object:
 
 This provides control over where large datasets are cached on your local file system.  By default, this will be cached to the system temp directory.
 
+* **VIPY_DATASET_REGISTRY_HOME**='/path/to/dir'.  This is the directory to download datasets in `vipy.dataset.registry`.
 * **VIPY_AWS_ACCESS_KEY_ID**='MYKEY'.  This is the [AWS key](https://docs.aws.amazon.com/general/latest/gr/aws-sec-cred-types.html) to download urls of the form "s3://".  
 * **VIPY_AWS_SECRET_ACCESS_KEY**='MYKEY'.   This is the [AWS secret key](https://docs.aws.amazon.com/general/latest/gr/aws-sec-cred-types.html) to download urls of the form "s3://".
 * **VIPY_BACKEND**.   This is the [Matplotlib backend](https://matplotlib.org/stable/users/explain/backends.html) to use when rendering figure windows.  'Agg' is recommended for headless operation, and 'TkAgg' is recommended for Linux based X11 forwarding.  In most cases, matplotlib will choose the best backend available by default, and this environment variable does not need to override this choice.
@@ -164,7 +167,7 @@ This provides control over where large datasets are cached on your local file sy
 To determine what vipy version you are running you can use:
 
 >>> vipy.__version__
->>> vipy.version.is_at_least('1.11.1') 
+>>> vipy.__version__.is_at_least('1.16.2') 
 
 # Tutorials
 
@@ -182,7 +185,7 @@ Images can be loaded from URLs, local image files, or numpy arrays.  The images 
 >>> im = vipy.image.Image(array=np.random.rand(224,224,3).astype(np.float32))  
 ```
 
-### Display an image to stdout
+### Print an image representation 
 
 All objects have helpful string representations when printed to stdout.  This is accessible via the `vipy.image.Image.print` method or by using builtin print().  In this example, an image is created from a wikipedia URL.  Printing this image object shows the URL, but when it is loaded, the image object shows the size of the image, colorspace and the filename that the URL was downloaded to.  When in doubt, print!
 
@@ -235,6 +238,12 @@ All images can be displayed using the matplotlib library.  Matplotlib is the mos
 >>> im = vipy.image.owl().mindim(512).show()
 ```
 <img src="https://raw.githubusercontent.com/visym/vipy/master/docs/tutorials/display_an_image.jpg" height="500">
+
+All images can be displayed in a dark theme or a light theme.  Light themes show captions on light backgrounds, dark theme shows captions on a dark background.
+
+```python
+>>> im = vipy.image.owl().mindim(512).show(theme='dark')
+```
 
 ### Annotate an image
 
@@ -383,8 +392,17 @@ vipy.visualize.montage([[o.crop().fliplr(),                # spatial mirror
 ```
 <img src="https://raw.githubusercontent.com/visym/vipy/master/docs/tutorials/data_augmentation_for_training.jpg" height="350">
 
+These functions have been integrated into a single package `vipy.noise` which implements photometric and geometric perturbations.
 
-### Vipy vs. Torchvision
+### Vipy and Torchvision
+
+ALl vipy objects can be exported to torch tensors:
+
+```python
+im = vipy.image.vehicles().load().tensor(order='CHW')
+```
+
+with axis permutations to export in channel first order used by pytorch tensors.
 
 ### Visualization behind SSH 
 
@@ -429,7 +447,7 @@ Finally, if the credentials you provide are authorized to access this bucket and
 ### Load from YouTube
 
 ```python
-v = vipy.video.Video(url='https://youtu.be/kpBCzzzX6zA')
+v = vipy.video.Video(url='https://youtu.be/kpBCzzzX6zA').download()
 ```
 
 ### Inspect the FFMPEG command line
@@ -461,45 +479,120 @@ v = vipy.video.RandomScene().clip(0,30).webp()
 
 ### Find all videos in directory
 
-### Track objects in video
+```python
+dataset = vipy.dataset.Dataset.from_directory('/path/to/dir', filetype='mp4')
+```
 
 ### Import RTSP camera streams
 
-### Detect activities in video
+```python
+v = vipy.video.Video(url='rtsp://user:password@10.0.1.19/live0')
+```
 
-### Blur People and Cars
-
-### Make a video mosaic from many streams
 
 ### Split a video into activity clips
 
+```python
+clips = vipy.video.RandomScene().activityclip()
+```
+
+Each clip is a separate video with a single activity, such that the video is clipped at the temporal extent of this activity
+
+### Split a video into track clips
+
+```python
+clips = vipy.video.RandomScene().trackclip()
+```
+
+Each clip is a separate video with a single track, such that the video is clipped at the temporal extent of this track
+
 ### Create quicklooks for fast video watching
 
-### Stabilize background
+```python
+vipy.video.RandomScene().quicklook(),show()
+```
 
-### Create video thumbnails
+A quicklook is a montage constructed by nine frames sampled from the video.  This is a convenient way to visualize a video
 
-### Create compressed and cached tensors for large-scale training
 
 
 ### Export to JSON
+
+```python
+vipy.video.RandomScene().flush().json()
+```
 
 ## Datasets
 
-### Create a dataset
+### Load a dataset from the registry
 
-### Resize and crop
+```python
+vipy.dataset.registry('mnist')
+```
 
-### Import to torch 
+The registry is the common entry point for loading collections of annotated visual data.  The datasets are downloaded and imported when requested.
 
-### Archive to .tar.gz
 
-### Export to JSON
+### Download a dataset with URLs 
 
-### Video data augmentation for training
+```python
+with vipy.parallel.multiprocessing(4):
+    vipy.dataset.registry('kinetics').map(vipy.video.Transform.downloader(outdir='/tmp')) 
+```
 
-### Create standalone HTML visualizations of images
+This will download the youtube videos from the kinetics dataset with four parallel processes. Videos will be stored in the requested outdir.
 
+
+### Create a dataset from images
+
+```python
+D = vipy.dataset.Dataset.from_directory('/path/to/dir', filetype='images')
+```
+
+### Determine the set of classes
+
+```python
+trainset = vipy.dataset.registry('cifar10')
+print(trainset.set(lambda im: im.category()))
+```
+
+### Take a subset
+
+```python
+trainset = vipy.dataset.registry('cifar10')
+print(trainset.take(1024))
+```
+
+### Compute inverse frequency weights
+
+```python
+vipy.dataset.registry('cifar10').inverse_frequency(lambda im: im.category())
+```
+
+These weights can be used for weighting a loss function for imbalanced classes.
+
+### Iterate over minibatches
+
+```python
+for b in vipy.dataset.registry('cifar10').minibatch(128):
+     print(b)
+```
+
+### Iterate over minibatches with parallel preprocessing
+
+```python
+with vipy.globals.multiprocessing(4):
+    for b in vipy.dataset.registry('cifar10').minibatch(128, loader=vipy.image.Transform.to_tensor(shape=(16,16), gain=1/255)):
+        print(b)  # these batches have been preprocessed to shape (16,16) and in the range [0,1]
+```
+
+### Combine datasets as a union
+
+```python
+vipy.dataset.registry(('mnist', 'cifar10', 'caltech101'))
+```
+
+A dataset untion will iterate over the component datasets
 
 # Contact
 

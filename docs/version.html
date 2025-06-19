@@ -26,7 +26,7 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/f10b3f6aec0ef011e86ee11667579388379a8ac3/vipy/version.py#L1-L85" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/version.py#L1-L88" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">MAJOR = 1
 MINOR = 16
@@ -98,6 +98,9 @@ class Version():
         &#34;&#34;&#34;Is versionstring=&#39;X.Y.Z&#39; at least the current version?&#34;&#34;&#34;        
         return self.at_least_major_version(v) and self.at_least_minor_version(v) and self.at_least_release_version(v)
 
+    def is_at_least(self, v):
+        return self.at_least_version(v)
+    
     def at_least_major_version(self, v):
         return self.major &gt;= Version.from_string(v).major
     
@@ -138,7 +141,7 @@ VERSION = Version(MAJOR, MINOR, RELEASE)</code></pre>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/f10b3f6aec0ef011e86ee11667579388379a8ac3/vipy/version.py#L6-L81" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/version.py#L6-L84" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Version():
     &#34;&#34;&#34;vipy.version.Version class
@@ -205,6 +208,9 @@ VERSION = Version(MAJOR, MINOR, RELEASE)</code></pre>
         &#34;&#34;&#34;Is versionstring=&#39;X.Y.Z&#39; at least the current version?&#34;&#34;&#34;        
         return self.at_least_major_version(v) and self.at_least_minor_version(v) and self.at_least_release_version(v)
 
+    def is_at_least(self, v):
+        return self.at_least_version(v)
+    
     def at_least_major_version(self, v):
         return self.major &gt;= Version.from_string(v).major
     
@@ -242,7 +248,7 @@ VERSION = Version(MAJOR, MINOR, RELEASE)</code></pre>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/f10b3f6aec0ef011e86ee11667579388379a8ac3/vipy/version.py#L71-L72" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/version.py#L74-L75" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def at_least_major_version(self, v):
     return self.major &gt;= Version.from_string(v).major</code></pre>
@@ -256,7 +262,7 @@ VERSION = Version(MAJOR, MINOR, RELEASE)</code></pre>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/f10b3f6aec0ef011e86ee11667579388379a8ac3/vipy/version.py#L77-L78" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/version.py#L80-L81" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def at_least_minor_version(self, v):
     return self.minor  &gt;= Version.from_string(v).minor</code></pre>
@@ -270,7 +276,7 @@ VERSION = Version(MAJOR, MINOR, RELEASE)</code></pre>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/f10b3f6aec0ef011e86ee11667579388379a8ac3/vipy/version.py#L80-L81" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/version.py#L83-L84" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def at_least_release_version(self, v):
     return self.release &gt;= Version.from_string(v).release</code></pre>
@@ -284,7 +290,7 @@ VERSION = Version(MAJOR, MINOR, RELEASE)</code></pre>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/f10b3f6aec0ef011e86ee11667579388379a8ac3/vipy/version.py#L67-L69" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/version.py#L67-L69" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def at_least_version(self, v):
     &#34;&#34;&#34;Is versionstring=&#39;X.Y.Z&#39; at least the current version?&#34;&#34;&#34;        
@@ -299,10 +305,24 @@ VERSION = Version(MAJOR, MINOR, RELEASE)</code></pre>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/f10b3f6aec0ef011e86ee11667579388379a8ac3/vipy/version.py#L61-L62" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/version.py#L61-L62" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def int(self):
     return self.major*10000 + self.minor*100 + self.release</code></pre>
+</details>
+</dd>
+<dt id="vipy.version.Version.is_at_least"><code class="name flex">
+<span>def <span class="ident">is_at_least</span></span>(<span>self, v)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/version.py#L71-L72" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def is_at_least(self, v):
+    return self.at_least_version(v)</code></pre>
 </details>
 </dd>
 <dt id="vipy.version.Version.same_major_version"><code class="name flex">
@@ -313,7 +333,7 @@ VERSION = Version(MAJOR, MINOR, RELEASE)</code></pre>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/f10b3f6aec0ef011e86ee11667579388379a8ac3/vipy/version.py#L74-L75" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/version.py#L77-L78" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def same_major_version(self, v):
     return self.major == Version.from_string(v).major</code></pre>
@@ -327,7 +347,7 @@ VERSION = Version(MAJOR, MINOR, RELEASE)</code></pre>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/f10b3f6aec0ef011e86ee11667579388379a8ac3/vipy/version.py#L64-L65" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/version.py#L64-L65" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def version(self):
     return &#39;%d.%d.%d&#39; % (self.major, self.minor, self.release)        </code></pre>
@@ -412,6 +432,7 @@ setTimeout(() => input.focus(), 100);
 <li><code><a title="vipy.version.Version.at_least_version" href="#vipy.version.Version.at_least_version">at_least_version</a></code></li>
 <li><code><a title="vipy.version.Version.from_string" href="#vipy.version.Version.from_string">from_string</a></code></li>
 <li><code><a title="vipy.version.Version.int" href="#vipy.version.Version.int">int</a></code></li>
+<li><code><a title="vipy.version.Version.is_at_least" href="#vipy.version.Version.is_at_least">is_at_least</a></code></li>
 <li><code><a title="vipy.version.Version.is_valid" href="#vipy.version.Version.is_valid">is_valid</a></code></li>
 <li><code><a title="vipy.version.Version.same_major_version" href="#vipy.version.Version.same_major_version">same_major_version</a></code></li>
 <li><code><a title="vipy.version.Version.version" href="#vipy.version.Version.version">version</a></code></li>

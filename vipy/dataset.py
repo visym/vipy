@@ -4,6 +4,7 @@ from vipy.util import findpkl, toextension, filepath, filebase, jsonlist, ishtml
 from vipy.util import listpkl, listext, templike, tempdir, remkdir, tolist, fileext, writelist, tempcsv, to_iterable
 from vipy.util import newpathroot, listjson, extlist, filefull, tempdir, groupbyasdict, try_import, shufflelist, catcher
 from vipy.util import is_email_address, findjson, findimages, isimageurl, countby, chunkgen, chunkgenbysize, dividelist, chunklist
+from vipy.util import findvideos
 from vipy.globals import log
 import random
 import shutil
@@ -75,6 +76,8 @@ class Dataset():
             return cls([x for f in findjson(indir) for x in to_iterable(vipy.load(f))], id=id)
         elif filetype.lower() in ['jpg','jpeg','images']:
             return cls([vipy.image.Image(filename=f) for f in findimages(indir)], id=id)            
+        elif filetype.lower() in ['mp4','videos']:
+            return cls([vipy.image.Video(filename=f) for f in findvideos(indir)], id=id)            
         else:
             raise ValueError('unsupported file type "%s"' % filetype)
 
