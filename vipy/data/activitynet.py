@@ -11,6 +11,7 @@ URL = 'https://github.com/activitynet/ActivityNet/raw/refs/heads/master/Evaluati
 
 
 class ActivityNet():
+    """http://activity-net.org"""
     def __init__(self, datadir=vipy.util.tocache('activitynet'), redownload=False):
         """Activitynet, provide a datadir='/path/to/store/activitynet' """
         self._url = URL

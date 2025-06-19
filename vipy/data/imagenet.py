@@ -2,7 +2,6 @@ import os
 import vipy
 from vipy.util import readcsv, remkdir, filepath, islist, filetail, filebase, filefull, tocache, isinstalled
 from vipy.image import ImageDetection, ImageCategory
-import scipy.io
 import numpy as np
 from vipy.globals import log
 
@@ -63,6 +62,9 @@ class Imagenet2012():
             open(os.path.join(self._datadir, '.complete'), 'a').close()        
             
         self._synset_to_categorylist = {x.split(' ',1)[0]:[y.lstrip().rstrip() for y in x.split(' ', 1)[1].split(',')] for x in vipy.util.readtxt(os.path.join(self._datadir, 'synset_words.txt'))}            
+
+        vipy.util.try_import('scipy.io', 'scipy')
+        import scipy.io
 
         metadata = scipy.io.loadmat(os.path.join(self._datadir, 'ILSVRC2012_devkit_t12/ILSVRC2012_devkit_t12/data/meta.mat'), struct_as_record=False)
         synsets = np.squeeze(metadata['synsets'])
@@ -207,6 +209,8 @@ class Imagenet21K_Resized(vipy.dataset.Dataset):
 class Imagenet21K(vipy.dataset.Dataset):
     """Imagenet21K requires login at https://image-net.org from the same IP address as the download, and agreeing to the ImageNet terms: https://image-net.org/download-images.php#term    
        imagenet-21K 2021 winter release
+
+       https://image-net.org
     """
     def __init__(self, datadir=None, aslemma=True, redownload=False, recache=False):
 

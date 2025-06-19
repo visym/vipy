@@ -9,18 +9,16 @@ from vipy.show import savefig
 from collections import defaultdict
 from datetime import datetime
 from vipy.metrics import ascii_bar_chart
+from pathlib import Path
 import time
-import PIL
+import PIL.Image
 import vipy.video
 import webbrowser
-import pathlib
 import html
 import urllib
 import warnings
-from pathlib import Path
 import hashlib
 import matplotlib
-import warnings
 import json
 import html
 
@@ -60,7 +58,7 @@ def scene_explorer(im, outfile=None, width=1024, title='Scene Explorer', preview
     assert popup_alpha >=0 and popup_alpha <=1
     assert embed or im.has_url()
     if not all([isinstance(o, vipy.object.Keypoint2d) for o in im.objects()]):
-        warnings.warn('Scene explorer supports vipy.object.Keypoint2d only - all other vipy.object elements ignored')
+        log.warning('Scene explorer supports vipy.object.Keypoint2d only - all other vipy.object elements ignored')
 
     imc = im.clone()
     img = ('data:image/jpeg;charset=utf-8;base64,%s' % imc.load().resize(width=width).base64().decode('ascii')) if embed else imc.flush().url()
@@ -266,7 +264,7 @@ def hoverpixel_selector(htmllist, legendlist, outfile=None, display=False, offse
     assert len(htmllist) == len(legendlist)
     assert all([ishtml(h) for h in htmllist])
     if any([not isurl(h) for h in htmllist]):
-        warnings.warn('Local HTML files will not load in safari due to security restrictions - use a public https:// URL instead, or use a different browser (e.g. chrome, firefox)')    
+        log.warning('Local HTML files will not load in safari due to security restrictions - use a public https:// URL instead, or use a different browser (e.g. chrome, firefox)')    
     htmllist = [('file://%s' % os.path.abspath(h)) if not isurl(h) else h for h in htmllist]
     
     filename = outfile if outfile is not None else temphtml()
@@ -527,7 +525,7 @@ def urls(urllist, title='URL Visualization', imagewidth=1024, outfile=None, disp
 
     # Display?
     if display:
-        url = pathlib.Path(filename).as_uri()
+        url = Path(filename).as_uri()
         log.info('[vipy.visualize.urls]: Opening "%s" in default browser' % url)
         webbrowser.open(url)
         
@@ -597,7 +595,7 @@ def tohtml(imlist, imdict=None, title='Image Visualization', mindim=1024, outfil
 
     # Display?
     if display:
-        url = pathlib.Path(filename).as_uri()
+        url = Path(filename).as_uri()
         log.info('[vipy.visualize.tohtml]: Opening "%s" in default browser' % url)
         webbrowser.open(url)
         
@@ -638,7 +636,7 @@ def videolist(vidlist, viddict=None, title='Video Visualization', outfile=None, 
 
     # Display?
     if display:
-        url = pathlib.Path(filename).as_uri()
+        url = Path(filename).as_uri()
         log.info('[vipy.visualize.videolist]: Opening "%s" in default browser' % url)
         webbrowser.open(url)
         

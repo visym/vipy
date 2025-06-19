@@ -1,9 +1,8 @@
 import os
 import vipy.downloader
 import vipy.dataset
-from vipy.util import remkdir, tocache
+from vipy.util import remkdir, tocache, try_import
 from vipy.image import ImageCategory
-import scipy.io
 
 
 IMAGE_URL = 'https://www.robots.ox.ac.uk/~vgg/data/flowers/102/102flowers.tgz'
@@ -145,6 +144,7 @@ class Flowers102(vipy.dataset.Dataset):
         labelindex_to_category = {str(k):c for (k,c) in enumerate(category, start=1)}  # one-indexed
 
         # Import, cache and reuse JSON
+        try_import('scipy.io', 'scipy')
         import scipy.io
         mat = scipy.io.loadmat(os.path.join(self._datadir, 'imagelabels.mat'))
         imageindex_to_labelindex = [str(c) for c in mat['labels'][0]]

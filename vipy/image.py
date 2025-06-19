@@ -35,13 +35,6 @@ import functools
 
 
 try:
-    from torch import Tensor 
-    from torch import is_tensor
-    from torch import from_numpy
-except:
-    pass  # will throw exception on vipy.image.Image.torch
-
-try:
     import ujson as json  # faster
 except ImportError:        
     import json  # fastish
@@ -968,6 +961,8 @@ class Image():
 
         .. note:: This supports numpy types and does not support bfloat16
         """
+        from torch import from_numpy;  # optional package pytorch not installed, run "pip install torch" (don't use try_import here, it's too slow)
+        
         assert order in ['CHW', 'HWC', 'NCHW', 'NHWC']
         img = self.array() if self.array().ndim == 3 else np.expand_dims(self.array(), 2)  # HxW -> HxWx1, HxWxC -> HxWxC (unchanged)
         img = img.transpose(2,0,1) if order in ['CHW', 'NCHW']  else img   # HxWxC -> CxHxW
@@ -978,7 +973,7 @@ class Image():
     @staticmethod
     def from_torch(x, order='CHW'):
         """Convert a 1xCxHxW or CxHxW torch tensor (or numpy array with torch channel order) to HxWxC numpy array, returns new `vipy.image.Image` with inferred colorspace corresponding to data type in x"""
-        try_import('torch'); import torch        
+        from torch import Tensor, is_tensor;  # optional package pytorch not installed, run "pip install torch" (don't use try_import here, it's too slow) 
         assert isinstance(x, Tensor) or isinstance(x, np.ndarray), "Invalid input type '%s'- must be torch.Tensor" % (str(type(x)))
         assert (x.ndim == 4 and x.shape[0] == 1) or x.ndim == 3, "Torch tensor must be shape 1xCxHxW or CxHxW"
         x = x.squeeze(0) if (x.ndim == 4 and x.shape[0] == 1) else x
@@ -1972,7 +1967,7 @@ class ImageCategory(Image):
             self.set_attribute('confidence', float(confidence))
 
     def __repr__(self):
-        fields = ['category=%s' % self.category()] if self.category() is not None else []
+        fields = ['category=%s' % str(self.category())]
         fields +=  ['confidence=%1.3f' % self.confidence()] if self.confidence() is not None else []
         return super().__repr__().replace('vipy.image.Image', 'vipy.image.ImageCategory').replace('>', ', %s>' % ','.join(fields))
 
@@ -1997,6 +1992,11 @@ class ImageCategory(Image):
     def new_category(self, c):
         return self.set_attribute('category', c)
 
+    def clear_category(self):
+        if 'category' in self.attributes:
+            del self.attributes['category']
+        return self
+    
     def category(self):
         return self.attributes['category'] if 'category' in self.attributes else None  # self.attributes.get('category') 
 

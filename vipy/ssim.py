@@ -1,9 +1,10 @@
 import vipy
-from scipy.signal import convolve2d
 from vipy.math import gaussian
 import numpy as np
 from vipy.globals import log
 from vipy.util import try_import
+
+try_import('scipy.signal', 'scipy'); from scipy.signal import convolve2d
 try_import('cv2', 'opencv-python'); import cv2 
 
 

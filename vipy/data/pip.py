@@ -3,6 +3,7 @@ import vipy
 
         
 class PIP_175k(vipy.dataset.Dataset):
+    """https://visym.github.io/collector/pip_175k/"""
     URL = 'https://dl.dropboxusercontent.com/s/aqafx0t3k7691gc/pip_175k.tar.gz'
     MD5 = '2d8dce694e8a6056023c5232975297d9'
     def __init__(self, datadir):
@@ -24,6 +25,7 @@ class PIP_175k(vipy.dataset.Dataset):
 
         
 class PIP_370k_stabilized(vipy.dataset.Dataset):
+    """https://visym.github.io/collector/pip_370k_stabilized/"""
     URL = 'https://dl.dropboxusercontent.com/s/fai9ontpmx4xv9i/pip_370k.tar.gz'
     MD5 = '2cf844fbc78fde1c125aa250e99db19f'
     def __init__(self, datadir):

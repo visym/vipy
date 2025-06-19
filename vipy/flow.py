@@ -11,7 +11,6 @@ import PIL.Image
 import copy
 import vipy.geometry
 from vipy.geometry import homogenize
-import warnings
 
 
 
@@ -236,7 +235,7 @@ class Flow(object):
             try:
                 f = cv2.cuda_FarnebackOpticalFlow
             except:
-                warnings.warn('OpenCV not CUDA enabled - GPU acceleration is unavailable')
+                log.warning('OpenCV not CUDA enabled - GPU acceleration is unavailable')
                 self._gpu = None
 
         self._sparse_matcher = lambda x,y,m=cv2.BFMatcher(cv2.NORM_HAMMING).match: m(x,y)  # matcher on desc

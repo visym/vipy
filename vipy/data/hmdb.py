@@ -1,7 +1,7 @@
 import os
 from vipy.video import VideoCategory
-from vipy.util import remkdir, filetail, isvideo, isinstalled
-import vipy.downloader
+from vipy.util import remkdir, filetail, isvideo, isinstalled, dirlist
+from vipy.downloader import download
 
 URL = 'http://serre-lab.clps.brown.edu/wp-content/uploads/2013/10/hmdb51_org.rar'
 SHA1 = None
@@ -14,14 +14,14 @@ class HMDB(object):
 
         if not os.path.exists(os.path.join(datadir, filetail(URL))):
             self.download()
-        if not len(vipy.util.dirlist(datadir)) > 1:
+        if not len(dirlist(datadir)) > 1:
             self._unpack(os.path.join(self.datadir, filetail(URL)), self.datadir)
             
     def __repr__(self):
         return str('<vipy.data.hmdb: "%s">' % self.datadir)
 
     def download(self):
-        vipy.downloader.download(URL, os.path.join(self.datadir, filetail(URL)))
+        download(URL, os.path.join(self.datadir, filetail(URL)))
         self._unpack(os.path.join(self.datadir, filetail(URL)), self.datadir)
 
     def dataset(self):

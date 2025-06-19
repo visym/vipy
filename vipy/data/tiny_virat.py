@@ -3,6 +3,7 @@ import vipy
 
     
 class TinyVIRAT():
+    """https://tinyactions-cvpr22.github.io/#dataset-details"""
     URL = 'https://www.crcv.ucf.edu/tiny-actions-challenge-cvpr2021/data/TinyVIRAT-v2.zip'
     def __init__(self, datadir):
         jsonfile = os.path.join(datadir, 'TinyVIRAT_V2','tiny_train_v2.json')

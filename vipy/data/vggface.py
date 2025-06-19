@@ -2,8 +2,6 @@ import os
 import numpy as np
 from vipy.util import txtlist, dirlist, imlist, readcsv, filebase, remkdir, try_import
 from vipy.image import ImageDetection
-try_import('scipy.io', 'scipy')
-from scipy.io import loadmat
 
 
 class VGGFaceURL(object):

@@ -12,8 +12,8 @@ VAL_IMG_URL = 'http://images.cocodataset.org/zips/val2017.zip'
 
 
 class LVIS():
+    """https://www.lvisdataset.org"""
     def __init__(self, datadir=None, redownload=False):
-        """Caltech101, provide a datadir='/path/to/store/caltech101' """
         datadir = tocache('lvis') if datadir is None else datadir
         
         self._datadir = remkdir(datadir)        

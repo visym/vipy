@@ -4,7 +4,7 @@ from vipy.util import findpkl, toextension, filepath, filebase, jsonlist, ishtml
 from vipy.util import listpkl, listext, templike, tempdir, remkdir, tolist, fileext, writelist, tempcsv, to_iterable
 from vipy.util import newpathroot, listjson, extlist, filefull, tempdir, groupbyasdict, try_import, shufflelist, catcher
 from vipy.util import is_email_address, findjson, findimages, isimageurl, countby, chunkgen, chunkgenbysize, dividelist, chunklist
-from vipy.util import findvideos
+from vipy.util import findvideos, truncate_string
 from vipy.globals import log
 import random
 import shutil
@@ -95,7 +95,7 @@ class Dataset():
         return cls(obj) if not isinstance(obj, Dataset) else obj
     
     def __repr__(self):
-        fields = ['id=%s' % self.id(truncated=True, maxlen=80)] if self.id() else []
+        fields = ['id=%s' % truncate_string(self.id(), maxlen=80)] if self.id() else []
         fields += ['len=%d' % self.len()] if self.len() is not None else []
         fields += ['type=%s' % self._type] if self._type else []
         return str('<vipy.dataset.Dataset: %s>' % ', '.join(fields))
@@ -157,15 +157,12 @@ class Dataset():
         assert isinstance(other, Dataset)
         return Union(self, other, id=self.id())
     
-    def id(self, n=None, truncated=False, maxlen=80, suffix=None):
-        """Set or return the dataset id, useful for showing the name/split of the dataset in the representation string"""
-        if n is None and suffix is None:
-            return (self._id[0:maxlen] + ' ... ') if truncated and self._id and len(self._id)>maxlen else self._id
-        elif n is None and suffix is not None:
-            self._id = self._id + suffix
-        elif n is not None:
-            self._id = n
-        return self
+    def id(self, new_id=None):
+        """Change the dataset ID to the provided ID, or return it if None"""
+        if new_id is not None:
+            self._id = new_id
+            return self
+        return self._id
 
     def index(self, index=None, strict=False):
         """Update the index, useful for filtering of large datasets"""
@@ -693,9 +690,9 @@ class Union(Dataset):
             raise ValueError('invalid index type "%s"' % type(k))
 
     def __repr__(self):
-        fields = ['id=%s' % self.id(truncated=True, maxlen=64)] if self.id() else []
+        fields = ['id=%s' % truncate_string(self.id(), maxlen=64)] if self.id() else []
         fields += ['len=%d' % len(self)]
-        fields += ['union=%s' % str(tuple([d.id(truncated=True, maxlen=80) for d in self._ds]))]
+        fields += ['union=%s' % str(tuple([truncate_string(d.id(), maxlen=80) for d in self._ds]))]
         return str('<vipy.dataset.Dataset: %s>' % (', '.join(fields)))
 
     def index(self, index=None, strict=False):

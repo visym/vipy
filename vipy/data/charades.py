@@ -1,12 +1,10 @@
 import os
 from vipy.util import filetail, remkdir, readjson, groupbyasdict, filefull, readlist, readcsv
-import vipy.downloader
 from vipy.video import VideoCategory, Video, Scene
-import numpy as np
 from vipy.object import Track, BoundingBox
 from vipy.activity import Activity
-import vipy.visualize
-from vipy.batch import Batch
+
+
 
 URL_ANNOTATIONS = 'http://ai2-website.s3.amazonaws.com/data/Charades.zip'
 URL_DATA = 'http://ai2-website.s3.amazonaws.com/data/Charades_v1.zip'
@@ -67,6 +65,9 @@ class Charades(object):
 
     def review(self, outfile=None, mindim=1024, n=25):
         """Generate a standalone HTML file containing quicklooks for each annotated activity in the train set"""
+        from vipy.batch import Batch
+        import vipy.visualize
+        
         T = self.trainset()
         quicklist = Batch(T).map(lambda v: [(c.load().quicklook(n=n), c.activitylist(), str(c.flush().print())) for c in v.mindim(512).activityclip()]).result()
         quicklooks = [imq for q in quicklist for (imq, activitylist, description) in q]  # for HTML display purposes

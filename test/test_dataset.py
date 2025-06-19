@@ -6,6 +6,7 @@ import vipy.object
 from vipy.util import tempjpg, tempdir, Failed, isurl, rmdir, flatlist, to_iterable
 from vipy.geometry import BoundingBox
 import warnings
+import vipy.data
 
 
 def _test_registry(name=None):
