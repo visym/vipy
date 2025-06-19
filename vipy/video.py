@@ -359,7 +359,7 @@ class Stream(object):
             event.wait()            
 
 
-        vc = self._video.clone(flushfilter=True).clear().nourl().nofilename()
+        vc = self._video.clone(flushfilter=True).clear().nourl().clear_filename()
         q = queue.Queue(3)  # warning: if this queuesize*n > buffersize, then there can be a deadlock
         e = threading.Event()        
         t = threading.Thread(target=_f_threadloop, args=(vc, self.__iter__, q, e, ragged, m, n), daemon=True, name='vipy.video.Stream.clip')
@@ -617,7 +617,7 @@ class Video():
                 startsec=d['startsec'] if 'startsec' in d else None,
                 endsec=d['endsec'] if 'endsec' in d else None)
         v._ffmpeg = v._from_ffmpeg_commandline(d['ffmpeg'])
-        return v.filename(d['filename']) if d['filename'] is not None else v.nofilename()
+        return v.filename(d['filename']) if d['filename'] is not None else v.clear_filename()
 
     def __repr__(self):
         strlist = []
@@ -1423,7 +1423,8 @@ class Video():
     def reload(self):
         return self.clone(flush=True).load()
                        
-    def nofilename(self):
+    def clear_filename(self):
+        """Remove the current filename from the object in-place and return the object"""
         self._filename = None
         self._update_ffmpeg('filename', None)
         return self
@@ -2461,7 +2462,7 @@ class Video():
         if rekey:
             v.rekey()
         if flushfile:
-            v.nofilename().nourl()
+            v.clear_filename().nourl()
         if sanitize:
             self.attributes = a  # restore attributes            
             v.attributes = {k:v for (k,v) in self.attributes.items()}  # shallow copy

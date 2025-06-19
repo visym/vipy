@@ -153,8 +153,8 @@ def scp(url, output_filename, verbose=True, progress=True):
 
     if url.startswith('scp://'):
         url = url.split('scp://')[1]
-    (hostname, remote_filename) = url.split('/',1)
-
+    (hostname, remote_filename) = url.split(':',1)
+    
     if verbose:
         log.info("Downloading '%s' to '%s'" % (url, output_filename))
         

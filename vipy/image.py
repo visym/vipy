@@ -111,7 +111,7 @@ class Image():
         # Initialization
         self._filename = filename
         if url is not None:
-            assert isinstance(url, str) and url.startswith(('http://', 'https://'))  # faster than vipy.util.isurl()
+            assert isinstance(url, str) and url.startswith(('http://', 'https://', 'scp://', 's3://'))  # faster than vipy.util.isurl()
         self._url = url
         if array is not None:
             assert isnumpy(array), 'Invalid Array - Type "%s" must be np.array()' % (str(type(array)))
@@ -1025,6 +1025,11 @@ class Image():
             self._filename = newfile
             return self
 
+    def clear_filename(self):
+        """Remove the current filename from the object in-place and return the object"""        
+        self._filename = None
+        return self
+    
     def url(self, url=None, username=None, password=None, sha1=None):
         """Image URL and URL download properties"""
         if url is not None:

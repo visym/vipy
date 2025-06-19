@@ -748,7 +748,7 @@ def registry(name=None, datadir=None, freeze=True, clean=False, download=False, 
        datadir [str]: A path to a directory to store data.  Defaults to environment variable VIPY_DATASET_REGISTRY_HOME (then VIPY_CACHE if not found).  Also uses HF_HOME for huggingface datasets.  Datasets will be stored in datadir/name
        freeze [bool]:  If true, disable reference cycle counting for the loaded object (which will never contain cycles anyway) 
        clean [bool]: If true, force a redownload of the dataset to correct for partial download errors
-       download [bool]: If true, force a redownload of the dataset to correct for partial download errors
+       download [bool]: If true, force a redownload of the dataset to correct for partial download errors.  This is a synonym for clean=True
        split [str]: return 'train', 'val' or 'test' split.  If None, return (trainset, valset, testset) tuple
 
     Datasets:

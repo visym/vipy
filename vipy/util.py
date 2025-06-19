@@ -836,7 +836,7 @@ def repath(v, srcpath, dstpath):
     return vc
     
 
-def scpsave(V, username=None):
+def scpsave(obj, username=None, format='json'):
     """Save an archive file to load via SCP.
 
     Use case:
@@ -858,7 +858,7 @@ def scpsave(V, username=None):
     Args:
         V: [vipy objects] A list of vipy objects or `vipy.dataset.Dataset`
         username: [str] Your username on the remote machine to select the proper SSH key
-
+        format: [str] pkl or json
     Returns:
         A temp archive file stored on the remote machine that will be downloaded and loaded via SCP, such that each element in the list will be fetched via scp when pixels are loaded.
 
@@ -867,17 +867,15 @@ def scpsave(V, username=None):
     import vipy.image
     import vipy.video
 
-    if isinstance(V, vipy.dataset.Dataset) and V._isvipy():
-        v = V.localmap(lambda v: v.clone().url('scp://%s%s:%s' % (('%s@' % username) if username is not None else '', socket.gethostname(), v.filename())).nofilename())
-    elif (isinstance(V, vipy.image.Image) or isinstance(V, vipy.video.Video)) and V.hasfilename():        
-        v = V.clone().url('scp://%s%s:%s' % (('%s@' % username) if username is not None else '', socket.gethostname(), V.filename())).nofilename()
-    elif islist(V) and all([isinstance(v, vipy.image.Image) or isinstance(v, vipy.video.Video) for v in V]):
-        v = [v.clone().url('scp://%s%s:%s' % (('%s@' % username) if username is not None else '', socket.gethostname(), v.abspath().filename())).nofilename() for v in V]
+    if (isinstance(obj, vipy.image.Image) or isinstance(obj, vipy.video.Video)) and obj.hasfilename():        
+        obj = obj.clone().url('scp://%s%s:%s' % (('%s@' % username) if username is not None else '', socket.gethostname(), obj.filename())).clear_filename()
+    elif islist(obj) and all([isinstance(o, vipy.image.Image) or isinstance(o, vipy.video.Video) for o in obj]):
+        obj = [o.clone().url('scp://%s%s:%s' % (('%s@' % username) if username is not None else '', socket.gethostname(), o.abspath().filename())).clear_filename() for o in obj]
     else:
-        v = V # no vipy objects
+        raise ValueError('vipy objects only')
 
-    pklfile = 'scp://%s%s:%s' % (('%s@' % username) if username is not None else '', socket.gethostname(), save(v, temppkl()))
-    cmd = "V = vipy.util.scpload('%s')" % pklfile
+    pklfile = 'scp://%s%s:%s' % (('%s@' % username) if username is not None else '', socket.gethostname(), save(obj, temppkl() if format == 'pkl' else tempjson()))
+    cmd = "vipy.util.scpload('%s')" % pklfile
     log.info('[vipy.util.scpsave]: On a local machine where you have public key ssh access to this remote machine run:\n>>> %s\n' % cmd)
     return pklfile
 

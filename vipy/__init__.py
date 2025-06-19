@@ -19,7 +19,7 @@ Vipy was created with three design goals.
 
 * **Simplicity**.  Annotated Videos and images should be as easy to manipulate as the pixels.  We provide a simple fluent API that enables the transformation of media so that pixels are transformed along with the annotations.  We provide a comprehensive unit test suite to validate this pipeline with continuous integration.
 * **Portability**.  Vipy was designed with the goal of allowing it to be easily retargeted to new platforms.  For example, deployment on a serverless architecture such as AWS lambda has restrictions on the allowable code that can be executed in layers.  We designed Vipy with minimal dependencies on standard and mature machine learning tool chains (numpy, matplotlib, ffmpeg, pillow) to ensure that it can be ported to new computational environments. 
-* **Efficiency**.  Vipy is written in pure python with the goal of performing in place operations and avoiding copies of media whenever possible.  This enables fast video processing by operating on videos as chains of transformations.  The documentation describes when an object is changed in place vs. copied.  Furthermore, loading of media is delayed until explicitly requested by the user (or the pixels are needed) to enable lazy loading for distributed processing.  
+* **Efficiency**.  Vipy is written in pure python with the goal of minimizing memory requirementts for large datasets, and performing in place operations to avoid copies.  This enables fast video processing by operating on videos as chains of transformations.  The documentation describes when an object is changed in place vs. copied.  Furthermore, loading is delayed until explicitly requested by the user (or the pixels are needed) to enable lazy loading for distributed processing.  
 
 
 # Getting started
@@ -87,29 +87,6 @@ This will `vipy.video.Scene.show` the video live on your desktop, in a jupyter n
 See the [demos](https://github.com/visym/vipy/tree/master/demo) for more examples.
 
 
-## Parallelization
-
-Vipy includes integration with [concurrent futures](https://docs.python.org/3/library/concurrent.futures.html) and [Dask Distributed](https://distributed.dask.org) for parallel processing of video and images.   This is useful for preprocessing of datasets to prepare them for training.  
-
-For example, we can construct a `vipy.dataset.Dataset` object from one or more videos.  This dataset can be transformed in parallel using two processes:
-
-```python
-D = vipy.dataset.Dataset(vipy.video.Scene(filename='/path/to/videofile.mp4'))
-with vipy.globals.parallel(2):
-    R = D.map(lambda v, outdir='/newpath/to/': v.mindim(128).framerate(5).saveas(so.path.join(outdir, vipy.util.filetail(v.filename()))))
-```
-
-The result is a transformed dataset which contains transformed videos downsampled to have minimum dimension 128, framerate of 5Hz, with the annotations transformed accordingly.  The `vipy.dataset.Dataset.map` method allows for a lambda function to be applied in parallel to all elements in a dataset.  The fluent design of the VIPY objects allows for easy chaining of video operations to be expressed as a lambda function.  VIPY objects are designed for integration into parallel processing tool chains and can be easily serialized and deserialized for sending to parallel worker tasks.  
-
-VIPY supports integration with distributed schedulers for massively parallel operation.  
-
-```python
-D = vipy.dataset.Dataset('/path/to/directory/of/jsonfiles')
-with vipy.globals.dask(scheduler='10.0.0.1:8785'):
-    R = D.map(lambda v, outdir='/newpath/to': vipy.util.bz2pkl(os.path.join(outdir, '%s.pkl.bz2' % v.videoid()), v.trackcrop().mindim(128).normalize(mean=(128,128,128)).torch()))
-```
-
-This will lazy load a directory of JSON files, where each JSON file corresponds to the annotations of a single video, such as those collected by [Visym Collector](https://visym.github.io/collector).   The `vipy.dataset.Dataset.map` method will communicate with a [scheduler](https://docs.dask.org/en/stable/how-to/deploy-dask/ssh.html) at a given IP address and port and will process the lambda function in parallel to the workers tasked by the scheduler.  In this example, the video will `vipy.video.Scene.trackcrop` the smallest bounding box containing all tracks in the video, resized so this crop is 128 on the smallest side, loaded and normalized to remove the mean, then saved as a torch tensor in a bzipped python pickle file.  This is useful for preprocesssing videos to torch tensors for fast loading of dataset augmentation during training.
 
 ## Import
 
@@ -168,6 +145,30 @@ To determine what vipy version you are running you can use:
 
 >>> vipy.__version__
 >>> vipy.__version__.is_at_least('1.16.2') 
+
+## Parallelization
+
+Vipy includes integration with [concurrent futures](https://docs.python.org/3/library/concurrent.futures.html) and [Dask Distributed](https://distributed.dask.org) for parallel processing of video and images.   This is useful for preprocessing of datasets to prepare them for training.  
+
+For example, we can construct a `vipy.dataset.Dataset` object from one or more videos.  This dataset can be transformed in parallel using two processes:
+
+```python
+D = vipy.dataset.Dataset(vipy.video.Scene(filename='/path/to/videofile.mp4'))
+with vipy.globals.parallel(2):
+    R = D.map(lambda v, outdir='/newpath/to/': v.mindim(128).framerate(5).saveas(so.path.join(outdir, vipy.util.filetail(v.filename()))))
+```
+
+The result is a transformed dataset which contains transformed videos downsampled to have minimum dimension 128, framerate of 5Hz, with the annotations transformed accordingly.  The `vipy.dataset.Dataset.map` method allows for a lambda function to be applied in parallel to all elements in a dataset.  The fluent design of the VIPY objects allows for easy chaining of video operations to be expressed as a lambda function.  VIPY objects are designed for integration into parallel processing tool chains and can be easily serialized and deserialized for sending to parallel worker tasks.  
+
+VIPY supports integration with distributed schedulers for massively parallel operation.  
+
+```python
+D = vipy.dataset.Dataset('/path/to/directory/of/jsonfiles')
+with vipy.globals.dask(scheduler='10.0.0.1:8785'):
+    R = D.map(lambda v, outdir='/newpath/to': vipy.util.bz2pkl(os.path.join(outdir, '%s.pkl.bz2' % v.videoid()), v.trackcrop().mindim(128).normalize(mean=(128,128,128)).torch()))
+```
+
+This will lazy load a directory of JSON files, where each JSON file corresponds to the annotations of a single video, such as those collected by [Visym Collector](https://visym.github.io/collector).   The `vipy.dataset.Dataset.map` method will communicate with a [scheduler](https://docs.dask.org/en/stable/how-to/deploy-dask/ssh.html) at a given IP address and port and will process the lambda function in parallel to the workers tasked by the scheduler.  In this example, the video will `vipy.video.Scene.trackcrop` the smallest bounding box containing all tracks in the video, resized so this crop is 128 on the smallest side, loaded and normalized to remove the mean, then saved as a torch tensor in a bzipped python pickle file.  This is useful for preprocesssing videos to torch tensors for fast loading of dataset augmentation during training.
 
 # Tutorials
 
@@ -306,7 +307,7 @@ Searching for all images recursively from a root directory and lazy load them as
 
 ```python
 >>> [vipy.image.Image(filename=f) for f in vipy.util.findimages('./docs/tutorials')]
-[<vipy.image: filename="/Users/jebyrne/dev/vipy/docs/tutorials/transform_an_image_1.jpg">, <vipy.image: filename="/Users/jebyrne/dev/vipy/docs/tutorials/transform_an_image_2.jpg">, ... 
+[<vipy.image: filename="/Users/myaccount/dev/vipy/docs/tutorials/transform_an_image_1.jpg">, <vipy.image: filename="/Users/myaccount/dev/vipy/docs/tutorials/transform_an_image_2.jpg">, ... 
 ```
 
 ### Export scene to JSON
@@ -317,7 +318,7 @@ All annotated images can be imported and exported to an open JSON format. If ima
 >>> json = vipy.image.owl().flush().json()
 >>> im = vipy.image.Scene.from_json(json)
 >>> print(json)
-'{"_filename":"\\/Users\\/jebyrne\\/.vipy\\/1920px-Bubo_virginianus_06.jpg","_url":"https:\\/\\/upload.wikimedia.org\\/wikipedia\\/commons\\/thumb\\/2\\/23\\/Bubo_virginianus_06.jpg\\/1920px-Bubo_virginianus_06.jpg","_loader":null,"_array":null,"_colorspace":"rgb","attributes":{},"_category":"Nature","_objectlist":[{"_xmin":93.33333333333333,"_ymin":85.33333333333333,"_xmax":466.6666666666667,"_ymax":645.3333333333334,"_id":"a047e21d","_label":"Great Horned Owl","_shortlabel":"Great Horned Owl"}]}'
+'{"_filename":"\\/Users\\/myaccount\\/.vipy\\/1920px-Bubo_virginianus_06.jpg","_url":"https:\\/\\/upload.wikimedia.org\\/wikipedia\\/commons\\/thumb\\/2\\/23\\/Bubo_virginianus_06.jpg\\/1920px-Bubo_virginianus_06.jpg","_loader":null,"_array":null,"_colorspace":"rgb","attributes":{},"_category":"Nature","_objectlist":[{"_xmin":93.33333333333333,"_ymin":85.33333333333333,"_xmax":466.6666666666667,"_ymax":645.3333333333334,"_id":"a047e21d","_label":"Great Horned Owl","_shortlabel":"Great Horned Owl"}]}'
 ```
 
 ### Export scene to CSV
@@ -328,10 +329,10 @@ All annotated images can be exported to a CSV format using object iterators.  Ob
 >>> im = vipy.image.vehicles()
 >>> vipy.util.writecsv([(im.filename(), o.category(), o.xmin(), o.ymin(), o.width(), o.height()) for o in im.objects()], 'out.csv')
 >>> cat out.csv
-/Users/jebyrne/.vipy/I-80_Eastshore_Fwy.jpg,car,210.2222222222222,263.2,41.06666666666666,32.622222222222206
-/Users/jebyrne/.vipy/I-80_Eastshore_Fwy.jpg,car,626.6666666666666,336.0444444444444,77.86666666666667,65.4666666666667
-/Users/jebyrne/.vipy/I-80_Eastshore_Fwy.jpg,car,140.84444444444443,284.4888888888889,53.066666666666634,53.111111111111086
-/Users/jebyrne/.vipy/I-80_Eastshore_Fwy.jpg,car,394.17777777777775,396.84444444444443,99.4666666666667,87.37777777777774
+/Users/myaccount/.vipy/I-80_Eastshore_Fwy.jpg,car,210.2222222222222,263.2,41.06666666666666,32.622222222222206
+/Users/myaccount/.vipy/I-80_Eastshore_Fwy.jpg,car,626.6666666666666,336.0444444444444,77.86666666666667,65.4666666666667
+/Users/myaccount/.vipy/I-80_Eastshore_Fwy.jpg,car,140.84444444444443,284.4888888888889,53.066666666666634,53.111111111111086
+/Users/myaccount/.vipy/I-80_Eastshore_Fwy.jpg,car,394.17777777777775,396.84444444444443,99.4666666666667,87.37777777777774
 ```
 
 ### Image deduplication
@@ -413,17 +414,17 @@ On a remote machine (e.g. the cluster machine you have accessed via ssh), run:
 ```python
 remote>>> vipy.util.scpsave(vipy.image.owl())
 [vipy.util.scpsave]: On a local machine where you have public key ssh access to this remote machine run:
->>> V = vipy.util.scpload('scp://hostname:/var/folders/sn/6n34qjp513742_5y3lvmhnlw0000gn/T/c4237a25a99b776f.pkl')
+>>> V = vipy.util.scpload('scp://hostname:/var/folders/sn/6n34qjp513742_5y3lvmhnlw0000gn/T/c4237a25a99b776f.json')
 ```
 
 Then, on your local machine (e.g. your laptop), run the command output above:
 
 ```python
 local>>> print(vipy.util.scpload('scp://hostname:/var/folders/sn/6n34qjp513742_5y3lvmhnlw0000gn/T/c4237a25a99b776f.pkl'))
-<vipy.image.scene: height=640, width=512, color=rgb, filename="/Users/jebyrne/.vipy/1920px-Bubo_virginianus_06.jpg", url=https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Bubo_virginianus_06.jpg/1920px-Bubo_virginianus_06.jpg, category="Nature", objects=1>
+<vipy.image.scene: height=640, width=512, color=rgb, filename="/Users/myaccount/.vipy/1920px-Bubo_virginianus_06.jpg", url=https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Bubo_virginianus_06.jpg/1920px-Bubo_virginianus_06.jpg, category="Nature", objects=1>
 ```
 
-The method `vipy.util.scpsave` will save a list of vipy objects to a temporary pickle file, such that the URL of each object is prepended with "scp://".  When calling `vipy.util.scpload` on the local machine, this will fetch the pickle file from the remote machine via scp using the default public key.  Then, when each vipy object is accessed, it will fetch the URL of the media object via scp from the remote machine.  This provides an on-demand fetching of each image from a data storage behind a SSH server without any port forwarding, and uses public key scp.  This allows for visualization of datasets that cannot be copied locally, but can be reduced on the local machine which are then fetched for visualization.
+The method `vipy.util.scpsave` will save a list of vipy objects to a temporary archive file, such that the URL of each object is prepended with "scp://".  When calling `vipy.util.scpload` on the local machine, this will fetch the archive file from the remote machine via scp using the default public key.  Then, when each vipy object is accessed, it will fetch the URL of the media object via scp from the remote machine.  This provides an on-demand fetching of each image from a data storage behind a SSH server without any port forwarding, and uses public key scp.  This allows for visualization of datasets that cannot be copied locally, but can be reduced on the local machine which are then fetched for visualization.
 
 
 ### Visualization behind AWS S3 
@@ -436,7 +437,7 @@ Data repositories are often stored with cloud service providers, such as Amazon 
 Then prepend the URL scheme "s3://BUCKET_NAME.s3.amazonaws.com/OBJECT_PATH" when constructing a URL.  Here is an example that we use for [Visym Collector](https://visym.com/collector) to store videos uploaded from around the world:
 
 ```python
->>> vipy.image.Image(url="s3://visym-data-lake140008-visymcprod.s3.amazonaws.com/uploads/Programs/BRIAR/BRIAR Ground/1abd962f-7607-4480-b6c4-cc6d206646533478029165639494950.mp4")
+>>> vipy.image.Image(url="s3://bucket/path/to/file.mp4")
 ```
 
 Finally, if the credentials you provide are authorized to access this bucket and object, then this object will be downloaded on-demand when the pixels are needed.  This provides a convenient method of on-demand downloading and caching of large datasets.
@@ -530,7 +531,12 @@ vipy.video.RandomScene().flush().json()
 vipy.dataset.registry('mnist')
 ```
 
-The registry is the common entry point for loading collections of annotated visual data.  The datasets are downloaded and imported when requested.
+The registry is the common entry point for loading collections of annotated visual data.  The datasets are downloaded and imported when requested.  Datasets are constructed as a large number of python objects, which can lead to slow garbage collection.  During registry import, the garbage collector is frozen by default, so that the loaded dataset is disabled for reference cycle counting.
+
+
+### Shuffling
+
+Shuffling a dataset uniformly at random can lead to inefficiencies due to random data access.  The `vipy.dataset.Datase.shuffle` method support uniform random shuffling, but it will attempt to use a more efficient streaming shuffler to allow for iterative access rather than random access.  This streaming shuffler will shuffle the underlying dataset (or dataset shards) rather than shuffling the dataset index.  This leads to better data locality in data access and more efficient iterative access for large datasets.
 
 
 ### Download a dataset with URLs 
