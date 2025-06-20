@@ -1,7 +1,7 @@
 import os
 from vipy.util import remkdir, tocache
-import vipy.downloader
-import vipy.dataset
+from vipy.downloader import download_and_unpack
+from vipy.dataset import Dataset
 from vipy.image import ImageCategory
 
 
@@ -9,7 +9,7 @@ URL = 'http://groups.csail.mit.edu/vision/LabelMe/NewImages/indoorCVPR_09.tar'
 SHA1 = '0b252516e746ba428b96af408d2e8162d9b08ac5'
 
 
-class MIT67(vipy.dataset.Dataset):
+class MIT67(Dataset):
     """IndoorSceneRecognition dataset: https://web.mit.edu/torralba/www/indoor.html"""
     def __init__(self, datadir=None, redownload=False):
 
@@ -18,7 +18,7 @@ class MIT67(vipy.dataset.Dataset):
         # Download
         self._datadir = remkdir(datadir)        
         if redownload or not os.path.exists(os.path.join(self._datadir, '.complete')):
-            vipy.downloader.download_and_unpack(URL, self._datadir, sha1=SHA1)            
+            download_and_unpack(URL, self._datadir, sha1=SHA1)            
             
         # Create dataset
         imlist = []

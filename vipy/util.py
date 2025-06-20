@@ -867,17 +867,26 @@ def scpsave(obj, username=None, format='json'):
     import vipy.image
     import vipy.video
 
+    try:
+        # Connect to an external IP (doesn't send data, just determines route)
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))  # Google's DNS
+        hostname = s.getsockname()[0]
+        s.close()
+    except:
+        hostname = socket.gethostname()
+
     if (isinstance(obj, vipy.image.Image) or isinstance(obj, vipy.video.Video)) and obj.hasfilename():        
-        obj = obj.clone().url('scp://%s%s:%s' % (('%s@' % username) if username is not None else '', socket.gethostname(), obj.filename())).clear_filename()
+        obj = obj.clone().url('scp://%s%s:%s' % (('%s@' % username) if username is not None else '', hostname, obj.filename())).clear_filename()
     elif islist(obj) and all([isinstance(o, vipy.image.Image) or isinstance(o, vipy.video.Video) for o in obj]):
-        obj = [o.clone().url('scp://%s%s:%s' % (('%s@' % username) if username is not None else '', socket.gethostname(), o.abspath().filename())).clear_filename() for o in obj]
+        obj = [o.clone().url('scp://%s%s:%s' % (('%s@' % username) if username is not None else '', hostname, o.abspath().filename())).clear_filename() for o in obj]
     else:
         raise ValueError('vipy objects only')
 
-    pklfile = 'scp://%s%s:%s' % (('%s@' % username) if username is not None else '', socket.gethostname(), save(obj, temppkl() if format == 'pkl' else tempjson()))
-    cmd = "vipy.util.scpload('%s')" % pklfile
-    log.info('[vipy.util.scpsave]: On a local machine where you have public key ssh access to this remote machine run:\n>>> %s\n' % cmd)
-    return pklfile
+    archivefile = 'scp://%s%s:%s' % (('%s@' % username) if username is not None else '', hostname, save(obj, temppkl() if format == 'pkl' else tempjson()))
+    cmd = "vipy.util.scpload('%s')" % archivefile
+    log.info('[vipy.util.scpsave]: On a local machine where you have public key ssh access to this remote machine run:\n>>> %s' % cmd)
+    return archivefile
 
 
 def scpload(url):

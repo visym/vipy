@@ -1,6 +1,5 @@
 import os
 import vipy
-import torchvision.datasets
 
 
 class CelebA(vipy.dataset.Dataset):
@@ -12,6 +11,9 @@ class CelebA(vipy.dataset.Dataset):
     """
     
     def __init__(self, rootdir, download=False, split='train'):
+        vipy.util.try_import('torchvision.datasets', 'torchvision');
+        import torchvision.datasets
+        
         dataset = torchvision.datasets.CelebA(rootdir, download=download or not os.path.exists(os.path.join(rootdir, 'celeba/img_align_celeba.zip')), split=split, target_type=['identity','bbox'])
 
         # Boxes are wrong: https://github.com/pytorch/vision/issues/9008 

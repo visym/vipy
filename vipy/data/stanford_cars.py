@@ -34,6 +34,7 @@ class StanfordCars(vipy.dataset.Dataset):
     def _cache_annotations(self, outjson='stanford_cars.json'):        
         assert os.path.exists(os.path.join(self._datadir, 'cars_annos.mat'))
 
+        vipy.util.try_import('scipy.io', 'scipy')
         import scipy.io
         mat = scipy.io.loadmat(os.path.join(self._datadir, 'devkit', 'cars_meta.mat'))
         d_classidx_to_classname = {str(k):str(x[0]) for (k,x) in enumerate(mat['class_names'][0], start=1)}

@@ -1,7 +1,6 @@
 import os
 import numpy as np
 import json
-import PIL
 import io
 
 from vipy.dataset import Dataset

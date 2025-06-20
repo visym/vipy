@@ -6,6 +6,7 @@ import numpy as np
 
 
 class Kinetics700():
+    """https://github.com/cvdfoundation/kinetics-dataset"""
     def __init__(self, datadir=tocache('kinetics700'), redownload=False):
         """Kinetics, provide a datadir='/path/to/store/kinetics' """
         self.datadir = remkdir(os.path.expanduser(datadir))

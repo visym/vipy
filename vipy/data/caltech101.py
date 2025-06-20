@@ -1,6 +1,6 @@
 import os
 from vipy.util import remkdir, tocache
-import vipy.downloader
+from vipy.downloader import download_and_unpack, unpack
 from vipy.dataset import Dataset
 from vipy.image import ImageCategory
 
@@ -18,8 +18,8 @@ class Caltech101(Dataset):
         # Download        
         self._datadir = remkdir(datadir)        
         if redownload or not os.path.exists(os.path.join(self._datadir, '.complete')):
-            vipy.downloader.download_and_unpack(URL, self._datadir, sha1=SHA1)            
-            vipy.downloader.unpack(os.path.join(self._datadir, 'caltech-101/101_ObjectCategories.tar.gz'), os.path.join(self._datadir, 'caltech-101'))
+            download_and_unpack(URL, self._datadir, sha1=SHA1)            
+            unpack(os.path.join(self._datadir, 'caltech-101/101_ObjectCategories.tar.gz'), os.path.join(self._datadir, 'caltech-101'))
             
         # Create dataset
         imlist = []

@@ -14,6 +14,7 @@ URL = 'https://research.google.com/ava/download/ava_v2.2.zip'
 
 
 class AVA(object):
+    """https://research.google.com/ava/"""
     def __init__(self, datadir):
         """AVA, provide a datadir='/path/to/store/ava' """
         self.datadir = remkdir(datadir)
