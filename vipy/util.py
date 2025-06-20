@@ -518,7 +518,7 @@ def permutelist(inlist, seed=None):
 
 def shufflelist(inlist):
     """Randomly shuffle a list, returning the shuffled list. Shuffle is not in-place"""
-    return random.sample(inlist, len(inlist))
+    return random.sample(inlist, len(inlist))  # sample without replacement
 
 def flatlist(inlist):
     """Convert list of tuples into a list expanded by concatenating tuples.  If the input is already flat, return it unchanged."""

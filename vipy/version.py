@@ -1,6 +1,6 @@
 MAJOR = 1
 MINOR = 16
-RELEASE = 2
+RELEASE = 3
 
 
 class Version():

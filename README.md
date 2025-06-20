@@ -59,7 +59,7 @@ vipy.dataset.registry('coco_2014').takeone().show()
 
 ```python
 v = vipy.dataset.registry('youtubeBB').takeone()
-vipy.visualize.montage([im.centersquare().mindim(256).annotate() for t in v.trackclip() for im in t.framerate(1)]).show()
+vipy.visualize.montage([im.centersquare().mindim(256).annotate() for t in v.download().trackclip() for im in t.framerate(1)]).show()
 ```
 <img src="https://raw.githubusercontent.com/visym/vipy/master/test/youtubeBB_bear_framerate_29p97.jpg" width="980">
 

@@ -91,7 +91,8 @@
 	  opacity: ${POPUP_ALPHA};
 	  border-radius: 5px; /* Rounded corners */
 	  box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
-	  overflow-y: auto;
+          overflow-y: auto;
+          pointer-events: none;
       }	     
       ul {
 	  list-style-type: none;  /* removes bullets */
@@ -382,8 +383,8 @@
 		      };
 		      if (is_scene_popup_visible == false) {
 			  popupText.textContent = circle.popup_contents;
-			  const popupX = circlePosition.x + circle.offsetWidth/8;  
-			  const popupY = circlePosition.y + circle.offsetHeight;
+			  const popupX = circlePosition.x + circle.offsetWidth/2;  
+			  const popupY = circlePosition.y + circle.offsetHeight/2;
 			  popup.style.width = 'auto';
 			  popup.style.height = 'auto';				  
 			  popup.style.top = popupY + 'px';

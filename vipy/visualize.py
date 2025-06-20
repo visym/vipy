@@ -24,7 +24,7 @@ import html
 
 
 def scene_explorer(im, outfile=None, width=1024, title='Scene Explorer', previewurl=None, keypoint_alpha=0.7, popup_alpha=0.8, embed=True, open_in_browser=False,
-                   tag_formatter=lambda im: "<strong>Image Tags</strong><br><br>%s" % ('<br>'.join(im.tags()) if not im.has_confidences() else ascii_bar_chart(zip(im.tags(),im.confidences()), 64)),
+                   tag_formatter=lambda im: "<strong>Image Tags</strong><br><br>%s" % ('<br>'.join(im.tags()) if not im.has_soft_tags() else ascii_bar_chart(im.soft_tags(), 64)),
                    attribute_formatter=lambda im: "<strong>Image Attributes</strong><br><br>%s" % json.dumps(im.clone().flush().json(encode=False), indent=2),
                    description_formatter=lambda im: "<strong>Image Description</strong><br><br>%s" % 'None'):                   
     

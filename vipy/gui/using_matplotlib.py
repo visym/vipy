@@ -106,7 +106,7 @@ def closeall():
 def _imshow_tight(img, fignum=None, keypress=True):
     """Helper function to show an image in a figure window"""
     dpi = 100.0
-    fig = plt.figure(fignum, dpi=dpi, figsize=(img.shape[1] / dpi, img.shape[0] / dpi))
+    fig = plt.figure(fignum, dpi=dpi, figsize=(img.shape[1] / dpi, img.shape[0] / dpi)) if not plt.fignum_exists(fignum) else plt.figure(fignum)
     plt.clf()
 
     # Tight axes

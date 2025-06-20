@@ -2116,10 +2116,18 @@ class TaggedImage(Labeled):
             self.add_tag(t, c)
         return self
 
-    def soft_tags(self):
-        """Soft tags are a list of (tag, confidence) tuples"""
-        return tuple((t, self.attributes['confidences'].get(t) if 'confidences' in self.attributes else None) for t in self.tags())
+    def add_soft_tag(self, soft_tag):
+        """A soft tag is a tuple of (tag, confidence)"""
+        return self.add_tag(*soft_tag)
     
+    def soft_tags(self):
+        """Soft tags are a list of (tag, confidence) tuples.  Will return only those tags with associated confidences.  Will return empty tuple if there are tags but no confidences"""
+        return tuple((t, self.attributes['confidences'].get(t)) for t in self.tags() if 'confidences' in self.attributes and self.attributes['confidences'].get(t) is not None)
+
+    def has_soft_tags(self):
+        """Return true if there exist a confidence for any tag"""
+        return len(self.soft_tags())>0
+
     
 class Scene(TaggedImage):
     """vipy.image.Scene class
@@ -2888,7 +2896,7 @@ def RandomScene(rows=None, cols=None, num_detections=8, num_keypoints=8, num_tag
     if num_keypoints:
         objects += [vipy.object.Keypoint2d(category='kp%02d' % (k%20), x=np.random.randint(0,cols - 16), y=np.random.randint(0,rows - 16), radius=np.random.randint(0.01*cols, 0.1*cols), confidence=float(np.random.rand())) for k in range(num_keypoints)]
     if num_tags:
-        im.add_tags(['tag%d'%k for k in range(num_tags)], [float(np.random.rand()) for k in range(num_tags)])
+        im.add_soft_tags([('tag%d'%k, float(np.random.rand())) for k in range(num_tags)])
             
     return im.objects(objects)
     

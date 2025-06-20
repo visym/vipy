@@ -212,6 +212,9 @@ class Dataset():
         """Return the dataset as a set.  Mapper must be a lambda function that returns a hashable type"""
         return self.tuple(mapper=mapper, reducer=set, flatten=flatten)        
 
+    def all(self, mapper):
+        return self.tuple(mapper=mapper, reducer=all)
+    
     def frequency(self, f):
         """Frequency counts for which lamba returns the same value"""
         return countby(self.tuple(mapper=f))
@@ -436,6 +439,10 @@ class Dataset():
         assert isinstance(size, int) and size>=0 and size<len(self)
         return self.partition(size/len(self), (len(self)-size)/len(self), 0, '', '', '')
 
+    def even_split(self):
+        """Split the dataset into two datasets, each half the size of the dataset.  If the dataset length is odd, then one element will be dropped"""
+        return self.chunks((len(self)//2, len(self)//2, len(self)%2))[0:2]
+        
     def streaming_map(self, mapper, accepter=None, bufsize=1024):
         """Returns a generator that will apply the mapper and yield only those elements that return True from the accepter.  Performs the map in parallel if used in the vipy.globals.parallel context manager"""
         return self.__parallel_iter__(mapper=mapper, accepter=accepter, bufsize=bufsize)
