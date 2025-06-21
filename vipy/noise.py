@@ -307,9 +307,6 @@ class Noise():
     def transformations(self):
         return list(self._registry.keys())
 
-    def random_transformation(self, im):
-        return self.transform(im, vipy.util.takeone(self.transformations()))
-        
     def transform(self, im, transform):
         assert isinstance(im, vipy.image.Image)
         assert transform in self.transformations()
@@ -323,8 +320,8 @@ class Noise():
         return vipy.visualize.montage([self.transform(im.clone().centersquare(), k) for k in self.transformations()], 256, 256)
     
     def __call__(self, im):
-        assert isinstance(im, vipy.image.Image) or all(isinstance(x, vipy.image.Image) for x in im), "singletons or batches required"
-        return self.random_transformation(im) if isinstance(im, vipy.image.Image) else tuple([self.random_transformation(x) for x in im])
+        assert isinstance(im, vipy.image.Image), "vipy.image.Image required"
+        return self.transform(im, random.choice(self.transformations()))
 
 
 class RandomCrop(Noise):

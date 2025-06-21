@@ -3002,19 +3002,21 @@ class Transform():
 
     
     @staticmethod
-    def tensor(im, shape=None, gain=None, mindim=None, colorspace=None, centersquare=None, torch=None, ignore_errors=True, jitter=None):
+    def tensor(im, shape=None, gain=None, mindim=None, colorspace=None, centersquare=None, torch=None, ignore_errors=True, jitter=None, covariance=None):
         try:
             im = im.clone()
             if colorspace:
                 im = im.colorspace(colorspace)
             if jitter == 'randomcrop':
-                im = vipy.noise.randomcrop(im)
+                im = vipy.noise.randomcrop(im)                
             if centersquare:
                 im = im.centersquare()
             if shape is not None:
                 im = im.resize(*shape)
             if mindim:
                 im = im.mindim(mindim)
+            if covariance:
+                im = im.array((np.concatenate if im.array().ndim ==3 else np.stack)((im.array(), *(im.array()-vipy.noise.randomcrop(im).array() for k in range(covariance))), axis=2))
             if gain is not None:
                 im = im.gain(gain)
             if torch:
