@@ -38,42 +38,50 @@ def iter(ingen, mapper=identity, bufsize=1024, progress=False, accepter=None):
         An iterator that yields mapped and accepted elements from ingen, whre mapping is performed in parallel by vipy.parallel.cf() executor
 
     """
-    
-    assert vipy.globals.cf(), "vipy.globals.cf() executor required - Try 'with vipy.globals.parallel(n=4): result = [x for x in vipy.parallel.iter(...)]' "    
-    assert callable(mapper)
-    assert accepter is None or callable(accepter)
-    assert bufsize>0
-    
-    e = vipy.globals.cf()
-    q = Queue()
-    sem = threading.BoundedSemaphore(bufsize)
-    
-    if progress:
-        vipy.util.try_import('tqdm','tqdm'); from tqdm import tqdm;
-        ingen = tqdm(ingen, total=len(ingen) if hasattr(ingen, '__len__') else None)
-    
-    # Producer worker: this is useful for filling the pipeline while waiting on GPU I/O    
-    def _producer():
-        for i in ingen:
-            sem.acquire()  # block when buffer is full
-            f = e.submit(mapper, i)
-            def _callback(fut, sem=sem, q=q):
-                q.put(fut.result())      
-                sem.release()
-            f.add_done_callback(_callback)
-        for k in range(bufsize):
-            sem.acquire()  # wait until all callbacks have fired
-        q.put(None)
-        
-    threading.Thread(target=_producer, daemon=True).start()
 
-    # Consumer loop: yield loaded elements from the producers
-    while True:        
-        res = q.get()
-        if res is None:
-            break
-        if accepter is None or accepter(res):
-            yield res
+    # local iterator fallback
+    if vipy.globals.cf() is None:
+        for x in ingen:  # iterable access (faster)
+            x = mapper(x) if mapper is not None else x
+            if accepter is None or accepter(x):
+                yield x                
+
+    else:    
+        assert vipy.globals.cf(), "vipy.globals.cf() executor required - Try 'with vipy.globals.parallel(n=4): result = [x for x in vipy.parallel.iter(...)]' "    
+        assert callable(mapper)
+        assert accepter is None or callable(accepter)
+        assert bufsize>0
+        
+        e = vipy.globals.cf()
+        q = Queue()
+        sem = threading.BoundedSemaphore(bufsize)
+    
+        if progress:
+            vipy.util.try_import('tqdm','tqdm'); from tqdm import tqdm;
+            ingen = tqdm(ingen, total=len(ingen) if hasattr(ingen, '__len__') else None)
+    
+        # Producer worker: this is useful for filling the pipeline while waiting on GPU I/O    
+        def _producer():
+            for i in ingen:
+                sem.acquire()  # block when buffer is full
+                f = e.submit(mapper, i)
+                def _callback(fut, sem=sem, q=q):
+                    q.put(fut.result())      
+                    sem.release()
+                f.add_done_callback(_callback)
+            for k in range(bufsize):
+                sem.acquire()  # wait until all callbacks have fired
+            q.put(None)
+        
+        threading.Thread(target=_producer, daemon=True).start()
+
+        # Consumer loop: yield loaded elements from the producers
+        while True:        
+            res = q.get()
+            if res is None:
+                break
+            if accepter is None or accepter(res):
+                yield res
     
 
 def ordered_map(f, ingen):

@@ -316,8 +316,19 @@ class Noise():
             imd.setattribute('vipy.noise', transform)
         return imd
 
-    def montage(self, im):
-        return vipy.visualize.montage([self.transform(im.clone().centersquare(), k) for k in self.transformations()], 256, 256)
+    def montage(self, im, num_transforms=None):
+        """Return a montage of noise applied to the input image. This is useful for visualization of the types of noise applied to a given image
+
+        Args:
+           im [`vipy.image.Image`]: the input image
+           num_transforms [None|int]: if None, return a montage where each element is one transform, if int, return a montage randomly selecting num_transforms trannsforms
+        
+        Returns:
+           `vipy.image.Image` montage as returned from `vipy.visualize.montage`.  Try show() on this returned image.
+
+        """
+        transforms = self.transformations() if num_transforms is None else random.choices(self.transformations(), k=num_transforms)
+        return vipy.visualize.montage([self.transform(im.clone().centersquare(), k) for k in transforms], 256, 256)
     
     def __call__(self, im):
         assert isinstance(im, vipy.image.Image), "vipy.image.Image required"

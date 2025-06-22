@@ -643,7 +643,7 @@ class Image():
         
     def channels(self):
         """Return integer number of color channels"""
-        return self.load().channels() if not self.isloaded() else (self._array.shape[2] if self._array.ndim==3 else 1)
+        return self.load().channels() if not self.isloaded() else (1 if self._array.ndim==2 else self._array.shape[2])
 
     def iscolor(self):
         """Color images are three channel or four channel with transparency, float32 or uint8"""
@@ -782,7 +782,7 @@ class Image():
         self.load()
         self._array = np.copy(self._array) if not self._array.flags['WRITEABLE'] else self._array  # triggers copy         
         return self._array
-        
+
     def channel(self, k=None):
         """Return a cloned Image() object for the kth channel, or return an iterator over channels if k=None.
 
@@ -954,7 +954,7 @@ class Image():
         """Convert the batch of 1 HxWxC images to a CxHxW torch tensor.
 
         Args:
-            order: ['CHW', 'HWC', 'NCHW', 'NHWC'].  The axis order of the torch tensor (channels, height, width) or (height, width, channels) or (1, channels, height, width) or (1, height, width, channels)
+            order: ['CHW', 'HWC', 'DCHW', 'NCHW', 'NHWC'].  The axis order of the torch tensor (channels, height, width) or (height, width, channels) or (1, channels, height, width) or (1, height, width, channels)
 
         Returns:
             A CxHxW or HxWxC or 1xCxHxW or 1xHxWxC [torch tensor](https://pytorch.org/docs/stable/tensors.html) that shares the pixel buffer of this image object by reference.
@@ -963,10 +963,16 @@ class Image():
         """
         from torch import from_numpy;  # optional package pytorch not installed, run "pip install torch" (don't use try_import here, it's too slow)
         
-        assert order in ['CHW', 'HWC', 'NCHW', 'NHWC']
-        img = self.array() if self.array().ndim == 3 else np.expand_dims(self.array(), 2)  # HxW -> HxWx1, HxWxC -> HxWxC (unchanged)
-        img = img.transpose(2,0,1) if order in ['CHW', 'NCHW']  else img   # HxWxC -> CxHxW
-        img = np.expand_dims(img,0) if order in ['NHWC', 'NCHW'] else img  # HxWxC -> 1xHxWxC or CxHxW -> 1xCxHxW
+        assert order in ['CHW', 'HWC', 'NCHW', 'NHWC', 'DCHW']
+        img = self.array() if self.array().ndim >= 3 else np.expand_dims(self.array(), 2)  # HxW -> HxWx1, HxWxC, HxWxCxD (unchanged)
+
+        if order in ['CHW','NCHW']:
+            img = img.transpose(2,0,1) if order in ['CHW', 'NCHW']  else img   # HxWxC -> CxHxW
+        elif order in ['DCHW']:
+            assert img.ndim == 4, "invalid nd-array for export"
+            img = img.transpose(3,2,0,1)  # for nd-array
+        if order in ['NHWC', 'NCHW']:
+            img = np.expand_dims(img,0)  # HxWxC -> 1xHxWxC, CxHxW -> 1xCxHxW
         return from_numpy(img)   # pip install torch
 
     
@@ -2936,10 +2942,6 @@ class Transform():
  
        See also: `vipy.dataset.Dataset.minibatch` for parallel processing of batches of images for downloading, loading, resizing, cropping, augmenting, tensor prep etc.
     """
-
-    @staticmethod
-    def is_loaded(im):
-        return im.is_loaded()
     
     @staticmethod
     def load(im):
@@ -2954,7 +2956,11 @@ class Transform():
             return im.clone().download()
         except:
             return im.flush()
-    
+
+    @staticmethod
+    def is_loaded(im):
+        return im.is_loaded()
+
     @staticmethod
     def mindim(im, mindim=256):
         try:
@@ -2999,12 +3005,11 @@ class Transform():
     @staticmethod
     def mindim256_normalized(im):
         return im.clone().load().rgb().mindim(256).gain(1/255) if not im.loaded() else im
-
     
     @staticmethod
-    def tensor(im, shape=None, gain=None, mindim=None, colorspace=None, centersquare=None, torch=None, ignore_errors=True, jitter=None, covariance=None):
+    def tensor(image, shape=None, gain=None, mindim=None, colorspace=None, centersquare=None, torch=None, ignore_errors=False, jitter=None, num_augmentations=None):
         try:
-            im = im.clone()
+            im = image.clone()
             if colorspace:
                 im = im.colorspace(colorspace)
             if jitter == 'randomcrop':
@@ -3015,21 +3020,29 @@ class Transform():
                 im = im.resize(*shape)
             if mindim:
                 im = im.mindim(mindim)
-            if covariance:
-                im = im.array((np.concatenate if im.array().ndim ==3 else np.stack)((im.array(), *(im.array()-vipy.noise.randomcrop(im).array() for k in range(covariance))), axis=2))
             if gain is not None:
                 im = im.gain(gain)
             if torch:
                 im = im.torch()  # CHW
+            if num_augmentations:
+                augmentations = [Transform.tensor(image, shape=shape, gain=gain, mindim=mindim, colorspace=colorspace, centersquare=centersquare, torch=torch, ignore_errors=ignore_errors, jitter=jitter)
+                                 for k in range(num_augmentations)]
+                return Image(array=np.stack([im.array() for im in augmentations], axis=-1), colorspace=augmentations[0].colorspace())  # packed nd-array, use im.torch('DCHW') to access
             return im
+        
         except KeyboardInterrupt:
             raise
         except:
             if not ignore_errors:
                 raise
-            return im.flush()
+            return None
 
     @staticmethod
     def to_tensor(**kwargs):
         import vipy.noise
         return functools.partial(Transform.tensor, **kwargs)
+
+    @staticmethod
+    def is_transformed(im):
+        return im is not None
+    

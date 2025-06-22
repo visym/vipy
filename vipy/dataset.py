@@ -100,26 +100,14 @@ class Dataset():
         fields += ['type=%s' % self._type] if self._type else []
         return str('<vipy.dataset.Dataset: %s>' % ', '.join(fields))
 
-    def __parallel_iter__(self, mapper=None, accepter=None, bufsize=1024):       
-        assert mapper is None or callable(mapper)
-        assert accepter is None or callable(accepter)
-
-        return (self.__iter__(mapper=mapper, accepter=accepter) if vipy.globals.cf() is None else
-                vipy.parallel.iter(self, mapper=mapper, bufsize=bufsize, accepter=accepter))
-                        
-    def __iter__(self, mapper=None, accepter=None):            
+    def __iter__(self):            
         if self.is_streaming():
             for x in self._ds:  # iterable access (faster)
-                x = self._loader(x) if self._loader is not None else x                 
-                x = mapper(x) if mapper is not None else x
-                if accepter is None or accepter(x):
-                    yield x  
+                yield self._loader(x) if self._loader is not None else x                 
         else:
             for k in range(len(self)):
-                x = self[k]   # random access (slower)                
-                x = mapper(x) if mapper is not None else x
-                if accepter is None or accepter(x):
-                    yield x                  
+                yield self[k]   # random access (slower)                
+
 
     def __getitem__(self, k):
         assert self.len() is not None, "dataset does not support indexing"
@@ -216,9 +204,13 @@ class Dataset():
         return self.tuple(mapper=mapper, reducer=all)
     
     def frequency(self, f):
-        """Frequency counts for which lamba returns the same value"""
+        """Frequency counts for which lambda returns the same value.  For example f=lambda im: im.category() returns a dictionary of category names and counts in this category"""
         return countby(self.tuple(mapper=f))
 
+    def balanced(self, f):
+        """Is the dataset balanced (e.g. the frequencies returned from the lambda f are all the same)?"""
+        return len(set(self.frequency(f).values())) == 1
+    
     def count(self, f):
         """Counts for each element for which lamba returns true.  
         
@@ -239,10 +231,10 @@ class Dataset():
         return self.index( [i for (b,i) in zip(self.localmap(f), self.index()) if b] )
     
     def take(self, n, inplace=False):
-        """Randomly Take n elements from the dataset, and return a dataset (in-place or cloned)."""
+        """Randomly Take n elements from the dataset, and return a dataset (in-place or cloned). If n is greater than the size of the dataset, sample with replacement, if n is less than the size of the dataset, sample without replacement"""
         assert isinstance(n, int) and n>0
         D = self.clone() if not inplace else self
-        return D.index( list(random.sample(D.index(), n)) ) 
+        return D.index(list((random.sample if n<= len(self) else random.choices)(D.index(), k=n)) )
 
 
     def groupby(self, f):
@@ -251,8 +243,9 @@ class Dataset():
         return {k:self.clone().index([x[1] for x in v]).id('%s:%s' % (self.id(),str(k))) for (k,v) in itertools.groupby(enumerate(self.sort(f).index()), lambda x: f(self[x[0]]))}
 
     def takeby(self, f, n):
-        """Filter the dataset according to the callable f, take n from each group and return a dataset.  Callable should return bool"""
-        return self.clone().filter(f).take(n)
+        """Filter the dataset according to the callable f, take n from each group and return a dataset.  Callable should return bool.  If n==1, return a singleton"""
+        d = self.clone().filter(f)
+        return d.take(n) if n>1 else d.takeone()
 
     def takelist(self, n):
         """Take n elements and return list.  The elements are loaded and not cloned."""
@@ -291,7 +284,7 @@ class Dataset():
         for (k,b) in enumerate(itertools.batched(self, n)):
             yield Dataset(b).id('%s:%d' % (self.id() if self.id() else '', k))
                                 
-    def minibatch(self, n, ragged=True, loader=None, bufsize=1024, accepter=None):
+    def minibatch(self, n, ragged=True, loader=None, bufsize=1024, accepter=None, preprocessor=None):
         """Yield preprocessed minibatches of size n of this dataset.
 
         To yield chunks of this dataset, suitable for minibatch training/testing
@@ -316,6 +309,7 @@ class Dataset():
             ragged [bool]: If ragged=true, then the last chunk will be ragged with len(chunk)<n, else skipped
             bufsize [int]:  The size of the buffer used in parallel processing of elements.  Useful for parallel loading
             accepter [callable]:  A callable that returns true|false on an element, where only elements that return true are included in the minibatch.  useful for parallel loading of elements that may fail to download
+            loader [callable]: A callable that is applied to every element of the dataset.  Useful for parallel loading
 
         Returns:        
             Iterator over `vipy.dataset.Dataset` elements of length n.  Minibatches will be yielded loaded and preprocessed (processing done concurrently if vipy.parallel.executor() is initialized)
@@ -324,10 +318,9 @@ class Dataset():
         ..note:: If there exists a vipy.parallel.exeuctor(), then loading and preprocessing will be performed concurrently
 
         """
-        
-        for (k,b) in enumerate(itertools.batched(self.__parallel_iter__(mapper=loader, accepter=accepter, bufsize=max(bufsize,n)), n)):                
+        for (k,b) in enumerate(itertools.batched(vipy.parallel.iter(self, mapper=loader, bufsize=max(bufsize,n), accepter=accepter), n)):
             if ragged or len(b) == n:
-                yield Dataset(b).id('%s:%d' % (self.id() if self.id() else '', k))                    
+                yield Dataset.cast(b).id('%s:%d' % (self.id() if self.id() else '', k))                    
                     
                         
     def shift(self, m):
@@ -445,7 +438,7 @@ class Dataset():
         
     def streaming_map(self, mapper, accepter=None, bufsize=1024):
         """Returns a generator that will apply the mapper and yield only those elements that return True from the accepter.  Performs the map in parallel if used in the vipy.globals.parallel context manager"""
-        return self.__parallel_iter__(mapper=mapper, accepter=accepter, bufsize=bufsize)
+        return vipy.parallel.iter(self, mapper=mapper, accepter=accepter, bufsize=bufsize)
         
     def map(self, f_map, strict=True, oneway=False, ordered=False):        
         """Parallel map.
@@ -663,10 +656,10 @@ class Union(Dataset):
     def __len__(self):
         return sum(d.__len__() for d in self.datasets()) if self._idx is None else len(self._idx)
     
-    def __iter__(self, mapper=None, accepter=None):
+    def __iter__(self):
         if self.is_streaming():
             k = -1
-            iter = [d.__iter__(mapper, accepter) for d in self.datasets()]  # round-robin
+            iter = [d.__iter__() for d in self.datasets()]  # round-robin
 
             for m in range(len(self.datasets())):
                 try:
@@ -680,10 +673,7 @@ class Union(Dataset):
         else:
             self.index()  # force random access                    
             for (i,j) in self._idx:
-                x = self._ds[i][j]  # random access (slower)                
-                x = mapper(x) if mapper is not None else x
-                if accepter is None or accepter(x):
-                    yield x                  
+                yield self._ds[i][j]  # random access (slower)                
 
     def __getitem__(self, k):
         self.index()  # force random access        
