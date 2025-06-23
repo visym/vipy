@@ -1928,7 +1928,7 @@ def truncate_string(s, maxlen):
     """If string s is greater than maxlen, truncate and append an ellipsis"""
     return s if len(s) <= maxlen else str(s)[0:maxlen]+'...'
 
-def escape_string_for_innerHTML(s, escape=(('\n','<br>'),('{',"&#123;"),('}','"&#125;"'),('"', '&quot;'),("'","&#39;"))):
+def escape_string_for_innerHTML(s, escape=(('\n','<br>'),('{',"&#123;"),('}','&#125;'),('"', '&quot;'),("'","&#39;"))):
     """Convert a string by replacing escape characters with equivalents suitable for copying into an innerHTML element in html.  
 
     The escaping characters are provided as ((character, replacemant), ...) 

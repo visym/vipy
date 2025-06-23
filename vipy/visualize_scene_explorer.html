@@ -16,9 +16,9 @@
       
       #imageContainer {
 	  position: relative;
-	  width: 100%;
-	  height: 100%;
-	  overflow: hidden;
+	  width: ${IMG_CONTAINER_WIDTH};
+	  height: ${IMG_CONTAINER_HEIGHT};
+	  overflow: visible;
       }
 
       #imageLabel {
@@ -91,7 +91,7 @@
 	  opacity: ${POPUP_ALPHA};
 	  border-radius: 5px; /* Rounded corners */
 	  box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
-          overflow-y: auto;
+          overflow-y: none;
           pointer-events: none;
       }	     
       ul {

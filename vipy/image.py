@@ -954,7 +954,7 @@ class Image():
         """Convert the batch of 1 HxWxC images to a CxHxW torch tensor.
 
         Args:
-            order: ['CHW', 'HWC', 'DCHW', 'NCHW', 'NHWC'].  The axis order of the torch tensor (channels, height, width) or (height, width, channels) or (1, channels, height, width) or (1, height, width, channels)
+            order: ['CHW', 'HWC', 'NCHW', 'NHWC'].  The axis order of the torch tensor (channels, height, width) or (height, width, channels) or (1, channels, height, width) or (1, height, width, channels)
 
         Returns:
             A CxHxW or HxWxC or 1xCxHxW or 1xHxWxC [torch tensor](https://pytorch.org/docs/stable/tensors.html) that shares the pixel buffer of this image object by reference.
@@ -963,37 +963,40 @@ class Image():
         """
         from torch import from_numpy;  # optional package pytorch not installed, run "pip install torch" (don't use try_import here, it's too slow)
         
-        assert order in ['CHW', 'HWC', 'NCHW', 'NHWC', 'DCHW']
-        img = self.array() if self.array().ndim >= 3 else np.expand_dims(self.array(), 2)  # HxW -> HxWx1, HxWxC, HxWxCxD (unchanged)
-
-        if order in ['CHW','NCHW']:
-            img = img.transpose(2,0,1) if order in ['CHW', 'NCHW']  else img   # HxWxC -> CxHxW
-        elif order in ['DCHW']:
-            assert img.ndim == 4, "invalid nd-array for export"
-            img = img.transpose(3,2,0,1)  # for nd-array
-        if order in ['NHWC', 'NCHW']:
-            img = np.expand_dims(img,0)  # HxWxC -> 1xHxWxC, CxHxW -> 1xCxHxW
+        assert order in ['CHW', 'HWC', 'NCHW', 'NHWC']
+        img = self.numpy() if self.array().ndim >= 3 else np.expand_dims(self.array(), 2)  # HxW -> HxWx1 
+        
+        if order in ['CHW']:
+            assert img.ndim == 3, "invalid array"  
+            img = img.transpose(2,0,1) # HxWxC -> CxHxW
+        elif order in ['NCHW']:
+            img = img.transpose(3,2,0,1) if img.ndim == 4 else np.expand_dims(img.transpose(2,0,1), 0)
+        if order in ['NHWC']:
+            img = img.transpose(3,0,1,2) if img.ndim == 4 else np.expand_dims(img, 0)
         return from_numpy(img)   # pip install torch
 
     
     @staticmethod
     def from_torch(x, order='CHW'):
-        """Convert a 1xCxHxW or CxHxW torch tensor (or numpy array with torch channel order) to HxWxC numpy array, returns new `vipy.image.Image` with inferred colorspace corresponding to data type in x"""
+        """Convert a 1xCxHxW, CxHxW or NxCxHxW torch tensor (or numpy array with torch channel order) to HxWxC numpy array, returns new `vipy.image.Image` with inferred colorspace corresponding to data type in x"""
         from torch import Tensor, is_tensor;  # optional package pytorch not installed, run "pip install torch" (don't use try_import here, it's too slow) 
         assert isinstance(x, Tensor) or isinstance(x, np.ndarray), "Invalid input type '%s'- must be torch.Tensor" % (str(type(x)))
-        assert (x.ndim == 4 and x.shape[0] == 1) or x.ndim == 3, "Torch tensor must be shape 1xCxHxW or CxHxW"
+        assert x.ndim == 4 or x.ndim == 3, "Torch tensor must be shape 1xCxHxW, CxHxW, or NxCxHxW"
         x = x.squeeze(0) if (x.ndim == 4 and x.shape[0] == 1) else x
 
         if order == 'CHW':
-            x = x.permute(1,2,0).cpu().detach().float().numpy() if is_tensor(x) else x.transpose(1,2,0)   # CxHxW -> HxWxC, copied            
+            x = x.permute(1,2,0).cpu().detach().float().numpy() if is_tensor(x) else np.copy(x).transpose(1,2,0)   # CxHxW -> HxWxC, copied            
         elif order == 'WHC':
-            x = x.permute(1,0,2).cpu().detach().float().numpy() if is_tensor(x) else x.transpose(1,0,2)   # WxHxC -> HxWxC, copied        
+            x = x.permute(1,0,2).cpu().detach().float().numpy() if is_tensor(x) else np.copy(x).transpose(1,0,2)   # WxHxC -> HxWxC, copied        
         elif order == 'HWC':
-            x = x.cpu().detach().float().numpy() if is_tensor(x) else x  # HxWxC -> HxWxC, copied        
+            x = x.cpu().detach().float().numpy() if is_tensor(x) else np.copy(x)  # HxWxC -> HxWxC, copied        
+        elif order == 'NCHW':
+            assert x.ndim == 4, "invalid shape"
+            x = x.permute(2,3,1,0).cpu().detach().float().numpy()  # NxCxHxW -> HxWxCxN, copied        
         else:
             raise ValueError('unknown axis order "%s"' % order)
 
-        img = np.copy(x)
+        img = x
         colorspace = 'float' if img.dtype == np.float32 else None
         colorspace = 'rgb' if img.dtype == np.uint8 and img.shape[2] == 3 else colorspace  # assumed
         colorspace = 'lum' if img.dtype == np.uint8 and img.shape[2] == 1 else colorspace
@@ -3007,7 +3010,7 @@ class Transform():
         return im.clone().load().rgb().mindim(256).gain(1/255) if not im.loaded() else im
     
     @staticmethod
-    def tensor(image, shape=None, gain=None, mindim=None, colorspace=None, centersquare=None, torch=None, ignore_errors=False, jitter=None, num_augmentations=None):
+    def tensor(image, shape=None, gain=None, mindim=None, colorspace=None, centersquare=None, tensor=None, ignore_errors=False, jitter=None, num_augmentations=None):
         try:
             im = image.clone()
             if colorspace:
@@ -3022,12 +3025,13 @@ class Transform():
                 im = im.mindim(mindim)
             if gain is not None:
                 im = im.gain(gain)
-            if torch:
+            if tensor:
                 im = im.torch()  # CHW
             if num_augmentations:
-                augmentations = [Transform.tensor(image, shape=shape, gain=gain, mindim=mindim, colorspace=colorspace, centersquare=centersquare, torch=torch, ignore_errors=ignore_errors, jitter=jitter)
-                                 for k in range(num_augmentations)]
-                return Image(array=np.stack([im.array() for im in augmentations], axis=-1), colorspace=augmentations[0].colorspace())  # packed nd-array, use im.torch('DCHW') to access
+                import torch
+                augmentations = torch.stack([Transform.tensor(image, shape=shape, gain=gain, mindim=mindim, colorspace=colorspace, centersquare=centersquare, tensor=True, ignore_errors=ignore_errors, jitter=jitter)
+                                             for k in range(num_augmentations)])
+                return image.clone().array(Image.from_torch(augmentations, order='NCHW').array())  # packed nd-array, use im.torch('NCHW') to access
             return im
         
         except KeyboardInterrupt:

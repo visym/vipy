@@ -23,10 +23,12 @@ import json
 import html
 
 
-def scene_explorer(im, outfile=None, width=1024, title='Scene Explorer', previewurl=None, keypoint_alpha=0.7, popup_alpha=0.8, embed=True, open_in_browser=False,
+def scene_explorer(im, outfile=None, width=None, title='Scene Explorer', previewurl=None, keypoint_alpha=0.7, popup_alpha=0.8, embed=True, open_in_browser=False, keypoint_radius=None, max_keypoint_radius=0.1,
                    tag_formatter=lambda im: "<strong>Image Tags</strong><br><br>%s" % ('<br>'.join(im.tags()) if not im.has_soft_tags() else ascii_bar_chart(im.soft_tags(), 64)),
-                   attribute_formatter=lambda im: "<strong>Image Attributes</strong><br><br>%s" % json.dumps(im.clone().flush().json(encode=False), indent=2),
-                   description_formatter=lambda im: "<strong>Image Description</strong><br><br>%s" % 'None'):                   
+                   attribute_formatter=lambda im: "<strong>Image Attributes</strong><br><br>Object counts: %s<br><br>Image attributes: %s" % (json.dumps(vipy.dataset.Dataset(im.objects()).frequency(lambda im: im.category()), indent=2),
+                                                                                                                                              json.dumps(im.clone().flush().clear().json(encode=False), indent=2)),
+                   description_formatter=lambda im: "<strong>Image Description</strong><br><br>%s" % 'None',
+                   category_to_color={}):                   
     
     """Generate a standalone scene_explorer visualization.
 
@@ -44,7 +46,11 @@ def scene_explorer(im, outfile=None, width=1024, title='Scene Explorer', preview
         tag_formatter [lambda]:  A lambda function with a single argument equal to the input image that returns a HTML string for display in the tag popup.  This can be any valid html.
         attribute_formatter [lambda]:  A lambda function with a single argument equal to the input image that returns a HTML string for display in the attribute popup.  This can be any valid html
         description_formatter [lambda]:  A lambda function with a single argument equal to the input image that returns a HTML string for display in the description popup.  This can be any valid html    
-
+        width [float]: A fraction of the browser width that this image should take up (default=1)
+        keypoint_radius [float]: All keypoints should have the same radius for display, specified as a fraction of the image width for each keypoint radius (default=None)
+        max_keypoint_radius [float]: All keypoints should have a maximum radius for display, specified as a fraction of the image width for each keypoint (default=0.1). 
+        category_to_color [dict]: A dict mapping the category to a keypoint color as a hex string (e.g. {'person':'#FF0000'} for red)
+    
     Returns:
         outfile
 
@@ -57,25 +63,33 @@ def scene_explorer(im, outfile=None, width=1024, title='Scene Explorer', preview
     assert keypoint_alpha >=0 and keypoint_alpha <=1
     assert popup_alpha >=0 and popup_alpha <=1
     assert embed or im.has_url()
+    assert width is None or (width>=0 and width<=1)
+    assert keypoint_radius is None or (keypoint_radius>=0 and keypoint_radius<=1)    
     if not all([isinstance(o, vipy.object.Keypoint2d) for o in im.objects()]):
-        log.warning('Scene explorer supports vipy.object.Keypoint2d only - all other vipy.object elements ignored')
+        log.warning('Scene explorer supports vipy.object.Keypoint2d only - vipy.object.Detection will be converted to keypoints')
 
     imc = im.clone()
-    img = ('data:image/jpeg;charset=utf-8;base64,%s' % imc.load().resize(width=width).base64().decode('ascii')) if embed else imc.flush().url()
+    img = ('data:image/jpeg;charset=utf-8;base64,%s' % imc.load().base64().decode('ascii')) if embed else imc.flush().url()
     colors = [matplotlib.colors.to_hex(c) for c in vipy.show.colorlist()]
-    keypoints = [o for o in imc.objects() if isinstance(o, vipy.object.Keypoint2d)]
-    d_category_to_color = {o.category():colors[int(hashlib.sha1(o.category().split(' ')[-1].encode('utf-8')).hexdigest(), 16) % len(colors)] for o in keypoints}   # consistent color mapping by category suffix (space separated)
+    keypoints = [vipy.object.Keypoint2d.cast(o) for o in imc.objects()]
+    if keypoint_radius:
+        keypoints = [o.set_radius(keypoint_radius*imc.width()) for o in keypoints]
+    if max_keypoint_radius != 1:
+        keypoints = [o.set_radius(min(o.r, max_keypoint_radius*imc.width())) for o in keypoints]
+    d_category_to_color = {o.category():colors[int(hashlib.sha1(o.category().split(' ')[-1].encode('utf-8')).hexdigest(), 16) % len(colors)] for o in keypoints} | category_to_color   # consistent color mapping by category suffix (space separated)
     
     html = Path(Path(__file__).parent.resolve() / 'visualize_scene_explorer.html').read_text()
     keywords = {'${TITLE}': title,
                 '${META_OG_IMAGE}': ('<meta property="og:image" content="%s">' % previewurl) if previewurl is not None else '',  # useful to show as a preview of the HTML contents for shared links
+                '${IMG_CONTAINER_WIDTH}':'100%' if width is None else str(int(100*width))+'%',
+                '${IMG_CONTAINER_HEIGHT}':'100%',                
                 '${IMG_WIDTH}':str(imc.width()),
                 '${IMG_HEIGHT}':str(imc.height()),
                 '${IMG}':img,
                 '${IMG_ATTRIBUTES}':escape_string_for_innerHTML(attribute_formatter(im)),
                 '${IMG_DESCRIPTION}': escape_string_for_innerHTML(description_formatter(im)),
                 '${IMG_TAGS}': escape_string_for_innerHTML(tag_formatter(im)),
-                '${SEARCHBOX_WIDTH}':str(width // 4),
+                '${SEARCHBOX_WIDTH}':str(1024 // 4),
                 '${POPUP_ALPHA}': str(popup_alpha),
                 '${CLASSLIST}':str(sorted(set([o.category() for o in keypoints]))),  # assumes that shared class prefix encodes grouping
                 '${KP_X}':str([o.x for o in keypoints]),

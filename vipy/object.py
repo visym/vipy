@@ -210,6 +210,15 @@ class Keypoint2d(Point2d, Object):
 
         if normalized_coordinates:
             self.set_attribute('normalized_coordinates', True)  # updated on load after size is available
+
+    @classmethod
+    def cast(cls, obj):
+        if isinstance(obj, Detection):
+            return cls(obj.centroid_x(), obj.centroid_y(), min(obj.width()/2, obj.height()/2), attributes=obj.attributes)
+        elif isinstance(obj, Keypoint2d):
+            return self
+        else:
+            raise TypeError('unsupported type "%s"' % (type(obj)))
                 
     def clone(self, deep=False):
         """Copy the object, if deep=True, then include a deep copy of the attribute dictionary, else a shallow copy.  Cloned object has the same id()"""

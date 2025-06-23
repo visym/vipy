@@ -1077,6 +1077,10 @@ class Point2d():
     def radius(self):
         return self._r
 
+    def set_radius(self, r):
+        self._r = r
+        return self
+    
     def diameter(self):
         return 2*self.r
     
