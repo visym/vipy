@@ -517,6 +517,18 @@ An RTSP camera can be modified to change the framerate or the resolution then th
 vipy.video.Video(url='rtsp://user:password@10.0.1.19/live0', framerate=5).mindim(256).show()
 ```
 
+To grab a single frame:
+
+```python
+im = vipy.video.Video(url='rtsp://user:password@10.0.1.19/live0').frame()
+```
+To iterate:
+
+```python
+for im in vipy.video.Video(url='rtsp://user:password@10.0.1.19/live0'):
+    print(im)
+```
+
 
 ### Split a video into activity clips
 

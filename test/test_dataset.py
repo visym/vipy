@@ -1,7 +1,6 @@
 import os
 import numpy as np
 import vipy.video
-import vipy.videosearch
 import vipy.object
 from vipy.util import tempjpg, tempdir, Failed, isurl, rmdir, flatlist, to_iterable
 from vipy.geometry import BoundingBox

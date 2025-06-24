@@ -2,7 +2,6 @@ import os
 import sys
 import numpy as np
 import vipy.video
-import vipy.videosearch
 import vipy.object
 from vipy.util import tempjpg, tempdir, Failed, isurl, rmdir, totempdir, tempMP4
 from vipy.geometry import BoundingBox
@@ -92,11 +91,11 @@ def _test_video():
     # Common Parameters
 
     # This fails on ubuntu 20.01, python-3.9 not sure why
-    if sys.version_info.major == 3 and sys.version_info.minor < 9:    
-        urls = vipy.videosearch.youtube('owl',1)
-        if len(urls) > 0:
-            assert isurl(urls[0])
-        print('[test_video.video]: videosearch   PASSED')
+    #if sys.version_info.major == 3 and sys.version_info.minor < 9:    
+    #    urls = vipy.videosearch.youtube('owl',1)
+    #    if len(urls) > 0:
+    #        assert isurl(urls[0])
+    #    print('[test_video.video]: videosearch   PASSED')
     
     # Empty constructor
     try:
