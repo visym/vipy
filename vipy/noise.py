@@ -115,7 +115,7 @@ def ghost(im, txr=5, tyr=5, txg=-5, tyg=-5, txb=5, tyb=-5):
     return imz
 
 def crop(im, s=0.8):
-    return im.clone().crop(vipy.geometry.BoundingBox(xmin=random.randint(0, int((1-s)*im.width())), ymin=random.randint(0, int((1-s)*im.height())), width=math.ceil(s*im.width()), height=math.ceil(s*im.height()))).resize(height=im.height(), width=im.width())
+    return im.crop(vipy.geometry.BoundingBox(xmin=random.randint(0, int((1-s)*im.width())), ymin=random.randint(0, int((1-s)*im.height())), width=math.ceil(s*im.width()), height=math.ceil(s*im.height()))).resize(height=im.height(), width=im.width())
 
 def fliplr(im):
     return im.load().fliplr()

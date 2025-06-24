@@ -3013,9 +3013,14 @@ class Transform():
     def tensor(image, shape=None, gain=None, mindim=None, colorspace=None, centersquare=None, tensor=None, ignore_errors=False, jitter=None, num_augmentations=None):
         try:
             im = image.clone()
-            if colorspace:
-                im = im.colorspace(colorspace)
+            if colorspace == 'lum':
+                im = im.lum()
+            if colorspace == 'rgb':
+                im = im.rgb()
+            if colorspace == 'float':
+                im = im.float()
             if jitter == 'randomcrop':
+                import vipy.noise                  
                 im = vipy.noise.randomcrop(im)                
             if centersquare:
                 im = im.centersquare()
@@ -3028,10 +3033,10 @@ class Transform():
             if tensor:
                 im = im.torch()  # CHW
             if num_augmentations:
-                import torch
-                augmentations = torch.stack([Transform.tensor(image, shape=shape, gain=gain, mindim=mindim, colorspace=colorspace, centersquare=centersquare, tensor=True, ignore_errors=ignore_errors, jitter=jitter)
-                                             for k in range(num_augmentations)])
-                return image.clone().array(Image.from_torch(augmentations, order='NCHW').array())  # packed nd-array, use im.torch('NCHW') to access
+                augmentations = np.stack([np.atleast_3d(Transform.tensor(image, shape=shape, gain=gain, mindim=mindim, colorspace=colorspace, centersquare=centersquare, ignore_errors=ignore_errors, jitter=jitter).array())
+                                          for k in range(num_augmentations+1)], axis=3)  # +1 for mean 
+                return image.clone().array(augmentations)  # packed nd-array, use im.torch('NCHW') to access
+                
             return im
         
         except KeyboardInterrupt:
@@ -3043,7 +3048,6 @@ class Transform():
 
     @staticmethod
     def to_tensor(**kwargs):
-        import vipy.noise
         return functools.partial(Transform.tensor, **kwargs)
 
     @staticmethod

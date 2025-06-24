@@ -168,6 +168,7 @@ def cf(num_workers=None, threaded=True):
     if num_workers is not None:
         if GLOBAL['CONCURRENT_FUTURES']:
             GLOBAL['CONCURRENT_FUTURES'].shutdown()
+            
         GLOBAL['CONCURRENT_FUTURES'] = (concurrent.futures.ThreadPoolExecutor(max_workers=num_workers, thread_name_prefix='vipy') if threaded else
                                         concurrent.futures.ProcessPoolExecutor(max_workers=num_workers))
     return GLOBAL['CONCURRENT_FUTURES']
