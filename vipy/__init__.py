@@ -511,6 +511,12 @@ dataset = vipy.dataset.Dataset.from_directory('/path/to/dir', filetype='mp4')
 v = vipy.video.Video(url='rtsp://user:password@10.0.1.19/live0')
 ```
 
+An RTSP camera can be modified to change the framerate or the resolution then the video can be streamed live or iterated as with other videos'
+
+```python
+vipy.video.Video(url='rtsp://user:password@10.0.1.19/live0', framerate=5).mindim(256).show()
+```
+
 
 ### Split a video into activity clips
 
@@ -651,7 +657,6 @@ import vipy.object
 import vipy.util
 import vipy.version
 import vipy.video
-#import vipy.videosearch
 import vipy.visualize
 
 
