@@ -2077,8 +2077,14 @@ class TaggedImage(Labeled):
     def category(self):
         return self.attributes['tags'][0] if 'tags' in self.attributes else None
 
-    def confidence(self):
-        return self.get_attribute('confidences')[self.category()] if self.hasattribute('confidences') and self.category() in self.attributes['confidences'] else None
+    def new_category(self, c):
+        self.attributes['tags'] = [c]
+        self.del_attribute('confidences')
+        return self
+        
+    def confidence(self, tag=None, default=None):
+        t = tag if tag is not None else self.category()
+        return self.get_attribute('confidences')[t] if self.hasattribute('confidences') and t in self.attributes['confidences'] else default
 
     def has_tag(self, t):
         return t in self.tags()

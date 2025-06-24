@@ -24,8 +24,8 @@ def cumulative_match_characteristic(similarityMatrix, gtMatrix):
     return (rank, recall)
 
 
-def plot_cmc(rank=None, tdr=None, similarityMatrix=None, truthMatrix=None, label=None, title=None, outfile=None, logscale=True, logy=False, figure=None, style=None, fontsize=None, xlabel='Rank', ylabel='Correct Retrieval Rate', legendSwap=False, errorbars=None, miny=0.0, color=None):
-    """Generate cumulative match characteristic (CMC) plot"""
+def cmc_curve(rank=None, tdr=None, similarityMatrix=None, truthMatrix=None, label=None, title=None, outfile=None, logscale=True, logy=False, figure=None, style=None, fontsize=None, xlabel='Rank', ylabel='Correct Retrieval Rate', legendSwap=False, errorbars=None, miny=0.0, color=None):
+    """Plot cumulative match characteristic (CMC) curve """
 
     if rank is None and tdr is None:
         (rank, tdr) = cumulative_match_characteristic(similarityMatrix, truthMatrix)
@@ -104,30 +104,6 @@ def tdr_at_rank(rank=None, tdr=None, y_true=None, y_pred=None, numGallery=None, 
     f = interp1d(rank, tdr)
     return f(at)
 
-
-def roc(y_true, y_pred):
-    try_import('sklearn', 'scikit-learn'); import sklearn.metrics
-    (fpr, tpr, thresholds) = sklearn.metrics.roc_curve(y_true, y_pred, pos_label=1)
-    return (fpr, tpr)
-
-
-def roc_per_image(y_true, y_pred, k_imgindex):
-    try_import('sklearn', 'scikit-learn'); import sklearn.metrics
-    (fpr, tpr, thresholds) = sklearn.metrics.roc_curve(y_true, y_pred, pos_label=1)
-    n_images = len(set(k_imgindex))
-    n_fp = len(y_true) - np.sum(y_true)  # total number of false positives
-    return (np.array(fpr) * (float(n_fp) / float(n_images)), tpr)  # renormalize false positives
-
-
-def roc_eer(y_true=None, y_pred=None, fpr=None, tpr=None):
-    if (fpr is None) and (tpr is None):
-        (fpr, tpr) = roc(y_true, y_pred)
-    tnr = 1.0 - np.array(fpr)
-    k = np.argmin(np.square(np.array(tnr) - np.array(tpr)))
-    eer = fpr[k]
-    return eer
-
-
 def tpr_at_fpr(y_true, y_pred, at=0.01):
     """Janus metric for true positive rate at a specific false positive rate"""
     (fpr, tpr) = roc(y_true, y_pred)
@@ -142,8 +118,8 @@ def fpr_at_tpr(y_true, y_pred, at=0.85):
     return f(at)
 
 
-def plot_roc(y_true=None, y_pred=None, fpr=None, tpr=None, label=None, title=None, outfile=None, figure=None, logx=False, style=None, fontsize=None, xlabel='False Positive Rate', ylabel='True Positive Rate', legendSwap=False, errorbars=None):
-    """http://scikit-learn.org/stable/auto_examples/plot_roc.html"""
+def receiver_operating_curve(y_true=None, y_pred=None, fpr=None, tpr=None, label=None, title=None, outfile=None, figure=None, logx=False, style=None, fontsize=None, xlabel='False Positive Rate', ylabel='True Positive Rate', legendSwap=False, errorbars=None):
+    """Plot ROC: http://scikit-learn.org/stable/auto_examples/plot_roc.html"""
     if (fpr is None) and (tpr is None):
         (fpr, tpr) = roc(y_true, y_pred)
 
@@ -197,14 +173,8 @@ def plot_roc(y_true=None, y_pred=None, fpr=None, tpr=None, label=None, title=Non
         plt.show()
 
 
-def mean_average_precision(ap):
-    """numpy wrapper for mean"""
-    return np.mean(ap)
 
-
-
-
-def confusion_matrix(cm, outfile=None, figure=None, fontsize=5, xlabel=None, ylabel=None, classes=None, colorbar=False, figsize=None):
+def confusion_matrix_plot(cm, outfile=None, figure=None, fontsize=5, xlabel=None, ylabel=None, classes=None, colorbar=False, figsize=None):
     """Generate a confusion matrix plot for a confusion matrix cm"""
 
     outfile = outfile if outfile is not None else temppng()
@@ -237,9 +207,7 @@ def confusion_matrix(cm, outfile=None, figure=None, fontsize=5, xlabel=None, yla
     return outfile
     
 
-
-
-def plot_pr(precision, recall, title=None, label='Precision-Recall', outfile=None, figure=None, fontsize=8, loc='upper right'):
+def precision_recall_curve(precision, recall, title=None, label='Precision-Recall', outfile=None, figure=None, fontsize=8, loc='upper right'):
     """Plot precision recall curve using matplotlib, with optional figure save.  Call this multiple times with same figure number to plot multiple curves."""
 
     if figure is not None:
@@ -265,10 +233,10 @@ def plot_pr(precision, recall, title=None, label='Precision-Recall', outfile=Non
         plt.show()
 
 
-def plot_ap(ap, categories, title=None, outfile=None):
+def average_precision_chart(ap, categories, title=None, outfile=None):
     """Plot Average-Precision bar chart using matplotlib, with optional figure save"""
     plt.bar(range(1,len(ap) + 1), height=ap, width=0.8, bottom=None)
-    plt.gca().set_xticks(seq(1.4,len(ap) + 1))
+    plt.gca().set_xticks(seq(1,len(ap)))
     plt.gca().set_xticklabels(categories, rotation=45)
     plt.ylim([0.0, 1.1])
     plt.ylabel('Average Precision')
@@ -318,7 +286,8 @@ def histogram(freq, categories, barcolors=None, title=None, outfile=None, figure
         plt.show()
 
     return outfile
-        
+
+
 def pie(sizes, labels, explode=None, outfile=None, shadow=False, legend=True, fontsize=10, rotatelabels=False):
     """Generate a matplotlib style pie chart with wedges with specified size and labels, with an optional outfile"""
     plt.figure(1)

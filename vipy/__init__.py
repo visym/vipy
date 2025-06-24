@@ -276,7 +276,7 @@ All images can be converted between different colorspaces (e.g. RGB, BGR, RGBA, 
 ### Rescale image
 
 All images can be rescaled to a standard range, including the Matlab inspired `vipy.image.Image.mat2gray`, which will rescale the pixel buffer between [min, max] -> [0, 1]
-
+This rescaling will take advantage of numba optimization if the optimal numba package is installed
 
 ### Visualize scenes
 
@@ -291,15 +291,38 @@ Scenes containing objects can be visualized to display only a subset of objects.
 ```
 <img src="https://raw.githubusercontent.com/visym/vipy/master/docs/tutorials/visualize_complex_scenes.jpg" height="500">
 
+### Get all of the object categories
+
+```python
+im = vipy.image.people()
+categories = set(o.category() for o in im.objects())
+```
+
+### Get all of the object boxes
+
+```python
+im = vipy.image.people()
+ulbr_boxes = [o.ulbr() for o in im.objects()]  # [(xmin,ymin,xmax,ymax),...] in upper-left-bottom-roght boxformat
+xywh_boxes = [o.xywh() for o in im.objects()]  # [(xmin,ymin,width,height),...] in upper-left-width-height box format
+```
+
 ### Crop and resize annotated objects in a scene
 
 ```python
 >>> im = vipy.image.vehicles().show()
->>> vipy.visualize.montage([o.dilate(1.2).maxsquare().crop() for o in im]).show()
+>>> vipy.visualize.montage([o.objectsquare(dilate=1.2) for o in im]).show()
 ```
 <img src="https://raw.githubusercontent.com/visym/vipy/master/docs/tutorials/vipy_image_vehicles.png" height="300">
 <img src="https://raw.githubusercontent.com/visym/vipy/master/docs/tutorials/vipy_image_vehicles_objectcrop.png" height="300">
 
+When iterating over a scene, each object yielded is a `vipy.image.Scene` with a single object.  Objectsquare will crop the image using the bounding box equal to the union of all boxes in the current scene.  dilate will expand the size of the object bounding boxes by a scale factor.  The result is a cropped square image for each object that is centered on the object.  You can access the pixels for each cropped object, with ot without forcing the cropped region to be square:
+
+```python
+>>> pixels = [o.objectsquare(dilate=1.2).array() for o in im]
+>>> pixels = [o.objectcrop(dilate=1.2).array() for o in im]  # don't force cropped region to be square
+```
+
+As with all other `vipy.image.Scene` objects, the original image can be arbitrarily transformed such as resizing or padded prior to exporting the object pixels.
 
 ### Find all images in directory
 
@@ -363,16 +386,7 @@ The perceptual hash function also allows for ignoring detected objects in the fo
 <img src="https://raw.githubusercontent.com/visym/vipy/master/docs/tutorials/blur_faces_1.jpg" height="250">
 <img src="https://raw.githubusercontent.com/visym/vipy/master/docs/tutorials/blur_faces_2.jpg" height="250">
 
-
-### Detect People
-
-Vipy supports the [HeyVi](https://github.com/visym/heyvi) package for visual analytics to construct annotated videos and images.  This performs person detection on an image, and returns a `vipy.image.Scene` with the detected people objects.  This approach is convenient for person detection in single images, however for real-time performance it is recommended to leveraged batched GPU operations with the full heyvi package.  
-
-```python
->>> im = vipy.image.Image(url='https://upload.wikimedia.org/wikipedia/en/d/d6/Friends_season_one_cast.jpg')
->>> im.person_detection().show()
-```
-<img src="https://raw.githubusercontent.com/visym/vipy/master/docs/tutorials/detect_people.jpg" height="300">
+This is an experimental feature and may be removed in future releases.
 
 
 
@@ -395,9 +409,16 @@ vipy.visualize.montage([[o.crop().fliplr(),                # spatial mirror
 
 These functions have been integrated into a single package `vipy.noise` which implements photometric and geometric perturbations.
 
+```python
+im = vipy.image.vehicles()
+new_im = vipy.noise.randomcrop(im)
+```
+
+The image returned is cloned, and includes the provenance of the noise source in new_im.attributes
+
 ### Vipy and Torchvision
 
-ALl vipy objects can be exported to torch tensors:
+All vipy objects can be exported to torch tensors:
 
 ```python
 im = vipy.image.vehicles().load().tensor(order='CHW')
@@ -561,6 +582,15 @@ D = vipy.dataset.Dataset.from_directory('/path/to/dir', filetype='images')
 trainset = vipy.dataset.registry('cifar10')
 print(trainset.set(lambda im: im.category()))
 ```
+
+### Count objects in a scene 
+
+```python
+im = vipy.dataset.registry('coco_2014').takeone()
+vipy.dataset.Dataset(im.objects()).frequency(lambda o: o.category())
+```
+Return a dictionary of the counts of object categories from a random coco-2014 scene.
+
 
 ### Take a subset
 
