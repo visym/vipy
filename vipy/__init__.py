@@ -481,6 +481,8 @@ print(vipy.video.Video(filename='/path/to/in.mp4').mindim(512).framerate(2).comm
 'ffmpeg -i /path/to/in.mp4 -filter_complex "[0]fps=fps=2.0:round=up[s0];[s0]scale=-1:512[s1]" -map "[s1]" dummyfile'
 ```
 
+All video operations are performed by FFMPEG filter chains, with the output piped to python.  You can inspect the equivalent operation that vipy would perform by running ffmpeg on the command line youself.  This is useful for debugging or to gain insight into what vipy is doing under the hood.  The "dummyfile" is a temporary output file that is appended to the command line to replace the pipe output.  
+
 ### Export frames as vipy images
 
 ```python

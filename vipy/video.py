@@ -471,6 +471,12 @@ class Video():
         print(im)
     ```
 
+    where the url should match the "RTSP URL" in the preferences of the app.  Your local IP address will be different. To set a Username=USER and Password=PASSWORD, set these values in the app, check the IPADDRESS in the RTSP URL then:
+
+    ```python
+    vipy.video.Scene(url='rtsp://USER:PASSWORD@IPADDRESS:8554/live.sdp').framerate(5).show()
+    ```
+    
     Args:
         filename: [str] The path to a video file.  
         url: [str] The URL to a video file.  If filename is not provided, then a random filename is assigned in VIPY_CACHE on download
@@ -1042,10 +1048,16 @@ class Video():
     def framerate_of_videofile(self):
         """Return video framerate in frames per second of the source video file (NOT the filter chain), requires ffprobe.
         """
+        assert self.hasfilename(), "no filename for probe"
         p = self.probe()        
-        assert 'streams' in p and len(['streams']) > 0
+        assert 'streams' in p and len(['streams']) > 0, "ffprobe error"
         fps = p['streams'][0]['avg_frame_rate']
-        return float(fps) if '/' not in fps else (float(fps.split('/')[0]) / float(fps.split('/')[1]))  # fps='30/1' or fps='30.0'
+        if fps == '0/0':
+            return None  # this occurs when using probe on rtsp streams
+        elif '/' in fps:
+            return (float(fps.split('/')[0]) / float(fps.split('/')[1]))  # fps='30/1' 
+        else:
+            return float(fps)  # fps='30.0'
 
     def resolution_of_videofile(self):
         """Return video resolution in (height, width) in pixels (NOT the filter chain), requires ffprobe.
@@ -1684,7 +1696,7 @@ class Video():
                          .global_args('-cpuflags', '0', '-loglevel', 'debug' if vipy.globals.GLOBAL['DEBUG'] else 'error')
             (out, err) = f.run(capture_stdout=True, capture_stderr=True)
         except Exception as e:            
-            raise ValueError('Video preview failed with error "%s"\n  - Video: "%s"\n  - FFMPEG command: \'sh> %s\'\n  - Try manually running this ffmpeg command to see errors.  This error usually means that the video is corrupted.' % (str(e), str(self), str(self._ffmpeg_commandline(f_prepipe.output('preview.jpg', vframes=1)))))
+            raise ValueError('Video preview failed with error "%s"\n  - Video: "%s"\n  - FFMPEG command: \'sh> %s\'\n  - Try manually running this ffmpeg command to see errors.  This error usually means that the video is corrupted or unauthorized.' % (str(e), str(self), str(self._ffmpeg_commandline(f_prepipe.output('preview.jpg', vframes=1)))))
 
         # [EXCEPTION]:  UnidentifiedImageError: cannot identify image file, means usually that FFMPEG piped a zero length image
         try:
@@ -1754,7 +1766,7 @@ class Video():
                             .global_args('-cpuflags', '0', '-loglevel', 'debug' if vipy.globals.GLOBAL['DEBUG'] else 'quiet')
             (out, err) = f.run(capture_stdout=True, capture_stderr=True)
         except Exception as e:
-            raise ValueError('Load failed with error "%s"\n\n  - Video: "%s"\n  - FFMPEG command: \'sh> %s\'\n  - This error usually means that the video is corrupted or that you need to upgrade your FFMPEG distribution to the latest stable version.\n  - Try running the output of the ffmpeg command for debugging.' % (str(e), str(self), str(self._ffmpeg_commandline(f_prepipe.output('preview.mp4')))))
+            raise ValueError('Load failed with error "%s"\n\n  - Video: "%s"\n  - FFMPEG command: \'sh> %s\'\n  - This error usually means that the video is corrupted or that you need to upgrade your FFMPEG distribution to the latest stable version.\n  - Try running this ffmpeg command yourself to debug.' % (str(e), str(self), str(self._ffmpeg_commandline(f_prepipe.output('preview.mp4')))))
 
         # Video shape:
         #   - due to complex filter chains, we may not know the final video size without executing it
@@ -3436,6 +3448,8 @@ class Scene(Video):
         if fps is None:
             if self._framerate is None and self.hasfilename():
                 self._framerate = self.framerate_of_videofile()  # may only be known after downloading the video
+                if self._framerate is None:
+                    self._framerate = 30  # if user does not supply, and framerate not available in video file, just guess a framerate
             return self._framerate
         elif float(fps) == self._framerate:
             return self
