@@ -614,9 +614,14 @@ def chunkgenbysize(ingen, size_per_chunk):
     if sys.version_info >= (3,12):
         for b in itertools.batched(ingen, size_per_chunk):
             yield b  
-    else:        
-        for i in range(0,len(ingen),size_per_chunk):
-            yield ingen[i:i+size_per_chunk]
+    else:
+        while True:
+            try:
+                yield [next(ingen) for j in range(size_per_chunk)]
+            except StopIteration:
+                break
+            except:
+                raise
     
 def triplets(inlist):
     """Yield triplets (1,2,3), (4,5,6), ...  from list inlist=[1,2,3,4,5,6,...]"""
