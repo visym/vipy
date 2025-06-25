@@ -26,7 +26,7 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/visualize.py#L1-L741" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/visualize.py#L1-L753" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">import os
 import vipy
@@ -39,26 +39,26 @@ from vipy.show import savefig
 from collections import defaultdict
 from datetime import datetime
 from vipy.metrics import ascii_bar_chart
+from pathlib import Path
 import time
-import PIL
+import PIL.Image
 import vipy.video
 import webbrowser
-import pathlib
 import html
 import urllib
 import warnings
-from pathlib import Path
 import hashlib
 import matplotlib
-import warnings
 import json
 import html
 
 
-def scene_explorer(im, outfile=None, width=1024, title=&#39;Scene Explorer&#39;, previewurl=None, keypoint_alpha=0.7, popup_alpha=0.8, embed=True, open_in_browser=False,
-                   tag_formatter=lambda im: &#34;&lt;strong&gt;Image Tags&lt;/strong&gt;&lt;br&gt;&lt;br&gt;%s&#34; % (&#39;&lt;br&gt;&#39;.join(im.tags()) if not im.has_confidences() else ascii_bar_chart(zip(im.tags(),im.confidences()), 64)),
-                   attribute_formatter=lambda im: &#34;&lt;strong&gt;Image Attributes&lt;/strong&gt;&lt;br&gt;&lt;br&gt;%s&#34; % json.dumps(im.clone().flush().json(encode=False), indent=2),
-                   description_formatter=lambda im: &#34;&lt;strong&gt;Image Description&lt;/strong&gt;&lt;br&gt;&lt;br&gt;%s&#34; % &#39;None&#39;):                   
+def scene_explorer(im, outfile=None, width=None, title=&#39;Scene Explorer&#39;, previewurl=None, keypoint_alpha=0.7, popup_alpha=0.8, embed=True, open_in_browser=False, keypoint_radius=None, max_keypoint_radius=0.1,
+                   tag_formatter=lambda im: &#34;&lt;strong&gt;Image Tags&lt;/strong&gt;&lt;br&gt;&lt;br&gt;%s&#34; % (&#39;&lt;br&gt;&#39;.join(im.tags()) if not im.has_soft_tags() else ascii_bar_chart(im.soft_tags(), 64)),
+                   attribute_formatter=lambda im: &#34;&lt;strong&gt;Image Attributes&lt;/strong&gt;&lt;br&gt;&lt;br&gt;Object counts: %s&lt;br&gt;&lt;br&gt;Image attributes: %s&#34; % (json.dumps(vipy.dataset.Dataset(im.objects()).frequency(lambda im: im.category()), indent=2),
+                                                                                                                                              json.dumps(im.clone().flush().clear().json(encode=False), indent=2)),
+                   description_formatter=lambda im: &#34;&lt;strong&gt;Image Description&lt;/strong&gt;&lt;br&gt;&lt;br&gt;%s&#34; % &#39;None&#39;,
+                   category_to_color={}):                   
     
     &#34;&#34;&#34;Generate a standalone scene_explorer visualization.
 
@@ -76,7 +76,11 @@ def scene_explorer(im, outfile=None, width=1024, title=&#39;Scene Explorer&#39;,
         tag_formatter [lambda]:  A lambda function with a single argument equal to the input image that returns a HTML string for display in the tag popup.  This can be any valid html.
         attribute_formatter [lambda]:  A lambda function with a single argument equal to the input image that returns a HTML string for display in the attribute popup.  This can be any valid html
         description_formatter [lambda]:  A lambda function with a single argument equal to the input image that returns a HTML string for display in the description popup.  This can be any valid html    
-
+        width [float]: A fraction of the browser width that this image should take up (default=1)
+        keypoint_radius [float]: All keypoints should have the same radius for display, specified as a fraction of the image width for each keypoint radius (default=None)
+        max_keypoint_radius [float]: All keypoints should have a maximum radius for display, specified as a fraction of the image width for each keypoint (default=0.1). 
+        category_to_color [dict]: A dict mapping the category to a keypoint color as a hex string (e.g. {&#39;person&#39;:&#39;#FF0000&#39;} for red)
+    
     Returns:
         outfile
 
@@ -89,25 +93,33 @@ def scene_explorer(im, outfile=None, width=1024, title=&#39;Scene Explorer&#39;,
     assert keypoint_alpha &gt;=0 and keypoint_alpha &lt;=1
     assert popup_alpha &gt;=0 and popup_alpha &lt;=1
     assert embed or im.has_url()
+    assert width is None or (width&gt;=0 and width&lt;=1)
+    assert keypoint_radius is None or (keypoint_radius&gt;=0 and keypoint_radius&lt;=1)    
     if not all([isinstance(o, vipy.object.Keypoint2d) for o in im.objects()]):
-        warnings.warn(&#39;Scene explorer supports vipy.object.Keypoint2d only - all other vipy.object elements ignored&#39;)
+        log.warning(&#39;Scene explorer supports vipy.object.Keypoint2d only - vipy.object.Detection will be converted to keypoints&#39;)
 
     imc = im.clone()
-    img = (&#39;data:image/jpeg;charset=utf-8;base64,%s&#39; % imc.load().resize(width=width).base64().decode(&#39;ascii&#39;)) if embed else imc.flush().url()
+    img = (&#39;data:image/jpeg;charset=utf-8;base64,%s&#39; % imc.load().base64().decode(&#39;ascii&#39;)) if embed else imc.flush().url()
     colors = [matplotlib.colors.to_hex(c) for c in vipy.show.colorlist()]
-    keypoints = [o for o in imc.objects() if isinstance(o, vipy.object.Keypoint2d)]
-    d_category_to_color = {o.category():colors[int(hashlib.sha1(o.category().split(&#39; &#39;)[-1].encode(&#39;utf-8&#39;)).hexdigest(), 16) % len(colors)] for o in keypoints}   # consistent color mapping by category suffix (space separated)
+    keypoints = [vipy.object.Keypoint2d.cast(o) for o in imc.objects()]
+    if keypoint_radius:
+        keypoints = [o.set_radius(keypoint_radius*imc.width()) for o in keypoints]
+    if max_keypoint_radius != 1:
+        keypoints = [o.set_radius(min(o.r, max_keypoint_radius*imc.width())) for o in keypoints]
+    d_category_to_color = {o.category():colors[int(hashlib.sha1(o.category().split(&#39; &#39;)[-1].encode(&#39;utf-8&#39;)).hexdigest(), 16) % len(colors)] for o in keypoints} | category_to_color   # consistent color mapping by category suffix (space separated)
     
     html = Path(Path(__file__).parent.resolve() / &#39;visualize_scene_explorer.html&#39;).read_text()
     keywords = {&#39;${TITLE}&#39;: title,
                 &#39;${META_OG_IMAGE}&#39;: (&#39;&lt;meta property=&#34;og:image&#34; content=&#34;%s&#34;&gt;&#39; % previewurl) if previewurl is not None else &#39;&#39;,  # useful to show as a preview of the HTML contents for shared links
+                &#39;${IMG_CONTAINER_WIDTH}&#39;:&#39;100%&#39; if width is None else str(int(100*width))+&#39;%&#39;,
+                &#39;${IMG_CONTAINER_HEIGHT}&#39;:&#39;100%&#39;,                
                 &#39;${IMG_WIDTH}&#39;:str(imc.width()),
                 &#39;${IMG_HEIGHT}&#39;:str(imc.height()),
                 &#39;${IMG}&#39;:img,
                 &#39;${IMG_ATTRIBUTES}&#39;:escape_string_for_innerHTML(attribute_formatter(im)),
                 &#39;${IMG_DESCRIPTION}&#39;: escape_string_for_innerHTML(description_formatter(im)),
                 &#39;${IMG_TAGS}&#39;: escape_string_for_innerHTML(tag_formatter(im)),
-                &#39;${SEARCHBOX_WIDTH}&#39;:str(width // 4),
+                &#39;${SEARCHBOX_WIDTH}&#39;:str(1024 // 4),
                 &#39;${POPUP_ALPHA}&#39;: str(popup_alpha),
                 &#39;${CLASSLIST}&#39;:str(sorted(set([o.category() for o in keypoints]))),  # assumes that shared class prefix encodes grouping
                 &#39;${KP_X}&#39;:str([o.x for o in keypoints]),
@@ -296,7 +308,7 @@ def hoverpixel_selector(htmllist, legendlist, outfile=None, display=False, offse
     assert len(htmllist) == len(legendlist)
     assert all([ishtml(h) for h in htmllist])
     if any([not isurl(h) for h in htmllist]):
-        warnings.warn(&#39;Local HTML files will not load in safari due to security restrictions - use a public https:// URL instead, or use a different browser (e.g. chrome, firefox)&#39;)    
+        log.warning(&#39;Local HTML files will not load in safari due to security restrictions - use a public https:// URL instead, or use a different browser (e.g. chrome, firefox)&#39;)    
     htmllist = [(&#39;file://%s&#39; % os.path.abspath(h)) if not isurl(h) else h for h in htmllist]
     
     filename = outfile if outfile is not None else temphtml()
@@ -557,7 +569,7 @@ def urls(urllist, title=&#39;URL Visualization&#39;, imagewidth=1024, outfile=No
 
     # Display?
     if display:
-        url = pathlib.Path(filename).as_uri()
+        url = Path(filename).as_uri()
         log.info(&#39;[vipy.visualize.urls]: Opening &#34;%s&#34; in default browser&#39; % url)
         webbrowser.open(url)
         
@@ -627,7 +639,7 @@ def tohtml(imlist, imdict=None, title=&#39;Image Visualization&#39;, mindim=1024
 
     # Display?
     if display:
-        url = pathlib.Path(filename).as_uri()
+        url = Path(filename).as_uri()
         log.info(&#39;[vipy.visualize.tohtml]: Opening &#34;%s&#34; in default browser&#39; % url)
         webbrowser.open(url)
         
@@ -668,7 +680,7 @@ def videolist(vidlist, viddict=None, title=&#39;Video Visualization&#39;, outfil
 
     # Display?
     if display:
-        url = pathlib.Path(filename).as_uri()
+        url = Path(filename).as_uri()
         log.info(&#39;[vipy.visualize.videolist]: Opening &#34;%s&#34; in default browser&#39; % url)
         webbrowser.open(url)
         
@@ -831,7 +843,7 @@ if None, nothing is displayed</dd>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/visualize.py#L103-L248" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/visualize.py#L115-L260" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def hoverpixel(urls, outfile=None, pixelsize=32, sortby=&#39;color&#39;, loupe=True, hoversize=512, ultext=None, display=False, ultextcolor=&#39;white&#39;, ultextsize=&#39;large&#39;, aspectratio=2560/1440, ultextoffset=(16,16)):
     &#34;&#34;&#34;Generate a standalone hoverpixel visualization.
@@ -1005,7 +1017,7 @@ Be sure to add allowfullscreen to the iframe.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/visualize.py#L251-L316" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/visualize.py#L263-L328" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def hoverpixel_selector(htmllist, legendlist, outfile=None, display=False, offset=(60, 80), fullscreen=True, ultext=None, ultextcolor=&#39;white&#39;, ultextsize=&#39;large&#39;, ultextoffset=(16,16)):
     &#34;&#34;&#34;Create a dropdown selector of hoverpixel visualizations by legend.
@@ -1025,7 +1037,7 @@ Be sure to add allowfullscreen to the iframe.</p>
     assert len(htmllist) == len(legendlist)
     assert all([ishtml(h) for h in htmllist])
     if any([not isurl(h) for h in htmllist]):
-        warnings.warn(&#39;Local HTML files will not load in safari due to security restrictions - use a public https:// URL instead, or use a different browser (e.g. chrome, firefox)&#39;)    
+        log.warning(&#39;Local HTML files will not load in safari due to security restrictions - use a public https:// URL instead, or use a different browser (e.g. chrome, firefox)&#39;)    
     htmllist = [(&#39;file://%s&#39; % os.path.abspath(h)) if not isurl(h) else h for h in htmllist]
     
     filename = outfile if outfile is not None else temphtml()
@@ -1083,7 +1095,7 @@ Be sure to add allowfullscreen to the iframe.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/visualize.py#L649-L694" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/visualize.py#L661-L706" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def imagelist(list_of_image_files, outdir, title=&#39;Image Visualization&#39;, imagewidth=64, maxwidth=2400):
     &#34;&#34;&#34;Given a list of image filenames wth absolute paths, copy to outdir, and create an index.html file that visualizes each.    
@@ -1141,7 +1153,7 @@ Be sure to add allowfullscreen to the iframe.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/visualize.py#L697-L741" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/visualize.py#L709-L753" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def imagetuplelist(list_of_tuples_of_image_files, outdir, title=&#39;Image Visualization&#39;, imagewidth=64):
     &#34;&#34;&#34;Imagelist but put tuples on same row&#34;&#34;&#34;
@@ -1239,7 +1251,7 @@ display optional verbose messages</dd>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/visualize.py#L354-L438" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/visualize.py#L366-L450" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def montage(imlist, imgheight=256, imgwidth=256, gridrows=None, gridcols=None, aspectratio=1, crop=False, skip=True, border=1, border_rgb=(128,128,128), do_flush=False, verbose=False):
     &#34;&#34;&#34;Create a montage image from the of provided list of `vipy.image.Image` objects.
@@ -1351,7 +1363,7 @@ Returns:
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/visualize.py#L319-L340" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/visualize.py#L331-L352" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def mosaic(videos, gridrows=None, gridcols=None):
     &#34;&#34;&#34;Create a mosaic iterator from an iterable of videos.
@@ -1378,7 +1390,7 @@ Returns:
 </details>
 </dd>
 <dt id="vipy.visualize.scene_explorer"><code class="name flex">
-<span>def <span class="ident">scene_explorer</span></span>(<span>im, outfile=None, width=1024, title='Scene Explorer', previewurl=None, keypoint_alpha=0.7, popup_alpha=0.8, embed=True, open_in_browser=False, tag_formatter=&lt;function &lt;lambda&gt;&gt;, attribute_formatter=&lt;function &lt;lambda&gt;&gt;, description_formatter=&lt;function &lt;lambda&gt;&gt;)</span>
+<span>def <span class="ident">scene_explorer</span></span>(<span>im, outfile=None, width=None, title='Scene Explorer', previewurl=None, keypoint_alpha=0.7, popup_alpha=0.8, embed=True, open_in_browser=False, keypoint_radius=None, max_keypoint_radius=0.1, tag_formatter=&lt;function &lt;lambda&gt;&gt;, attribute_formatter=&lt;function &lt;lambda&gt;&gt;, description_formatter=&lt;function &lt;lambda&gt;&gt;, category_to_color={})</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Generate a standalone scene_explorer visualization.</p>
@@ -1407,19 +1419,25 @@ This can be any valid html
 description_formatter [lambda]:
 A lambda function with a single argument equal to the input image that returns a HTML string for display in the description popup.
 This can be any valid html
-</p>
+<br>
+width [float]: A fraction of the browser width that this image should take up (default=1)
+keypoint_radius [float]: All keypoints should have the same radius for display, specified as a fraction of the image width for each keypoint radius (default=None)
+max_keypoint_radius [float]: All keypoints should have a maximum radius for display, specified as a fraction of the image width for each keypoint (default=0.1).
+category_to_color [dict]: A dict mapping the category to a keypoint color as a hex string (e.g. {'person':'#FF0000'} for red)</p>
 <h2 id="returns">Returns</h2>
 <p>outfile
 Current support for <code><a title="vipy.object.Keypoint2d" href="object.html#vipy.object.Keypoint2d">Keypoint2d</a></code> only, <code><a title="vipy.object.Detection" href="object.html#vipy.object.Detection">Detection</a></code> are ignored</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/visualize.py#L28-L100" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/visualize.py#L26-L112" class="git-link">Browse git</a>
 </summary>
-<pre><code class="python">def scene_explorer(im, outfile=None, width=1024, title=&#39;Scene Explorer&#39;, previewurl=None, keypoint_alpha=0.7, popup_alpha=0.8, embed=True, open_in_browser=False,
-                   tag_formatter=lambda im: &#34;&lt;strong&gt;Image Tags&lt;/strong&gt;&lt;br&gt;&lt;br&gt;%s&#34; % (&#39;&lt;br&gt;&#39;.join(im.tags()) if not im.has_confidences() else ascii_bar_chart(zip(im.tags(),im.confidences()), 64)),
-                   attribute_formatter=lambda im: &#34;&lt;strong&gt;Image Attributes&lt;/strong&gt;&lt;br&gt;&lt;br&gt;%s&#34; % json.dumps(im.clone().flush().json(encode=False), indent=2),
-                   description_formatter=lambda im: &#34;&lt;strong&gt;Image Description&lt;/strong&gt;&lt;br&gt;&lt;br&gt;%s&#34; % &#39;None&#39;):                   
+<pre><code class="python">def scene_explorer(im, outfile=None, width=None, title=&#39;Scene Explorer&#39;, previewurl=None, keypoint_alpha=0.7, popup_alpha=0.8, embed=True, open_in_browser=False, keypoint_radius=None, max_keypoint_radius=0.1,
+                   tag_formatter=lambda im: &#34;&lt;strong&gt;Image Tags&lt;/strong&gt;&lt;br&gt;&lt;br&gt;%s&#34; % (&#39;&lt;br&gt;&#39;.join(im.tags()) if not im.has_soft_tags() else ascii_bar_chart(im.soft_tags(), 64)),
+                   attribute_formatter=lambda im: &#34;&lt;strong&gt;Image Attributes&lt;/strong&gt;&lt;br&gt;&lt;br&gt;Object counts: %s&lt;br&gt;&lt;br&gt;Image attributes: %s&#34; % (json.dumps(vipy.dataset.Dataset(im.objects()).frequency(lambda im: im.category()), indent=2),
+                                                                                                                                              json.dumps(im.clone().flush().clear().json(encode=False), indent=2)),
+                   description_formatter=lambda im: &#34;&lt;strong&gt;Image Description&lt;/strong&gt;&lt;br&gt;&lt;br&gt;%s&#34; % &#39;None&#39;,
+                   category_to_color={}):                   
     
     &#34;&#34;&#34;Generate a standalone scene_explorer visualization.
 
@@ -1437,7 +1455,11 @@ Current support for <code><a title="vipy.object.Keypoint2d" href="object.html#vi
         tag_formatter [lambda]:  A lambda function with a single argument equal to the input image that returns a HTML string for display in the tag popup.  This can be any valid html.
         attribute_formatter [lambda]:  A lambda function with a single argument equal to the input image that returns a HTML string for display in the attribute popup.  This can be any valid html
         description_formatter [lambda]:  A lambda function with a single argument equal to the input image that returns a HTML string for display in the description popup.  This can be any valid html    
-
+        width [float]: A fraction of the browser width that this image should take up (default=1)
+        keypoint_radius [float]: All keypoints should have the same radius for display, specified as a fraction of the image width for each keypoint radius (default=None)
+        max_keypoint_radius [float]: All keypoints should have a maximum radius for display, specified as a fraction of the image width for each keypoint (default=0.1). 
+        category_to_color [dict]: A dict mapping the category to a keypoint color as a hex string (e.g. {&#39;person&#39;:&#39;#FF0000&#39;} for red)
+    
     Returns:
         outfile
 
@@ -1450,25 +1472,33 @@ Current support for <code><a title="vipy.object.Keypoint2d" href="object.html#vi
     assert keypoint_alpha &gt;=0 and keypoint_alpha &lt;=1
     assert popup_alpha &gt;=0 and popup_alpha &lt;=1
     assert embed or im.has_url()
+    assert width is None or (width&gt;=0 and width&lt;=1)
+    assert keypoint_radius is None or (keypoint_radius&gt;=0 and keypoint_radius&lt;=1)    
     if not all([isinstance(o, vipy.object.Keypoint2d) for o in im.objects()]):
-        warnings.warn(&#39;Scene explorer supports vipy.object.Keypoint2d only - all other vipy.object elements ignored&#39;)
+        log.warning(&#39;Scene explorer supports vipy.object.Keypoint2d only - vipy.object.Detection will be converted to keypoints&#39;)
 
     imc = im.clone()
-    img = (&#39;data:image/jpeg;charset=utf-8;base64,%s&#39; % imc.load().resize(width=width).base64().decode(&#39;ascii&#39;)) if embed else imc.flush().url()
+    img = (&#39;data:image/jpeg;charset=utf-8;base64,%s&#39; % imc.load().base64().decode(&#39;ascii&#39;)) if embed else imc.flush().url()
     colors = [matplotlib.colors.to_hex(c) for c in vipy.show.colorlist()]
-    keypoints = [o for o in imc.objects() if isinstance(o, vipy.object.Keypoint2d)]
-    d_category_to_color = {o.category():colors[int(hashlib.sha1(o.category().split(&#39; &#39;)[-1].encode(&#39;utf-8&#39;)).hexdigest(), 16) % len(colors)] for o in keypoints}   # consistent color mapping by category suffix (space separated)
+    keypoints = [vipy.object.Keypoint2d.cast(o) for o in imc.objects()]
+    if keypoint_radius:
+        keypoints = [o.set_radius(keypoint_radius*imc.width()) for o in keypoints]
+    if max_keypoint_radius != 1:
+        keypoints = [o.set_radius(min(o.r, max_keypoint_radius*imc.width())) for o in keypoints]
+    d_category_to_color = {o.category():colors[int(hashlib.sha1(o.category().split(&#39; &#39;)[-1].encode(&#39;utf-8&#39;)).hexdigest(), 16) % len(colors)] for o in keypoints} | category_to_color   # consistent color mapping by category suffix (space separated)
     
     html = Path(Path(__file__).parent.resolve() / &#39;visualize_scene_explorer.html&#39;).read_text()
     keywords = {&#39;${TITLE}&#39;: title,
                 &#39;${META_OG_IMAGE}&#39;: (&#39;&lt;meta property=&#34;og:image&#34; content=&#34;%s&#34;&gt;&#39; % previewurl) if previewurl is not None else &#39;&#39;,  # useful to show as a preview of the HTML contents for shared links
+                &#39;${IMG_CONTAINER_WIDTH}&#39;:&#39;100%&#39; if width is None else str(int(100*width))+&#39;%&#39;,
+                &#39;${IMG_CONTAINER_HEIGHT}&#39;:&#39;100%&#39;,                
                 &#39;${IMG_WIDTH}&#39;:str(imc.width()),
                 &#39;${IMG_HEIGHT}&#39;:str(imc.height()),
                 &#39;${IMG}&#39;:img,
                 &#39;${IMG_ATTRIBUTES}&#39;:escape_string_for_innerHTML(attribute_formatter(im)),
                 &#39;${IMG_DESCRIPTION}&#39;: escape_string_for_innerHTML(description_formatter(im)),
                 &#39;${IMG_TAGS}&#39;: escape_string_for_innerHTML(tag_formatter(im)),
-                &#39;${SEARCHBOX_WIDTH}&#39;:str(width // 4),
+                &#39;${SEARCHBOX_WIDTH}&#39;:str(1024 // 4),
                 &#39;${POPUP_ALPHA}&#39;: str(popup_alpha),
                 &#39;${CLASSLIST}&#39;:str(sorted(set([o.category() for o in keypoints]))),  # assumes that shared class prefix encodes grouping
                 &#39;${KP_X}&#39;:str([o.x for o in keypoints]),
@@ -1517,7 +1547,7 @@ Current support for <code><a title="vipy.object.Keypoint2d" href="object.html#vi
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/visualize.py#L538-L604" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/visualize.py#L550-L616" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def tohtml(imlist, imdict=None, title=&#39;Image Visualization&#39;, mindim=1024, outfile=None, display=False, maxwidth=2400):
     &#34;&#34;&#34;Given a list of vipy.image.Image objects, show the images along with the dictionary contents of imdict (one per image) in a single standalone HTML file
@@ -1581,7 +1611,7 @@ Current support for <code><a title="vipy.object.Keypoint2d" href="object.html#vi
 
     # Display?
     if display:
-        url = pathlib.Path(filename).as_uri()
+        url = Path(filename).as_uri()
         log.info(&#39;[vipy.visualize.tohtml]: Opening &#34;%s&#34; in default browser&#39; % url)
         webbrowser.open(url)
         
@@ -1609,7 +1639,7 @@ Current support for <code><a title="vipy.object.Keypoint2d" href="object.html#vi
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/visualize.py#L479-L534" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/visualize.py#L491-L546" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def urls(urllist, title=&#39;URL Visualization&#39;, imagewidth=1024, outfile=None, display=False):
     &#34;&#34;&#34;Given a list of public image URLs, create a stand-alone HTML page to show them all.
@@ -1662,7 +1692,7 @@ Current support for <code><a title="vipy.object.Keypoint2d" href="object.html#vi
 
     # Display?
     if display:
-        url = pathlib.Path(filename).as_uri()
+        url = Path(filename).as_uri()
         log.info(&#39;[vipy.visualize.urls]: Opening &#34;%s&#34; in default browser&#39; % url)
         webbrowser.open(url)
         
@@ -1677,7 +1707,7 @@ Current support for <code><a title="vipy.object.Keypoint2d" href="object.html#vi
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/visualize.py#L607-L645" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/visualize.py#L619-L657" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def videolist(vidlist, viddict=None, title=&#39;Video Visualization&#39;, outfile=None, display=False):
     &#34;&#34;&#34;Create a standalone HTML file that will visualize the set of videos in vidlist using HTML5 video player&#34;&#34;&#34;
@@ -1713,7 +1743,7 @@ Current support for <code><a title="vipy.object.Keypoint2d" href="object.html#vi
 
     # Display?
     if display:
-        url = pathlib.Path(filename).as_uri()
+        url = Path(filename).as_uri()
         log.info(&#39;[vipy.visualize.videolist]: Opening &#34;%s&#34; in default browser&#39; % url)
         webbrowser.open(url)
         
@@ -1750,7 +1780,7 @@ If None, then use the duration of the longest video</dd>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/visualize.py#L441-L476" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/visualize.py#L453-L488" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def videomontage(vidlist, imgheight, imgwidth, gridrows=None, gridcols=None, aspectratio=1, crop=False, skip=True, border=1, border_rgb=(128,128,128), do_flush=False, verbose=True, framerate=30.0, max_duration=None):
     &#34;&#34;&#34;Generate a video montage for the provided videos by creating a image montage for every frame.  
@@ -1805,7 +1835,7 @@ This assumes that the videos are showing the same timestamps like in a security 
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/visualize.py#L343-L351" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/visualize.py#L355-L363" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def videomosaic(videos, gridrows=None, gridcols=None):
     &#34;&#34;&#34;Return a mosaic video from an iterable of videos.  

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
-<meta name="generator" content="pdoc 0.10.0" />
+<meta name="generator" content="pdoc 0.11.6" />
 <meta name="google-site-verification" content="aB8LkQegj94_TJPdrcJm2ldIRWyXY82Jp24Gtkdgyn0" />
 <title>vipy.data.emnist API documentation</title>
 <meta name="description" content="" />
@@ -26,58 +26,135 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/data/emnist.py#L1-L52" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/data/emnist.py#L1-L128" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">import os
-import vipy
-import vipy.data.mnist
+import numpy as np
+from vipy.util import remkdir, tocache, filetail
+import gzip
+import struct
+from array import array
+import vipy.image
 import string
 
-URL = &#39;http://www.itl.nist.gov/iaui/vip/cs_links/EMNIST/gzip.zip&#39;
+
+TRAIN_IMG_URL = &#39;http://yann.lecun.com/exdb/mnist/train-images-idx3-ubyte.gz&#39;
+TRAIN_IMG_SHA1 = &#39;6c95f4b05d2bf285e1bfb0e7960c31bd3b3f8a7d&#39;
+TRAIN_LBL_URL = &#39;http://yann.lecun.com/exdb/mnist/train-labels-idx1-ubyte.gz&#39;
+TRAIN_LBL_SHA1 = &#39;2a80914081dc54586dbdf242f9805a6b8d2a15fc&#39;
+TEST_IMG_URL = &#39;http://yann.lecun.com/exdb/mnist/t10k-images-idx3-ubyte.gz&#39;
+TEST_IMG_SHA1 = &#39;c3a25af1f52dad7f726cce8cacb138654b760d48&#39;
+TEST_LBL_URL = &#39;http://yann.lecun.com/exdb/mnist/t10k-labels-idx1-ubyte.gz&#39;
+TEST_LBL_SHA1 = &#39;763e7fa3757d93b0cdec073cef058b2004252c17&#39;
+
+EMNIST_URL = &#39;https://biometrics.nist.gov/cs_links/EMNIST/gzip.zip&#39;
 
 
-class EMNIST(vipy.data.mnist.MNIST):
-    def __init__(self, datadir):
+class MNIST():
+    def __init__(self, datadir=None, redownload=False):        
+        raise ValueError(&#39;moved to huggingface&#39;)
+
+        outdir = tocache(&#39;mnist&#39;) if datadir is None else datadir
+        
+        self._datadir = remkdir(os.path.expanduser(outdir))
+        if redownload or not os.path.exists(os.path.join(self._datadir, &#39;.complete&#39;)):
+            vipy.downloader.download(TRAIN_IMG_URL, os.path.join(self._datadir, filetail(TRAIN_IMG_URL)), sha1=TRAIN_IMG_SHA1)
+            vipy.downloader.download(TRAIN_LBL_URL, os.path.join(self._datadir, filetail(TRAIN_LBL_URL)), sha1=TRAIN_LBL_SHA1)
+            vipy.downloader.download(TEST_IMG_URL, os.path.join(self._datadir, filetail(TEST_IMG_URL)), sha1=TEST_IMG_SHA1)
+            vipy.downloader.download(TEST_LBL_URL, os.path.join(self._datadir, filetail(TEST_LBL_URL)), sha1=TEST_LBL_SHA1)            
+
+            open(os.path.join(self._datadir, &#39;.complete&#39;), &#39;a&#39;).close()
+            
+    @staticmethod
+    def _labels(gzfile):
+        with gzip.open(gzfile, &#39;rb&#39;) as file:
+            magic, size = struct.unpack(&#34;&gt;II&#34;, file.read(8))
+            if magic != 2049:
+                raise ValueError(&#39;Magic number mismatch, expected 2049,&#39;
+                                 &#39;got %d&#39; % magic)
+            labels = array(&#34;B&#34;, file.read())
+        return labels
+
+    @staticmethod
+    def _imread(dataset, index):
+        &#34;&#34;&#34;Read MNIST encoded images, adapted from: https://github.com/sorki/python-mnist/blob/master/mnist/loader.py&#34;&#34;&#34;
+        gzfile = None
+
+        with gzip.open(gzfile, &#39;rb&#39;) as file:
+            magic, size, rows, cols = struct.unpack(&#34;&gt;IIII&#34;, file.read(16))
+            if magic != 2051:
+                raise ValueError(&#39;Magic number mismatch, expected 2051, got %d&#39; % magic)
+            file.seek(index * rows * cols + 16)
+            image = np.asarray(array(&#34;B&#34;, file.read(rows * cols)).tolist())
+            return np.reshape(image, (rows,cols))
+
+    @staticmethod
+    def _dataset(img_gzfile, label_gzfile, N):
+        y = MNIST._labels(label_gzfile).tolist()
+        x = []
+        train_img_file = img_gzfile
+        with gzip.open(train_img_file, &#39;rb&#39;) as gzfile:
+            magic, size, rows, cols = struct.unpack(&#34;&gt;IIII&#34;, gzfile.read(16))
+            if magic != 2051:
+                raise ValueError(&#39;Magic number mismatch, expected 2051, got %d&#39; % magic)
+            x = [np.asarray(array(&#34;B&#34;, gzfile.read(rows * cols)).tolist(), dtype=np.uint8).reshape((rows, cols)) for k in range(N)]
+        return tuple((xi,yi) for (xi,yi) in zip(x,y))
+
+    def trainset(self):
+        (labelfile, imgfile, N) = (os.path.join(self._datadir, &#39;train-labels-idx1-ubyte.gz&#39;), os.path.join(self._datadir, &#39;train-images-idx3-ubyte.gz&#39;), 60000)
+        return vipy.dataset.Dataset(self._dataset(imgfile, labelfile, N=N), loader=lambda z: vipy.image.ImageCategory(array=z[0], category=str(z[1]), colorspace=&#39;lum&#39;), id=&#39;mnist&#39;)
+    
+    def testset(self):
+        (labelfile, imgfile, N) = (os.path.join(self._datadir, &#39;t10k-labels-idx1-ubyte.gz&#39;), os.path.join(self._datadir, &#39;t10k-images-idx3-ubyte.gz&#39;), 10000)                
+        return vipy.dataset.Dataset(self._dataset(imgfile, labelfile, N=N), loader=lambda z: vipy.image.ImageCategory(array=z[0], category=str(z[1]), colorspace=&#39;lum&#39;), id=&#39;mnist_test&#39;)
+
+
+
+    
+class EMNIST(MNIST):
+    def __init__(self, datadir=None, redownload=False):
+        datadir = tocache(&#39;emnist&#39;) if datadir is None else datadir
+        
         self._datadir = vipy.util.remkdir(datadir)        
-        if not os.path.exists(os.path.join(self._datadir, vipy.util.filetail(URL))):
-            vipy.downloader.download_and_unpack(URL, self._datadir)        
+        if redownload or not os.path.exists(os.path.join(self._datadir, &#39;.complete&#39;)):
+            vipy.downloader.download_and_unpack(EMNIST_URL, self._datadir)        
         super().__init__(datadir)
 
-    def _downloaded(self):
-        return True
-
-    def _wget(self):
-        return self
-
+        open(os.path.join(self._datadir, &#39;.complete&#39;), &#39;a&#39;).close()
+        
     def letters_train(self):
-        (imgfile, labelfile) = (os.path.join(self.outdir, &#39;gzip/emnist-letters-train-images-idx3-ubyte.gz&#39;), os.path.join(self.outdir, &#39;gzip/emnist-letters-train-labels-idx1-ubyte.gz&#39;))
-        d_categoryidx_to_category = {str(k):x for (k,x) in enumerate(string.ascii_lowercase, start=1)}
-        return vipy.dataset.Dataset([vipy.image.ImageCategory(array=img, category=d_categoryidx_to_category[str(y)], colorspace=&#39;lum&#39;) for (y,img) in zip(*self._dataset(imgfile, labelfile, 124800))], &#39;emnist_letters_train&#39;)
+        (imgfile, labelfile) = (os.path.join(self._datadir, &#39;gzip/emnist-letters-train-images-idx3-ubyte.gz&#39;), os.path.join(self._datadir, &#39;gzip/emnist-letters-train-labels-idx1-ubyte.gz&#39;))
+        d_categoryidx_to_category = {str(k):x for (k,x) in enumerate(string.ascii_lowercase, start=1)}        
+        return vipy.dataset.Dataset(self._dataset(imgfile, labelfile, N=124800), loader=lambda z: vipy.image.ImageCategory(array=z[0], category=d_categoryidx_to_category[str(z[1])], colorspace=&#39;lum&#39;), id=&#39;emnist_letters_train&#39;)
 
     def letters_test(self):
-        (imgfile, labelfile) = (os.path.join(self.outdir, &#39;gzip/emnist-letters-test-images-idx3-ubyte.gz&#39;), os.path.join(self.outdir, &#39;gzip/emnist-letters-test-labels-idx1-ubyte.gz&#39;))
-        d_categoryidx_to_category = {str(k):x for (k,x) in enumerate(string.ascii_lowercase, start=1)}        
-        return vipy.dataset.Dataset([vipy.image.ImageCategory(array=img, category=d_categoryidx_to_category[str(y)], colorspace=&#39;lum&#39;) for (y,img) in zip(*self._dataset(imgfile, labelfile, 145600-124800))], &#39;emnist_letters_test&#39;)
+        (imgfile, labelfile) = (os.path.join(self._datadir, &#39;gzip/emnist-letters-test-images-idx3-ubyte.gz&#39;), os.path.join(self._datadir, &#39;gzip/emnist-letters-test-labels-idx1-ubyte.gz&#39;))
+        d_categoryidx_to_category = {str(k):x for (k,x) in enumerate(string.ascii_lowercase, start=1)} 
+        return vipy.dataset.Dataset(self._dataset(imgfile, labelfile, N=145600-124800), loader=lambda z: vipy.image.ImageCategory(array=z[0], category=d_categoryidx_to_category[str(z[1])], colorspace=&#39;lum&#39;), id=&#39;emnist_letters_test&#39;)       
 
     def letters(self):
         return (self.letters_train(), self.letters_test())
 
     def digits_train(self):
-        (imgfile, labelfile) = (os.path.join(self.outdir, &#39;gzip/emnist-digits-train-images-idx3-ubyte.gz&#39;), os.path.join(self.outdir, &#39;gzip/emnist-digits-train-labels-idx1-ubyte.gz&#39;))
-        return vipy.dataset.Dataset([vipy.image.ImageCategory(array=img, category=str(y), colorspace=&#39;lum&#39;) for (y,img) in zip(*self._dataset(imgfile, labelfile, 240000))], &#39;emnist_digits_train&#39;)
+        (imgfile, labelfile) = (os.path.join(self._datadir, &#39;gzip/emnist-digits-train-images-idx3-ubyte.gz&#39;), os.path.join(self._datadir, &#39;gzip/emnist-digits-train-labels-idx1-ubyte.gz&#39;)) 
+        return vipy.dataset.Dataset(self._dataset(imgfile, labelfile, N=240000), loader=lambda z: vipy.image.ImageCategory(array=z[0], category=str(z[1]), colorspace=&#39;lum&#39;), id=&#39;emnist_digits_train&#39;)              
 
     def digits_test(self):
-        (imgfile, labelfile) = (os.path.join(self.outdir, &#39;gzip/emnist-digits-test-images-idx3-ubyte.gz&#39;), os.path.join(self.outdir, &#39;gzip/emnist-digits-test-labels-idx1-ubyte.gz&#39;))
-        return vipy.dataset.Dataset([vipy.image.ImageCategory(array=img, category=str(y), colorspace=&#39;lum&#39;) for (y,img) in zip(*self._dataset(imgfile, labelfile, 280000-240000))], &#39;emnist_digits_test&#39;)
+        (imgfile, labelfile) = (os.path.join(self._datadir, &#39;gzip/emnist-digits-test-images-idx3-ubyte.gz&#39;), os.path.join(self._datadir, &#39;gzip/emnist-digits-test-labels-idx1-ubyte.gz&#39;))
+        return vipy.dataset.Dataset(self._dataset(imgfile, labelfile, N=280000-240000), loader=lambda z: vipy.image.ImageCategory(array=z[0], category=str(z[1]), colorspace=&#39;lum&#39;), id=&#39;emnist_digits_test&#39;)                      
 
     def digits(self):
         return (self.digits_train(), self.digits_test())
     
     def trainset(self):
-        return self.letters_train().union(self.digits_train()).id(&#39;emnist_train&#39;)
+        return vipy.dataset.Union(self.letters()[0], self.digits()[0], id=&#39;emnist&#39;)
 
     def testset(self):
-        return self.letters_test().union(self.digits_test()).id(&#39;emnist_test&#39;)
+        return vipy.dataset.Union(self.letters()[0], self.digits()[0], id=&#39;emnist_test&#39;)        
+    
+
+    
+
     </code></pre>
 </details>
 </section>
@@ -92,61 +169,59 @@ class EMNIST(vipy.data.mnist.MNIST):
 <dl>
 <dt id="vipy.data.emnist.EMNIST"><code class="flex name class">
 <span>class <span class="ident">EMNIST</span></span>
-<span>(</span><span>datadir)</span>
+<span>(</span><span>datadir=None, redownload=False)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>download URLS above to outdir, then run export()</p></div>
+<div class="desc"></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/data/emnist.py#L9-L50" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/data/emnist.py#L84-L123" class="git-link">Browse git</a>
 </summary>
-<pre><code class="python">class EMNIST(vipy.data.mnist.MNIST):
-    def __init__(self, datadir):
+<pre><code class="python">class EMNIST(MNIST):
+    def __init__(self, datadir=None, redownload=False):
+        datadir = tocache(&#39;emnist&#39;) if datadir is None else datadir
+        
         self._datadir = vipy.util.remkdir(datadir)        
-        if not os.path.exists(os.path.join(self._datadir, vipy.util.filetail(URL))):
-            vipy.downloader.download_and_unpack(URL, self._datadir)        
+        if redownload or not os.path.exists(os.path.join(self._datadir, &#39;.complete&#39;)):
+            vipy.downloader.download_and_unpack(EMNIST_URL, self._datadir)        
         super().__init__(datadir)
 
-    def _downloaded(self):
-        return True
-
-    def _wget(self):
-        return self
-
+        open(os.path.join(self._datadir, &#39;.complete&#39;), &#39;a&#39;).close()
+        
     def letters_train(self):
-        (imgfile, labelfile) = (os.path.join(self.outdir, &#39;gzip/emnist-letters-train-images-idx3-ubyte.gz&#39;), os.path.join(self.outdir, &#39;gzip/emnist-letters-train-labels-idx1-ubyte.gz&#39;))
-        d_categoryidx_to_category = {str(k):x for (k,x) in enumerate(string.ascii_lowercase, start=1)}
-        return vipy.dataset.Dataset([vipy.image.ImageCategory(array=img, category=d_categoryidx_to_category[str(y)], colorspace=&#39;lum&#39;) for (y,img) in zip(*self._dataset(imgfile, labelfile, 124800))], &#39;emnist_letters_train&#39;)
+        (imgfile, labelfile) = (os.path.join(self._datadir, &#39;gzip/emnist-letters-train-images-idx3-ubyte.gz&#39;), os.path.join(self._datadir, &#39;gzip/emnist-letters-train-labels-idx1-ubyte.gz&#39;))
+        d_categoryidx_to_category = {str(k):x for (k,x) in enumerate(string.ascii_lowercase, start=1)}        
+        return vipy.dataset.Dataset(self._dataset(imgfile, labelfile, N=124800), loader=lambda z: vipy.image.ImageCategory(array=z[0], category=d_categoryidx_to_category[str(z[1])], colorspace=&#39;lum&#39;), id=&#39;emnist_letters_train&#39;)
 
     def letters_test(self):
-        (imgfile, labelfile) = (os.path.join(self.outdir, &#39;gzip/emnist-letters-test-images-idx3-ubyte.gz&#39;), os.path.join(self.outdir, &#39;gzip/emnist-letters-test-labels-idx1-ubyte.gz&#39;))
-        d_categoryidx_to_category = {str(k):x for (k,x) in enumerate(string.ascii_lowercase, start=1)}        
-        return vipy.dataset.Dataset([vipy.image.ImageCategory(array=img, category=d_categoryidx_to_category[str(y)], colorspace=&#39;lum&#39;) for (y,img) in zip(*self._dataset(imgfile, labelfile, 145600-124800))], &#39;emnist_letters_test&#39;)
+        (imgfile, labelfile) = (os.path.join(self._datadir, &#39;gzip/emnist-letters-test-images-idx3-ubyte.gz&#39;), os.path.join(self._datadir, &#39;gzip/emnist-letters-test-labels-idx1-ubyte.gz&#39;))
+        d_categoryidx_to_category = {str(k):x for (k,x) in enumerate(string.ascii_lowercase, start=1)} 
+        return vipy.dataset.Dataset(self._dataset(imgfile, labelfile, N=145600-124800), loader=lambda z: vipy.image.ImageCategory(array=z[0], category=d_categoryidx_to_category[str(z[1])], colorspace=&#39;lum&#39;), id=&#39;emnist_letters_test&#39;)       
 
     def letters(self):
         return (self.letters_train(), self.letters_test())
 
     def digits_train(self):
-        (imgfile, labelfile) = (os.path.join(self.outdir, &#39;gzip/emnist-digits-train-images-idx3-ubyte.gz&#39;), os.path.join(self.outdir, &#39;gzip/emnist-digits-train-labels-idx1-ubyte.gz&#39;))
-        return vipy.dataset.Dataset([vipy.image.ImageCategory(array=img, category=str(y), colorspace=&#39;lum&#39;) for (y,img) in zip(*self._dataset(imgfile, labelfile, 240000))], &#39;emnist_digits_train&#39;)
+        (imgfile, labelfile) = (os.path.join(self._datadir, &#39;gzip/emnist-digits-train-images-idx3-ubyte.gz&#39;), os.path.join(self._datadir, &#39;gzip/emnist-digits-train-labels-idx1-ubyte.gz&#39;)) 
+        return vipy.dataset.Dataset(self._dataset(imgfile, labelfile, N=240000), loader=lambda z: vipy.image.ImageCategory(array=z[0], category=str(z[1]), colorspace=&#39;lum&#39;), id=&#39;emnist_digits_train&#39;)              
 
     def digits_test(self):
-        (imgfile, labelfile) = (os.path.join(self.outdir, &#39;gzip/emnist-digits-test-images-idx3-ubyte.gz&#39;), os.path.join(self.outdir, &#39;gzip/emnist-digits-test-labels-idx1-ubyte.gz&#39;))
-        return vipy.dataset.Dataset([vipy.image.ImageCategory(array=img, category=str(y), colorspace=&#39;lum&#39;) for (y,img) in zip(*self._dataset(imgfile, labelfile, 280000-240000))], &#39;emnist_digits_test&#39;)
+        (imgfile, labelfile) = (os.path.join(self._datadir, &#39;gzip/emnist-digits-test-images-idx3-ubyte.gz&#39;), os.path.join(self._datadir, &#39;gzip/emnist-digits-test-labels-idx1-ubyte.gz&#39;))
+        return vipy.dataset.Dataset(self._dataset(imgfile, labelfile, N=280000-240000), loader=lambda z: vipy.image.ImageCategory(array=z[0], category=str(z[1]), colorspace=&#39;lum&#39;), id=&#39;emnist_digits_test&#39;)                      
 
     def digits(self):
         return (self.digits_train(), self.digits_test())
     
     def trainset(self):
-        return self.letters_train().union(self.digits_train()).id(&#39;emnist_train&#39;)
+        return vipy.dataset.Union(self.letters()[0], self.digits()[0], id=&#39;emnist&#39;)
 
     def testset(self):
-        return self.letters_test().union(self.digits_test()).id(&#39;emnist_test&#39;)</code></pre>
+        return vipy.dataset.Union(self.letters()[0], self.digits()[0], id=&#39;emnist_test&#39;)        </code></pre>
 </details>
 <h3>Ancestors</h3>
 <ul class="hlist">
-<li><a title="vipy.data.mnist.MNIST" href="mnist.html#vipy.data.mnist.MNIST">MNIST</a></li>
+<li><a title="vipy.data.emnist.MNIST" href="#vipy.data.emnist.MNIST">MNIST</a></li>
 </ul>
 <h3>Methods</h3>
 <dl>
@@ -158,7 +233,7 @@ class EMNIST(vipy.data.mnist.MNIST):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/data/emnist.py#L43-L44" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/data/emnist.py#L116-L117" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def digits(self):
     return (self.digits_train(), self.digits_test())</code></pre>
@@ -172,11 +247,11 @@ class EMNIST(vipy.data.mnist.MNIST):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/data/emnist.py#L39-L41" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/data/emnist.py#L112-L114" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def digits_test(self):
-    (imgfile, labelfile) = (os.path.join(self.outdir, &#39;gzip/emnist-digits-test-images-idx3-ubyte.gz&#39;), os.path.join(self.outdir, &#39;gzip/emnist-digits-test-labels-idx1-ubyte.gz&#39;))
-    return vipy.dataset.Dataset([vipy.image.ImageCategory(array=img, category=str(y), colorspace=&#39;lum&#39;) for (y,img) in zip(*self._dataset(imgfile, labelfile, 280000-240000))], &#39;emnist_digits_test&#39;)</code></pre>
+    (imgfile, labelfile) = (os.path.join(self._datadir, &#39;gzip/emnist-digits-test-images-idx3-ubyte.gz&#39;), os.path.join(self._datadir, &#39;gzip/emnist-digits-test-labels-idx1-ubyte.gz&#39;))
+    return vipy.dataset.Dataset(self._dataset(imgfile, labelfile, N=280000-240000), loader=lambda z: vipy.image.ImageCategory(array=z[0], category=str(z[1]), colorspace=&#39;lum&#39;), id=&#39;emnist_digits_test&#39;)                      </code></pre>
 </details>
 </dd>
 <dt id="vipy.data.emnist.EMNIST.digits_train"><code class="name flex">
@@ -187,11 +262,11 @@ class EMNIST(vipy.data.mnist.MNIST):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/data/emnist.py#L35-L37" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/data/emnist.py#L108-L110" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def digits_train(self):
-    (imgfile, labelfile) = (os.path.join(self.outdir, &#39;gzip/emnist-digits-train-images-idx3-ubyte.gz&#39;), os.path.join(self.outdir, &#39;gzip/emnist-digits-train-labels-idx1-ubyte.gz&#39;))
-    return vipy.dataset.Dataset([vipy.image.ImageCategory(array=img, category=str(y), colorspace=&#39;lum&#39;) for (y,img) in zip(*self._dataset(imgfile, labelfile, 240000))], &#39;emnist_digits_train&#39;)</code></pre>
+    (imgfile, labelfile) = (os.path.join(self._datadir, &#39;gzip/emnist-digits-train-images-idx3-ubyte.gz&#39;), os.path.join(self._datadir, &#39;gzip/emnist-digits-train-labels-idx1-ubyte.gz&#39;)) 
+    return vipy.dataset.Dataset(self._dataset(imgfile, labelfile, N=240000), loader=lambda z: vipy.image.ImageCategory(array=z[0], category=str(z[1]), colorspace=&#39;lum&#39;), id=&#39;emnist_digits_train&#39;)              </code></pre>
 </details>
 </dd>
 <dt id="vipy.data.emnist.EMNIST.letters"><code class="name flex">
@@ -202,7 +277,7 @@ class EMNIST(vipy.data.mnist.MNIST):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/data/emnist.py#L32-L33" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/data/emnist.py#L105-L106" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def letters(self):
     return (self.letters_train(), self.letters_test())</code></pre>
@@ -216,12 +291,12 @@ class EMNIST(vipy.data.mnist.MNIST):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/data/emnist.py#L27-L30" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/data/emnist.py#L100-L103" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def letters_test(self):
-    (imgfile, labelfile) = (os.path.join(self.outdir, &#39;gzip/emnist-letters-test-images-idx3-ubyte.gz&#39;), os.path.join(self.outdir, &#39;gzip/emnist-letters-test-labels-idx1-ubyte.gz&#39;))
-    d_categoryidx_to_category = {str(k):x for (k,x) in enumerate(string.ascii_lowercase, start=1)}        
-    return vipy.dataset.Dataset([vipy.image.ImageCategory(array=img, category=d_categoryidx_to_category[str(y)], colorspace=&#39;lum&#39;) for (y,img) in zip(*self._dataset(imgfile, labelfile, 145600-124800))], &#39;emnist_letters_test&#39;)</code></pre>
+    (imgfile, labelfile) = (os.path.join(self._datadir, &#39;gzip/emnist-letters-test-images-idx3-ubyte.gz&#39;), os.path.join(self._datadir, &#39;gzip/emnist-letters-test-labels-idx1-ubyte.gz&#39;))
+    d_categoryidx_to_category = {str(k):x for (k,x) in enumerate(string.ascii_lowercase, start=1)} 
+    return vipy.dataset.Dataset(self._dataset(imgfile, labelfile, N=145600-124800), loader=lambda z: vipy.image.ImageCategory(array=z[0], category=d_categoryidx_to_category[str(z[1])], colorspace=&#39;lum&#39;), id=&#39;emnist_letters_test&#39;)       </code></pre>
 </details>
 </dd>
 <dt id="vipy.data.emnist.EMNIST.letters_train"><code class="name flex">
@@ -232,12 +307,12 @@ class EMNIST(vipy.data.mnist.MNIST):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/data/emnist.py#L22-L25" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/data/emnist.py#L95-L98" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def letters_train(self):
-    (imgfile, labelfile) = (os.path.join(self.outdir, &#39;gzip/emnist-letters-train-images-idx3-ubyte.gz&#39;), os.path.join(self.outdir, &#39;gzip/emnist-letters-train-labels-idx1-ubyte.gz&#39;))
-    d_categoryidx_to_category = {str(k):x for (k,x) in enumerate(string.ascii_lowercase, start=1)}
-    return vipy.dataset.Dataset([vipy.image.ImageCategory(array=img, category=d_categoryidx_to_category[str(y)], colorspace=&#39;lum&#39;) for (y,img) in zip(*self._dataset(imgfile, labelfile, 124800))], &#39;emnist_letters_train&#39;)</code></pre>
+    (imgfile, labelfile) = (os.path.join(self._datadir, &#39;gzip/emnist-letters-train-images-idx3-ubyte.gz&#39;), os.path.join(self._datadir, &#39;gzip/emnist-letters-train-labels-idx1-ubyte.gz&#39;))
+    d_categoryidx_to_category = {str(k):x for (k,x) in enumerate(string.ascii_lowercase, start=1)}        
+    return vipy.dataset.Dataset(self._dataset(imgfile, labelfile, N=124800), loader=lambda z: vipy.image.ImageCategory(array=z[0], category=d_categoryidx_to_category[str(z[1])], colorspace=&#39;lum&#39;), id=&#39;emnist_letters_train&#39;)</code></pre>
 </details>
 </dd>
 <dt id="vipy.data.emnist.EMNIST.testset"><code class="name flex">
@@ -248,10 +323,10 @@ class EMNIST(vipy.data.mnist.MNIST):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/data/emnist.py#L49-L50" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/data/emnist.py#L122-L123" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def testset(self):
-    return self.letters_test().union(self.digits_test()).id(&#39;emnist_test&#39;)</code></pre>
+    return vipy.dataset.Union(self.letters()[0], self.digits()[0], id=&#39;emnist_test&#39;)        </code></pre>
 </details>
 </dd>
 <dt id="vipy.data.emnist.EMNIST.trainset"><code class="name flex">
@@ -262,10 +337,117 @@ class EMNIST(vipy.data.mnist.MNIST):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/data/emnist.py#L46-L47" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/data/emnist.py#L119-L120" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def trainset(self):
-    return self.letters_train().union(self.digits_train()).id(&#39;emnist_train&#39;)</code></pre>
+    return vipy.dataset.Union(self.letters()[0], self.digits()[0], id=&#39;emnist&#39;)</code></pre>
+</details>
+</dd>
+</dl>
+</dd>
+<dt id="vipy.data.emnist.MNIST"><code class="flex name class">
+<span>class <span class="ident">MNIST</span></span>
+<span>(</span><span>datadir=None, redownload=False)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/data/emnist.py#L23-L79" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">class MNIST():
+    def __init__(self, datadir=None, redownload=False):        
+        raise ValueError(&#39;moved to huggingface&#39;)
+
+        outdir = tocache(&#39;mnist&#39;) if datadir is None else datadir
+        
+        self._datadir = remkdir(os.path.expanduser(outdir))
+        if redownload or not os.path.exists(os.path.join(self._datadir, &#39;.complete&#39;)):
+            vipy.downloader.download(TRAIN_IMG_URL, os.path.join(self._datadir, filetail(TRAIN_IMG_URL)), sha1=TRAIN_IMG_SHA1)
+            vipy.downloader.download(TRAIN_LBL_URL, os.path.join(self._datadir, filetail(TRAIN_LBL_URL)), sha1=TRAIN_LBL_SHA1)
+            vipy.downloader.download(TEST_IMG_URL, os.path.join(self._datadir, filetail(TEST_IMG_URL)), sha1=TEST_IMG_SHA1)
+            vipy.downloader.download(TEST_LBL_URL, os.path.join(self._datadir, filetail(TEST_LBL_URL)), sha1=TEST_LBL_SHA1)            
+
+            open(os.path.join(self._datadir, &#39;.complete&#39;), &#39;a&#39;).close()
+            
+    @staticmethod
+    def _labels(gzfile):
+        with gzip.open(gzfile, &#39;rb&#39;) as file:
+            magic, size = struct.unpack(&#34;&gt;II&#34;, file.read(8))
+            if magic != 2049:
+                raise ValueError(&#39;Magic number mismatch, expected 2049,&#39;
+                                 &#39;got %d&#39; % magic)
+            labels = array(&#34;B&#34;, file.read())
+        return labels
+
+    @staticmethod
+    def _imread(dataset, index):
+        &#34;&#34;&#34;Read MNIST encoded images, adapted from: https://github.com/sorki/python-mnist/blob/master/mnist/loader.py&#34;&#34;&#34;
+        gzfile = None
+
+        with gzip.open(gzfile, &#39;rb&#39;) as file:
+            magic, size, rows, cols = struct.unpack(&#34;&gt;IIII&#34;, file.read(16))
+            if magic != 2051:
+                raise ValueError(&#39;Magic number mismatch, expected 2051, got %d&#39; % magic)
+            file.seek(index * rows * cols + 16)
+            image = np.asarray(array(&#34;B&#34;, file.read(rows * cols)).tolist())
+            return np.reshape(image, (rows,cols))
+
+    @staticmethod
+    def _dataset(img_gzfile, label_gzfile, N):
+        y = MNIST._labels(label_gzfile).tolist()
+        x = []
+        train_img_file = img_gzfile
+        with gzip.open(train_img_file, &#39;rb&#39;) as gzfile:
+            magic, size, rows, cols = struct.unpack(&#34;&gt;IIII&#34;, gzfile.read(16))
+            if magic != 2051:
+                raise ValueError(&#39;Magic number mismatch, expected 2051, got %d&#39; % magic)
+            x = [np.asarray(array(&#34;B&#34;, gzfile.read(rows * cols)).tolist(), dtype=np.uint8).reshape((rows, cols)) for k in range(N)]
+        return tuple((xi,yi) for (xi,yi) in zip(x,y))
+
+    def trainset(self):
+        (labelfile, imgfile, N) = (os.path.join(self._datadir, &#39;train-labels-idx1-ubyte.gz&#39;), os.path.join(self._datadir, &#39;train-images-idx3-ubyte.gz&#39;), 60000)
+        return vipy.dataset.Dataset(self._dataset(imgfile, labelfile, N=N), loader=lambda z: vipy.image.ImageCategory(array=z[0], category=str(z[1]), colorspace=&#39;lum&#39;), id=&#39;mnist&#39;)
+    
+    def testset(self):
+        (labelfile, imgfile, N) = (os.path.join(self._datadir, &#39;t10k-labels-idx1-ubyte.gz&#39;), os.path.join(self._datadir, &#39;t10k-images-idx3-ubyte.gz&#39;), 10000)                
+        return vipy.dataset.Dataset(self._dataset(imgfile, labelfile, N=N), loader=lambda z: vipy.image.ImageCategory(array=z[0], category=str(z[1]), colorspace=&#39;lum&#39;), id=&#39;mnist_test&#39;)</code></pre>
+</details>
+<h3>Subclasses</h3>
+<ul class="hlist">
+<li><a title="vipy.data.emnist.EMNIST" href="#vipy.data.emnist.EMNIST">EMNIST</a></li>
+</ul>
+<h3>Methods</h3>
+<dl>
+<dt id="vipy.data.emnist.MNIST.testset"><code class="name flex">
+<span>def <span class="ident">testset</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/data/emnist.py#L77-L79" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def testset(self):
+    (labelfile, imgfile, N) = (os.path.join(self._datadir, &#39;t10k-labels-idx1-ubyte.gz&#39;), os.path.join(self._datadir, &#39;t10k-images-idx3-ubyte.gz&#39;), 10000)                
+    return vipy.dataset.Dataset(self._dataset(imgfile, labelfile, N=N), loader=lambda z: vipy.image.ImageCategory(array=z[0], category=str(z[1]), colorspace=&#39;lum&#39;), id=&#39;mnist_test&#39;)</code></pre>
+</details>
+</dd>
+<dt id="vipy.data.emnist.MNIST.trainset"><code class="name flex">
+<span>def <span class="ident">trainset</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/data/emnist.py#L73-L75" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def trainset(self):
+    (labelfile, imgfile, N) = (os.path.join(self._datadir, &#39;train-labels-idx1-ubyte.gz&#39;), os.path.join(self._datadir, &#39;train-images-idx3-ubyte.gz&#39;), 60000)
+    return vipy.dataset.Dataset(self._dataset(imgfile, labelfile, N=N), loader=lambda z: vipy.image.ImageCategory(array=z[0], category=str(z[1]), colorspace=&#39;lum&#39;), id=&#39;mnist&#39;)</code></pre>
 </details>
 </dd>
 </dl>
@@ -351,13 +533,20 @@ setTimeout(() => input.focus(), 100);
 <li><code><a title="vipy.data.emnist.EMNIST.trainset" href="#vipy.data.emnist.EMNIST.trainset">trainset</a></code></li>
 </ul>
 </li>
+<li>
+<h4><code><a title="vipy.data.emnist.MNIST" href="#vipy.data.emnist.MNIST">MNIST</a></code></h4>
+<ul class="">
+<li><code><a title="vipy.data.emnist.MNIST.testset" href="#vipy.data.emnist.MNIST.testset">testset</a></code></li>
+<li><code><a title="vipy.data.emnist.MNIST.trainset" href="#vipy.data.emnist.MNIST.trainset">trainset</a></code></li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>
 </nav>
 </main>
 <footer id="footer">
-<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.10.0</a>.</p>
+<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.11.6</a>.</p>
 </footer>
 </body>
 </html>

@@ -26,13 +26,12 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/data/imagenet.py#L1-L374" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/data/imagenet.py#L1-L378" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">import os
 import vipy
 from vipy.util import readcsv, remkdir, filepath, islist, filetail, filebase, filefull, tocache, isinstalled
 from vipy.image import ImageDetection, ImageCategory
-import scipy.io
 import numpy as np
 from vipy.globals import log
 
@@ -93,6 +92,9 @@ class Imagenet2012():
             open(os.path.join(self._datadir, &#39;.complete&#39;), &#39;a&#39;).close()        
             
         self._synset_to_categorylist = {x.split(&#39; &#39;,1)[0]:[y.lstrip().rstrip() for y in x.split(&#39; &#39;, 1)[1].split(&#39;,&#39;)] for x in vipy.util.readtxt(os.path.join(self._datadir, &#39;synset_words.txt&#39;))}            
+
+        vipy.util.try_import(&#39;scipy.io&#39;, &#39;scipy&#39;)
+        import scipy.io
 
         metadata = scipy.io.loadmat(os.path.join(self._datadir, &#39;ILSVRC2012_devkit_t12/ILSVRC2012_devkit_t12/data/meta.mat&#39;), struct_as_record=False)
         synsets = np.squeeze(metadata[&#39;synsets&#39;])
@@ -237,6 +239,8 @@ class Imagenet21K_Resized(vipy.dataset.Dataset):
 class Imagenet21K(vipy.dataset.Dataset):
     &#34;&#34;&#34;Imagenet21K requires login at https://image-net.org from the same IP address as the download, and agreeing to the ImageNet terms: https://image-net.org/download-images.php#term    
        imagenet-21K 2021 winter release
+
+       https://image-net.org
     &#34;&#34;&#34;
     def __init__(self, datadir=None, aslemma=True, redownload=False, recache=False):
 
@@ -421,7 +425,7 @@ class Imagenet2014_DET():
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/data/imagenet.py#L42-L165" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/data/imagenet.py#L41-L167" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Imagenet2012():
     &#34;&#34;&#34;Imagenet2012 requires login at https://image-net.org from the same IP address as the download, and agreeing to the ImageNet terms: https://image-net.org/download-images.php#term&#34;&#34;&#34;
@@ -447,6 +451,9 @@ class Imagenet2014_DET():
             open(os.path.join(self._datadir, &#39;.complete&#39;), &#39;a&#39;).close()        
             
         self._synset_to_categorylist = {x.split(&#39; &#39;,1)[0]:[y.lstrip().rstrip() for y in x.split(&#39; &#39;, 1)[1].split(&#39;,&#39;)] for x in vipy.util.readtxt(os.path.join(self._datadir, &#39;synset_words.txt&#39;))}            
+
+        vipy.util.try_import(&#39;scipy.io&#39;, &#39;scipy&#39;)
+        import scipy.io
 
         metadata = scipy.io.loadmat(os.path.join(self._datadir, &#39;ILSVRC2012_devkit_t12/ILSVRC2012_devkit_t12/data/meta.mat&#39;), struct_as_record=False)
         synsets = np.squeeze(metadata[&#39;synsets&#39;])
@@ -558,7 +565,7 @@ class Imagenet2014_DET():
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/data/imagenet.py#L79-L85" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/data/imagenet.py#L81-L87" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def classification_trainset(self):
     &#34;&#34;&#34;ImageNet2012 Classification, trainset&#34;&#34;&#34;
@@ -577,7 +584,7 @@ class Imagenet2014_DET():
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/data/imagenet.py#L87-L102" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/data/imagenet.py#L89-L104" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def classification_valset(self):
     &#34;&#34;&#34;ImageNet2012 Classification, valset&#34;&#34;&#34;        
@@ -606,7 +613,7 @@ class Imagenet2014_DET():
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/data/imagenet.py#L104-L128" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/data/imagenet.py#L106-L130" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def faces(self):
     &#34;&#34;&#34;Return all annotated faces in 2012 train and val sets:
@@ -643,7 +650,7 @@ class Imagenet2014_DET():
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/data/imagenet.py#L130-L165" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/data/imagenet.py#L132-L167" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def localization_trainset(self):
     &#34;&#34;&#34;ImageNet2012 localization, imageset = {train, val}, this takes a long time to read the XML files, load and cache&#34;&#34;&#34;
@@ -691,7 +698,7 @@ class Imagenet2014_DET():
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/data/imagenet.py#L76-L77" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/data/imagenet.py#L78-L79" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def synset_to_category(self, s=None):
     return self._wnid_to_categorylist if s is None else self._wnid_to_categorylist[s]</code></pre>
@@ -708,7 +715,7 @@ class Imagenet2014_DET():
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/data/imagenet.py#L257-L373" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/data/imagenet.py#L261-L377" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Imagenet2014_DET():
     &#34;&#34;&#34;Imagenet2014_DET requires login at https://image-net.org from the same IP address as the download, and agreeing to the ImageNet terms: https://image-net.org/download-images.php#term&#34;&#34;&#34;    
@@ -838,7 +845,7 @@ class Imagenet2014_DET():
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/data/imagenet.py#L291-L292" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/data/imagenet.py#L295-L296" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def synset_to_category(self):
     return {x:[y.rstrip().lstrip() for y in lemma.split(&#39;,&#39;)] for (x,lemma) in zip(vipy.util.readtxt(os.path.join(self._datadir, &#39;imagenet21k_wordnet_ids.txt&#39;)), vipy.util.readtxt(os.path.join(self._datadir, &#39;imagenet21k_wordnet_lemmas.txt&#39;)))}        </code></pre>
@@ -852,7 +859,7 @@ class Imagenet2014_DET():
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/data/imagenet.py#L372-L373" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/data/imagenet.py#L376-L377" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def testset(self):
     return vipy.dataset.Dataset.from_directory(os.path.join(self._datadir, &#39;ILSVRC2013_DET_test&#39;), filetype=&#39;jpg&#39;).id(&#39;imagenet2014_det:testset&#39;)</code></pre>
@@ -866,7 +873,7 @@ class Imagenet2014_DET():
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/data/imagenet.py#L294-L330" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/data/imagenet.py#L298-L334" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def trainset(self):
     cachefile = os.path.join(self._datadir, &#39;imagenet2014_det_trainset.json&#39;)
@@ -915,7 +922,7 @@ class Imagenet2014_DET():
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/data/imagenet.py#L333-L369" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/data/imagenet.py#L337-L373" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def valset(self):
     cachefile = os.path.join(self._datadir, &#39;imagenet2014_det_valset.json&#39;)
@@ -965,15 +972,18 @@ class Imagenet2014_DET():
 <dd>
 <div class="desc"><p>Imagenet21K requires login at <a href="https://image-net.org">https://image-net.org</a> from the same IP address as the download, and agreeing to the ImageNet terms: <a href="https://image-net.org/download-images.php#term">https://image-net.org/download-images.php#term</a>
 <br>
-imagenet-21K 2021 winter release</p></div>
+imagenet-21K 2021 winter release</p>
+<p><a href="https://image-net.org">https://image-net.org</a></p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/data/imagenet.py#L207-L254" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/data/imagenet.py#L209-L258" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Imagenet21K(vipy.dataset.Dataset):
     &#34;&#34;&#34;Imagenet21K requires login at https://image-net.org from the same IP address as the download, and agreeing to the ImageNet terms: https://image-net.org/download-images.php#term    
        imagenet-21K 2021 winter release
+
+       https://image-net.org
     &#34;&#34;&#34;
     def __init__(self, datadir=None, aslemma=True, redownload=False, recache=False):
 
@@ -1034,7 +1044,7 @@ imagenet-21K 2021 winter release</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/data/imagenet.py#L253-L254" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/data/imagenet.py#L257-L258" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def synset_to_category(self, s=None):
     return self._synset_to_categorylist if s is None else self._synset_to_categorylist[s]</code></pre>
@@ -1045,11 +1055,13 @@ imagenet-21K 2021 winter release</p></div>
 <ul class="hlist">
 <li><code><b><a title="vipy.dataset.Dataset" href="../dataset.html#vipy.dataset.Dataset">Dataset</a></b></code>:
 <ul class="hlist">
+<li><code><a title="vipy.dataset.Dataset.balanced" href="../dataset.html#vipy.dataset.Dataset.balanced">balanced</a></code></li>
 <li><code><a title="vipy.dataset.Dataset.batch" href="../dataset.html#vipy.dataset.Dataset.batch">batch</a></code></li>
 <li><code><a title="vipy.dataset.Dataset.chunk" href="../dataset.html#vipy.dataset.Dataset.chunk">chunk</a></code></li>
 <li><code><a title="vipy.dataset.Dataset.chunks" href="../dataset.html#vipy.dataset.Dataset.chunks">chunks</a></code></li>
 <li><code><a title="vipy.dataset.Dataset.clone" href="../dataset.html#vipy.dataset.Dataset.clone">clone</a></code></li>
 <li><code><a title="vipy.dataset.Dataset.count" href="../dataset.html#vipy.dataset.Dataset.count">count</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.even_split" href="../dataset.html#vipy.dataset.Dataset.even_split">even_split</a></code></li>
 <li><code><a title="vipy.dataset.Dataset.filter" href="../dataset.html#vipy.dataset.Dataset.filter">filter</a></code></li>
 <li><code><a title="vipy.dataset.Dataset.frequency" href="../dataset.html#vipy.dataset.Dataset.frequency">frequency</a></code></li>
 <li><code><a title="vipy.dataset.Dataset.from_directory" href="../dataset.html#vipy.dataset.Dataset.from_directory">from_directory</a></code></li>
@@ -1101,7 +1113,7 @@ imagenet-21K 2021 winter release</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/data/imagenet.py#L168-L204" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/data/imagenet.py#L170-L206" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Imagenet21K_Resized(vipy.dataset.Dataset):
     &#34;&#34;&#34;Imagenet21K_Resized requires login at https://image-net.org from the same IP address as the download, and agreeing to the ImageNet terms: https://image-net.org/download-images.php#term    
@@ -1155,7 +1167,7 @@ imagenet-21K 2021 winter release</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/data/imagenet.py#L203-L204" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/data/imagenet.py#L205-L206" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def synset_to_category(self, s=None):
     return self._synset_to_categorylist if s is None else self._synset_to_categorylist[s]</code></pre>
@@ -1166,11 +1178,13 @@ imagenet-21K 2021 winter release</p></div>
 <ul class="hlist">
 <li><code><b><a title="vipy.dataset.Dataset" href="../dataset.html#vipy.dataset.Dataset">Dataset</a></b></code>:
 <ul class="hlist">
+<li><code><a title="vipy.dataset.Dataset.balanced" href="../dataset.html#vipy.dataset.Dataset.balanced">balanced</a></code></li>
 <li><code><a title="vipy.dataset.Dataset.batch" href="../dataset.html#vipy.dataset.Dataset.batch">batch</a></code></li>
 <li><code><a title="vipy.dataset.Dataset.chunk" href="../dataset.html#vipy.dataset.Dataset.chunk">chunk</a></code></li>
 <li><code><a title="vipy.dataset.Dataset.chunks" href="../dataset.html#vipy.dataset.Dataset.chunks">chunks</a></code></li>
 <li><code><a title="vipy.dataset.Dataset.clone" href="../dataset.html#vipy.dataset.Dataset.clone">clone</a></code></li>
 <li><code><a title="vipy.dataset.Dataset.count" href="../dataset.html#vipy.dataset.Dataset.count">count</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.even_split" href="../dataset.html#vipy.dataset.Dataset.even_split">even_split</a></code></li>
 <li><code><a title="vipy.dataset.Dataset.filter" href="../dataset.html#vipy.dataset.Dataset.filter">filter</a></code></li>
 <li><code><a title="vipy.dataset.Dataset.frequency" href="../dataset.html#vipy.dataset.Dataset.frequency">frequency</a></code></li>
 <li><code><a title="vipy.dataset.Dataset.from_directory" href="../dataset.html#vipy.dataset.Dataset.from_directory">from_directory</a></code></li>

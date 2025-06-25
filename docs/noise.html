@@ -26,7 +26,7 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/noise.py#L1-L355" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/noise.py#L1-L363" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">import vipy
 import numpy as np
@@ -145,7 +145,7 @@ def ghost(im, txr=5, tyr=5, txg=-5, tyg=-5, txb=5, tyb=-5):
     return imz
 
 def crop(im, s=0.8):
-    return im.clone().crop(vipy.geometry.BoundingBox(xmin=random.randint(0, int((1-s)*im.width())), ymin=random.randint(0, int((1-s)*im.height())), width=math.ceil(s*im.width()), height=math.ceil(s*im.height()))).resize(height=im.height(), width=im.width())
+    return im.crop(vipy.geometry.BoundingBox(xmin=random.randint(0, int((1-s)*im.width())), ymin=random.randint(0, int((1-s)*im.height())), width=math.ceil(s*im.width()), height=math.ceil(s*im.height()))).resize(height=im.height(), width=im.width())
 
 def fliplr(im):
     return im.load().fliplr()
@@ -337,9 +337,6 @@ class Noise():
     def transformations(self):
         return list(self._registry.keys())
 
-    def random_transformation(self, im):
-        return self.transform(im, vipy.util.takeone(self.transformations()))
-        
     def transform(self, im, transform):
         assert isinstance(im, vipy.image.Image)
         assert transform in self.transformations()
@@ -349,12 +346,23 @@ class Noise():
             imd.setattribute(&#39;vipy.noise&#39;, transform)
         return imd
 
-    def montage(self, im):
-        return vipy.visualize.montage([self.transform(im.clone().centersquare(), k) for k in self.transformations()], 256, 256)
+    def montage(self, im, num_transforms=None):
+        &#34;&#34;&#34;Return a montage of noise applied to the input image. This is useful for visualization of the types of noise applied to a given image
+
+        Args:
+           im [`vipy.image.Image`]: the input image
+           num_transforms [None|int]: if None, return a montage where each element is one transform, if int, return a montage randomly selecting num_transforms trannsforms
+        
+        Returns:
+           `vipy.image.Image` montage as returned from `vipy.visualize.montage`.  Try show() on this returned image.
+
+        &#34;&#34;&#34;
+        transforms = self.transformations() if num_transforms is None else random.choices(self.transformations(), k=num_transforms)
+        return vipy.visualize.montage([self.transform(im.clone().centersquare(), k) for k in transforms], 256, 256)
     
     def __call__(self, im):
-        assert isinstance(im, vipy.image.Image) or all(isinstance(x, vipy.image.Image) for x in im), &#34;singletons or batches required&#34;
-        return self.random_transformation(im) if isinstance(im, vipy.image.Image) else tuple([self.random_transformation(x) for x in im])
+        assert isinstance(im, vipy.image.Image), &#34;vipy.image.Image required&#34;
+        return self.transform(im, random.choice(self.transformations()))
 
 
 class RandomCrop(Noise):
@@ -399,7 +407,7 @@ randomcrop = RandomCrop(provenance=True)</code></pre>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/noise.py#L242-L244" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/noise.py#L242-L244" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def additive_gaussian_noise(im, sigma=0.1):
     assert isinstance(im, vipy.image.Image)            
@@ -414,7 +422,7 @@ randomcrop = RandomCrop(provenance=True)</code></pre>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/noise.py#L217-L218" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/noise.py#L217-L218" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def autocontrast(im):
     return im.mat2gray().rgb()</code></pre>
@@ -428,7 +436,7 @@ randomcrop = RandomCrop(provenance=True)</code></pre>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/noise.py#L44-L70" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/noise.py#L44-L70" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def barrel(im):
     assert isinstance(im, vipy.image.Image)    
@@ -467,7 +475,7 @@ randomcrop = RandomCrop(provenance=True)</code></pre>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/noise.py#L191-L193" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/noise.py#L191-L193" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def bgr(im):
     assert isinstance(im, vipy.image.Image)    
@@ -482,7 +490,7 @@ randomcrop = RandomCrop(provenance=True)</code></pre>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/noise.py#L175-L177" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/noise.py#L175-L177" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def bit_depth(im, d):
     assert d&gt;=1 and d&lt;=8    
@@ -497,7 +505,7 @@ randomcrop = RandomCrop(provenance=True)</code></pre>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/noise.py#L153-L156" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/noise.py#L153-L156" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def blur(im, sigma):
     assert isinstance(im, vipy.image.Image)
@@ -513,7 +521,7 @@ randomcrop = RandomCrop(provenance=True)</code></pre>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/noise.py#L207-L209" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/noise.py#L207-L209" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def colorjitter(im):
     transform = torchvision.transforms.ColorJitter(brightness=(0.5,1.5),contrast=(1),saturation=(0.5,1.5),hue=(-0.1,0.1))
@@ -528,10 +536,10 @@ randomcrop = RandomCrop(provenance=True)</code></pre>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/noise.py#L117-L118" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/noise.py#L117-L118" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def crop(im, s=0.8):
-    return im.clone().crop(vipy.geometry.BoundingBox(xmin=random.randint(0, int((1-s)*im.width())), ymin=random.randint(0, int((1-s)*im.height())), width=math.ceil(s*im.width()), height=math.ceil(s*im.height()))).resize(height=im.height(), width=im.width())</code></pre>
+    return im.crop(vipy.geometry.BoundingBox(xmin=random.randint(0, int((1-s)*im.width())), ymin=random.randint(0, int((1-s)*im.height())), width=math.ceil(s*im.width()), height=math.ceil(s*im.height()))).resize(height=im.height(), width=im.width())</code></pre>
 </details>
 </dd>
 <dt id="vipy.noise.darken"><code class="name flex">
@@ -542,7 +550,7 @@ randomcrop = RandomCrop(provenance=True)</code></pre>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/noise.py#L228-L230" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/noise.py#L228-L230" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def darken(im, g): 
     assert isinstance(im, vipy.image.Image)   
@@ -557,7 +565,7 @@ randomcrop = RandomCrop(provenance=True)</code></pre>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/noise.py#L220-L222" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/noise.py#L220-L222" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def edge(im):
     assert isinstance(im, vipy.image.Image)    
@@ -572,7 +580,7 @@ randomcrop = RandomCrop(provenance=True)</code></pre>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/noise.py#L224-L226" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/noise.py#L224-L226" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def emboss(im): 
     assert isinstance(im, vipy.image.Image)   
@@ -587,7 +595,7 @@ randomcrop = RandomCrop(provenance=True)</code></pre>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/noise.py#L120-L121" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/noise.py#L120-L121" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def fliplr(im):
     return im.load().fliplr()</code></pre>
@@ -601,7 +609,7 @@ randomcrop = RandomCrop(provenance=True)</code></pre>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/noise.py#L123-L124" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/noise.py#L123-L124" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def flipud(im):
     return im.load().flipud()</code></pre>
@@ -615,7 +623,7 @@ randomcrop = RandomCrop(provenance=True)</code></pre>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/noise.py#L214-L215" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/noise.py#L214-L215" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def gamma(im, f):
     return im.array(np.array(torchvision.transforms.v2.functional.adjust_gamma(im.load().torch(&#39;CHW&#39;), f).permute(1,2,0)))</code></pre>
@@ -629,7 +637,7 @@ randomcrop = RandomCrop(provenance=True)</code></pre>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/noise.py#L108-L115" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/noise.py#L108-L115" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def ghost(im, txr=5, tyr=5, txg=-5, tyg=-5, txb=5, tyb=-5):
     assert isinstance(im, vipy.image.Image)
@@ -649,7 +657,7 @@ randomcrop = RandomCrop(provenance=True)</code></pre>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/noise.py#L187-L189" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/noise.py#L187-L189" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def greyscale(im):
     assert isinstance(im, vipy.image.Image)    
@@ -664,7 +672,7 @@ randomcrop = RandomCrop(provenance=True)</code></pre>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/noise.py#L80-L85" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/noise.py#L80-L85" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def horizontal_mirror(im):
     assert isinstance(im, vipy.image.Image)            
@@ -682,7 +690,7 @@ randomcrop = RandomCrop(provenance=True)</code></pre>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/noise.py#L101-L106" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/noise.py#L101-L106" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def horizontal_motion_blur(im, kernel_size):
     assert isinstance(im, vipy.image.Image)    
@@ -700,7 +708,7 @@ randomcrop = RandomCrop(provenance=True)</code></pre>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/noise.py#L195-L197" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/noise.py#L195-L197" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def hot(im):
     assert isinstance(im, vipy.image.Image)    
@@ -715,7 +723,7 @@ randomcrop = RandomCrop(provenance=True)</code></pre>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/noise.py#L137-L142" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/noise.py#L137-L142" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def isotropic_scale(im, s, border=&#39;zero&#39;):
     assert isinstance(im, vipy.image.Image)
@@ -733,7 +741,7 @@ randomcrop = RandomCrop(provenance=True)</code></pre>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/noise.py#L166-L173" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/noise.py#L166-L173" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def jpeg_compression(im, quality):
     assert isinstance(im, vipy.image.Image)
@@ -753,7 +761,7 @@ randomcrop = RandomCrop(provenance=True)</code></pre>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/noise.py#L16-L23" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/noise.py#L16-L23" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def left_shear(im, s, border=&#39;zero&#39;):
     assert isinstance(im, vipy.image.Image)
@@ -773,7 +781,7 @@ randomcrop = RandomCrop(provenance=True)</code></pre>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/noise.py#L72-L74" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/noise.py#L72-L74" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def left_swirl(im, center=None, strength=2):
     assert isinstance(im, vipy.image.Image)        
@@ -788,7 +796,7 @@ randomcrop = RandomCrop(provenance=True)</code></pre>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/noise.py#L232-L234" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/noise.py#L232-L234" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def negative(im):
     assert isinstance(im, vipy.image.Image)    
@@ -803,7 +811,7 @@ randomcrop = RandomCrop(provenance=True)</code></pre>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/noise.py#L183-L185" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/noise.py#L183-L185" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def permute_color_channels(im, order):
     assert sorted(order) == [0,1,2]
@@ -818,7 +826,7 @@ randomcrop = RandomCrop(provenance=True)</code></pre>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/noise.py#L199-L201" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/noise.py#L199-L201" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def rainbow(im):
     assert isinstance(im, vipy.image.Image)    
@@ -833,7 +841,7 @@ randomcrop = RandomCrop(provenance=True)</code></pre>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/noise.py#L25-L32" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/noise.py#L25-L32" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def right_shear(im, s, border=&#39;zero&#39;):
     assert isinstance(im, vipy.image.Image)
@@ -853,7 +861,7 @@ randomcrop = RandomCrop(provenance=True)</code></pre>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/noise.py#L76-L78" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/noise.py#L76-L78" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def right_swirl(im, strength=2, center=None):
     assert isinstance(im, vipy.image.Image)            
@@ -868,7 +876,7 @@ randomcrop = RandomCrop(provenance=True)</code></pre>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/noise.py#L129-L130" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/noise.py#L129-L130" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def rot90ccw(im):
     return im.load().rot90ccw()</code></pre>
@@ -882,7 +890,7 @@ randomcrop = RandomCrop(provenance=True)</code></pre>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/noise.py#L126-L127" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/noise.py#L126-L127" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def rot90cw(im):
     return im.load().rot90cw()</code></pre>
@@ -896,7 +904,7 @@ randomcrop = RandomCrop(provenance=True)</code></pre>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/noise.py#L34-L42" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/noise.py#L34-L42" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def rotate(im, rad=None, deg=None, border=&#39;zero&#39;):
     assert isinstance(im, vipy.image.Image)
@@ -917,7 +925,7 @@ randomcrop = RandomCrop(provenance=True)</code></pre>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/noise.py#L158-L164" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/noise.py#L158-L164" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def salt_and_pepper(im, p):
     assert isinstance(im, vipy.image.Image)    
@@ -936,7 +944,7 @@ randomcrop = RandomCrop(provenance=True)</code></pre>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/noise.py#L203-L205" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/noise.py#L203-L205" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def saturate(im, low, high):
     assert isinstance(im, vipy.image.Image)    
@@ -951,7 +959,7 @@ randomcrop = RandomCrop(provenance=True)</code></pre>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/noise.py#L236-L240" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/noise.py#L236-L240" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def scan_lines(im):
     assert isinstance(im, vipy.image.Image)
@@ -968,7 +976,7 @@ randomcrop = RandomCrop(provenance=True)</code></pre>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/noise.py#L211-L212" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/noise.py#L211-L212" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def sharpness(im, f):
     return im.array(np.array(torchvision.transforms.v2.functional.adjust_sharpness(im.load().torch(&#39;CHW&#39;), f).permute(1,2,0)))</code></pre>
@@ -982,7 +990,7 @@ randomcrop = RandomCrop(provenance=True)</code></pre>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/noise.py#L179-L181" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/noise.py#L179-L181" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def solarize(im, t):
     assert t&gt;=0 and t&lt;=255    
@@ -997,7 +1005,7 @@ randomcrop = RandomCrop(provenance=True)</code></pre>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/noise.py#L132-L135" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/noise.py#L132-L135" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def translate(im, dx, dy): 
     &#34;&#34;&#34;Translate by (dx,dy) pixels, with zero border handling&#34;&#34;&#34;
@@ -1013,7 +1021,7 @@ randomcrop = RandomCrop(provenance=True)</code></pre>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/noise.py#L87-L92" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/noise.py#L87-L92" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def vertical_mirror(im):
     assert isinstance(im, vipy.image.Image)            
@@ -1031,7 +1039,7 @@ randomcrop = RandomCrop(provenance=True)</code></pre>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/noise.py#L94-L99" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/noise.py#L94-L99" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def vertical_motion_blur(im, kernel_size):
     assert isinstance(im, vipy.image.Image)
@@ -1049,7 +1057,7 @@ randomcrop = RandomCrop(provenance=True)</code></pre>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/noise.py#L144-L149" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/noise.py#L144-L149" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def zoom(im, s, zx=None, zy=None, border=&#39;zero&#39;):
     assert isinstance(im, vipy.image.Image)
@@ -1073,7 +1081,7 @@ randomcrop = RandomCrop(provenance=True)</code></pre>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/noise.py#L334-L339" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/noise.py#L342-L347" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Geometric(Noise):
     def __init__(self, magnitude=0.25, provenance=False):
@@ -1086,6 +1094,14 @@ randomcrop = RandomCrop(provenance=True)</code></pre>
 <ul class="hlist">
 <li><a title="vipy.noise.Noise" href="#vipy.noise.Noise">Noise</a></li>
 </ul>
+<h3>Inherited members</h3>
+<ul class="hlist">
+<li><code><b><a title="vipy.noise.Noise" href="#vipy.noise.Noise">Noise</a></b></code>:
+<ul class="hlist">
+<li><code><a title="vipy.noise.Noise.montage" href="#vipy.noise.Noise.montage">montage</a></code></li>
+</ul>
+</li>
+</ul>
 </dd>
 <dt id="vipy.noise.Noise"><code class="flex name class">
 <span>class <span class="ident">Noise</span></span>
@@ -1096,7 +1112,7 @@ randomcrop = RandomCrop(provenance=True)</code></pre>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/noise.py#L248-L327" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/noise.py#L248-L335" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Noise():
     def __init__(self, magnitude=0.25, provenance=False, register=None, deregister=[&#39;hot&#39;,&#39;rainbow&#39;,&#39;vertical_mirror&#39;,&#39;flipud&#39;,&#39;rot90cw&#39;,&#39;rot90ccw&#39;]):
@@ -1160,9 +1176,6 @@ randomcrop = RandomCrop(provenance=True)</code></pre>
     def transformations(self):
         return list(self._registry.keys())
 
-    def random_transformation(self, im):
-        return self.transform(im, vipy.util.takeone(self.transformations()))
-        
     def transform(self, im, transform):
         assert isinstance(im, vipy.image.Image)
         assert transform in self.transformations()
@@ -1172,12 +1185,23 @@ randomcrop = RandomCrop(provenance=True)</code></pre>
             imd.setattribute(&#39;vipy.noise&#39;, transform)
         return imd
 
-    def montage(self, im):
-        return vipy.visualize.montage([self.transform(im.clone().centersquare(), k) for k in self.transformations()], 256, 256)
+    def montage(self, im, num_transforms=None):
+        &#34;&#34;&#34;Return a montage of noise applied to the input image. This is useful for visualization of the types of noise applied to a given image
+
+        Args:
+           im [`vipy.image.Image`]: the input image
+           num_transforms [None|int]: if None, return a montage where each element is one transform, if int, return a montage randomly selecting num_transforms trannsforms
+        
+        Returns:
+           `vipy.image.Image` montage as returned from `vipy.visualize.montage`.  Try show() on this returned image.
+
+        &#34;&#34;&#34;
+        transforms = self.transformations() if num_transforms is None else random.choices(self.transformations(), k=num_transforms)
+        return vipy.visualize.montage([self.transform(im.clone().centersquare(), k) for k in transforms], 256, 256)
     
     def __call__(self, im):
-        assert isinstance(im, vipy.image.Image) or all(isinstance(x, vipy.image.Image) for x in im), &#34;singletons or batches required&#34;
-        return self.random_transformation(im) if isinstance(im, vipy.image.Image) else tuple([self.random_transformation(x) for x in im])</code></pre>
+        assert isinstance(im, vipy.image.Image), &#34;vipy.image.Image required&#34;
+        return self.transform(im, random.choice(self.transformations()))</code></pre>
 </details>
 <h3>Subclasses</h3>
 <ul class="hlist">
@@ -1189,31 +1213,34 @@ randomcrop = RandomCrop(provenance=True)</code></pre>
 <h3>Methods</h3>
 <dl>
 <dt id="vipy.noise.Noise.montage"><code class="name flex">
-<span>def <span class="ident">montage</span></span>(<span>self, im)</span>
+<span>def <span class="ident">montage</span></span>(<span>self, im, num_transforms=None)</span>
 </code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>Return a montage of noise applied to the input image. This is useful for visualization of the types of noise applied to a given image</p>
+<h2 id="args">Args</h2>
+<p>im [<code>vipy.image.Image</code>]: the input image
+num_transforms [None|int]: if None, return a montage where each element is one transform, if int, return a montage randomly selecting num_transforms trannsforms</p>
+<h2 id="returns">Returns</h2>
+<p><code><a title="vipy.image.Image" href="image.html#vipy.image.Image">Image</a></code> montage as returned from <code><a title="vipy.visualize.montage" href="visualize.html#vipy.visualize.montage">montage()</a></code>.
+Try show() on this returned image.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/noise.py#L322-L323" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/noise.py#L319-L331" class="git-link">Browse git</a>
 </summary>
-<pre><code class="python">def montage(self, im):
-    return vipy.visualize.montage([self.transform(im.clone().centersquare(), k) for k in self.transformations()], 256, 256)</code></pre>
-</details>
-</dd>
-<dt id="vipy.noise.Noise.random_transformation"><code class="name flex">
-<span>def <span class="ident">random_transformation</span></span>(<span>self, im)</span>
-</code></dt>
-<dd>
-<div class="desc"></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/noise.py#L310-L311" class="git-link">Browse git</a>
-</summary>
-<pre><code class="python">def random_transformation(self, im):
-    return self.transform(im, vipy.util.takeone(self.transformations()))</code></pre>
+<pre><code class="python">def montage(self, im, num_transforms=None):
+    &#34;&#34;&#34;Return a montage of noise applied to the input image. This is useful for visualization of the types of noise applied to a given image
+
+    Args:
+       im [`vipy.image.Image`]: the input image
+       num_transforms [None|int]: if None, return a montage where each element is one transform, if int, return a montage randomly selecting num_transforms trannsforms
+    
+    Returns:
+       `vipy.image.Image` montage as returned from `vipy.visualize.montage`.  Try show() on this returned image.
+
+    &#34;&#34;&#34;
+    transforms = self.transformations() if num_transforms is None else random.choices(self.transformations(), k=num_transforms)
+    return vipy.visualize.montage([self.transform(im.clone().centersquare(), k) for k in transforms], 256, 256)</code></pre>
 </details>
 </dd>
 <dt id="vipy.noise.Noise.transform"><code class="name flex">
@@ -1224,7 +1251,7 @@ randomcrop = RandomCrop(provenance=True)</code></pre>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/noise.py#L313-L320" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/noise.py#L310-L317" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def transform(self, im, transform):
     assert isinstance(im, vipy.image.Image)
@@ -1244,7 +1271,7 @@ randomcrop = RandomCrop(provenance=True)</code></pre>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/noise.py#L307-L308" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/noise.py#L307-L308" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def transformations(self):
     return list(self._registry.keys())</code></pre>
@@ -1261,7 +1288,7 @@ randomcrop = RandomCrop(provenance=True)</code></pre>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/noise.py#L346-L348" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/noise.py#L354-L356" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Perturbation(Noise):
     def __init__(self, magnitude=0.5, provenance=False):
@@ -1270,6 +1297,14 @@ randomcrop = RandomCrop(provenance=True)</code></pre>
 <h3>Ancestors</h3>
 <ul class="hlist">
 <li><a title="vipy.noise.Noise" href="#vipy.noise.Noise">Noise</a></li>
+</ul>
+<h3>Inherited members</h3>
+<ul class="hlist">
+<li><code><b><a title="vipy.noise.Noise" href="#vipy.noise.Noise">Noise</a></b></code>:
+<ul class="hlist">
+<li><code><a title="vipy.noise.Noise.montage" href="#vipy.noise.Noise.montage">montage</a></code></li>
+</ul>
+</li>
 </ul>
 </dd>
 <dt id="vipy.noise.Photometric"><code class="flex name class">
@@ -1281,7 +1316,7 @@ randomcrop = RandomCrop(provenance=True)</code></pre>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/noise.py#L340-L345" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/noise.py#L348-L353" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Photometric(Noise):
     def __init__(self, magnitude=0.25, provenance=False):
@@ -1294,6 +1329,14 @@ randomcrop = RandomCrop(provenance=True)</code></pre>
 <ul class="hlist">
 <li><a title="vipy.noise.Noise" href="#vipy.noise.Noise">Noise</a></li>
 </ul>
+<h3>Inherited members</h3>
+<ul class="hlist">
+<li><code><b><a title="vipy.noise.Noise" href="#vipy.noise.Noise">Noise</a></b></code>:
+<ul class="hlist">
+<li><code><a title="vipy.noise.Noise.montage" href="#vipy.noise.Noise.montage">montage</a></code></li>
+</ul>
+</li>
+</ul>
 </dd>
 <dt id="vipy.noise.RandomCrop"><code class="flex name class">
 <span>class <span class="ident">RandomCrop</span></span>
@@ -1304,7 +1347,7 @@ randomcrop = RandomCrop(provenance=True)</code></pre>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/noise.py#L330-L332" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/noise.py#L338-L340" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class RandomCrop(Noise):
     def __init__(self, magnitude=1, provenance=False):
@@ -1313,6 +1356,14 @@ randomcrop = RandomCrop(provenance=True)</code></pre>
 <h3>Ancestors</h3>
 <ul class="hlist">
 <li><a title="vipy.noise.Noise" href="#vipy.noise.Noise">Noise</a></li>
+</ul>
+<h3>Inherited members</h3>
+<ul class="hlist">
+<li><code><b><a title="vipy.noise.Noise" href="#vipy.noise.Noise">Noise</a></b></code>:
+<ul class="hlist">
+<li><code><a title="vipy.noise.Noise.montage" href="#vipy.noise.Noise.montage">montage</a></code></li>
+</ul>
+</li>
 </ul>
 </dd>
 </dl>
@@ -1434,7 +1485,6 @@ setTimeout(() => input.focus(), 100);
 <h4><code><a title="vipy.noise.Noise" href="#vipy.noise.Noise">Noise</a></code></h4>
 <ul class="">
 <li><code><a title="vipy.noise.Noise.montage" href="#vipy.noise.Noise.montage">montage</a></code></li>
-<li><code><a title="vipy.noise.Noise.random_transformation" href="#vipy.noise.Noise.random_transformation">random_transformation</a></code></li>
 <li><code><a title="vipy.noise.Noise.transform" href="#vipy.noise.Noise.transform">transform</a></code></li>
 <li><code><a title="vipy.noise.Noise.transformations" href="#vipy.noise.Noise.transformations">transformations</a></code></li>
 </ul>

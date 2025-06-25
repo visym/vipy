@@ -26,7 +26,7 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/data/lvis.py#L1-L58" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/data/lvis.py#L1-L58" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">import os
 from vipy.util import remkdir, tocache, filetail
@@ -42,8 +42,8 @@ VAL_IMG_URL = &#39;http://images.cocodataset.org/zips/val2017.zip&#39;
 
 
 class LVIS():
+    &#34;&#34;&#34;https://www.lvisdataset.org&#34;&#34;&#34;
     def __init__(self, datadir=None, redownload=False):
-        &#34;&#34;&#34;Caltech101, provide a datadir=&#39;/path/to/store/caltech101&#39; &#34;&#34;&#34;
         datadir = tocache(&#39;lvis&#39;) if datadir is None else datadir
         
         self._datadir = remkdir(datadir)        
@@ -102,15 +102,15 @@ class LVIS():
 <span>(</span><span>datadir=None, redownload=False)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Caltech101, provide a datadir='/path/to/store/caltech101'</p></div>
+<div class="desc"><p><a href="https://www.lvisdataset.org">https://www.lvisdataset.org</a></p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/data/lvis.py#L14-L56" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/data/lvis.py#L14-L56" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class LVIS():
+    &#34;&#34;&#34;https://www.lvisdataset.org&#34;&#34;&#34;
     def __init__(self, datadir=None, redownload=False):
-        &#34;&#34;&#34;Caltech101, provide a datadir=&#39;/path/to/store/caltech101&#39; &#34;&#34;&#34;
         datadir = tocache(&#39;lvis&#39;) if datadir is None else datadir
         
         self._datadir = remkdir(datadir)        
@@ -162,7 +162,7 @@ class LVIS():
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/data/lvis.py#L28-L41" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/data/lvis.py#L28-L41" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def trainset(self):
     d = vipy.util.readjson(os.path.join(self._datadir, &#39;lvis_v1_train.json&#39;))
@@ -188,7 +188,7 @@ class LVIS():
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/data/lvis.py#L43-L56" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/data/lvis.py#L43-L56" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def valset(self):
     d = vipy.util.readjson(os.path.join(self._datadir, &#39;lvis_v1_val.json&#39;))

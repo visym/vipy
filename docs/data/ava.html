@@ -26,7 +26,7 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/data/ava.py#L1-L114" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/data/ava.py#L1-L115" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">import os
 import vipy.util
@@ -44,6 +44,7 @@ URL = &#39;https://research.google.com/ava/download/ava_v2.2.zip&#39;
 
 
 class AVA(object):
+    &#34;&#34;&#34;https://research.google.com/ava/&#34;&#34;&#34;
     def __init__(self, datadir):
         &#34;&#34;&#34;AVA, provide a datadir=&#39;/path/to/store/ava&#39; &#34;&#34;&#34;
         self.datadir = remkdir(datadir)
@@ -158,13 +159,15 @@ class AVA(object):
 <span>(</span><span>datadir)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>AVA, provide a datadir='/path/to/store/ava'</p></div>
+<div class="desc"><p><a href="https://research.google.com/ava/">https://research.google.com/ava/</a></p>
+<p>AVA, provide a datadir='/path/to/store/ava'</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/data/ava.py#L16-L112" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/data/ava.py#L16-L113" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class AVA(object):
+    &#34;&#34;&#34;https://research.google.com/ava/&#34;&#34;&#34;
     def __init__(self, datadir):
         &#34;&#34;&#34;AVA, provide a datadir=&#39;/path/to/store/ava&#39; &#34;&#34;&#34;
         self.datadir = remkdir(datadir)
@@ -272,7 +275,7 @@ class AVA(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/data/ava.py#L94-L106" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/data/ava.py#L95-L107" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def categories(self):
     rowlist = readlist(os.path.join(self.datadir, &#39;ava_action_list_v2.2.pbtxt&#39;))
@@ -297,7 +300,7 @@ class AVA(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/data/ava.py#L27-L31" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/data/ava.py#L28-L32" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def download(self):
     zipfile = os.path.join(self.datadir, filetail(URL))
@@ -314,7 +317,7 @@ class AVA(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/data/ava.py#L108-L109" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/data/ava.py#L109-L110" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def trainset(self):
     return Dataset(self._dataset(os.path.join(self.datadir, &#39;ava_train_v2.2.csv&#39;)), id=&#39;ava:train&#39;)</code></pre>
@@ -328,7 +331,7 @@ class AVA(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/aeafa05f49d28db0926b8db763349138abc3f87a/vipy/data/ava.py#L111-L112" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/data/ava.py#L112-L113" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def valset(self):
     return Dataset(self._dataset(os.path.join(self.datadir, &#39;ava_val_v2.2.csv&#39;)), id=&#39;ava:val&#39;)</code></pre>
