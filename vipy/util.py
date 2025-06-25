@@ -19,8 +19,8 @@ import builtins
 import pickle as cPickle
 import PIL
 import matplotlib.pyplot as plt
-from itertools import groupby as itertools_groupby
-from itertools import tee, chain, batched
+import itertools
+from itertools import tee, chain
 import importlib
 import pathlib
 import socket
@@ -462,7 +462,7 @@ def tryjson(jsonfile):
 
 def groupby(initer, keyfunc):
     """groupby on unsorted input iterable (initer)"""
-    return itertools_groupby(sorted(initer, key=keyfunc), keyfunc)
+    return itertools.groupby(sorted(initer, key=keyfunc), keyfunc)
 
 
 def vipy_groupby(inset, keyfunc):
@@ -610,7 +610,13 @@ def chunkgenbysize(ingen, size_per_chunk):
     containing a sequential chunk of the original list of length
     size_per_chunk"""
     assert size_per_chunk >= 1
-    return batched(ingen, size_per_chunk)
+
+    if sys.version_info >= (3,12):
+        for b in itertools.batched(ingen, size_per_chunk):
+            yield b  
+    else:        
+        for i in range(0,len(ingen),size_per_chunk):
+            yield ingen[i:i+size_per_chunk]
     
 def triplets(inlist):
     """Yield triplets (1,2,3), (4,5,6), ...  from list inlist=[1,2,3,4,5,6,...]"""

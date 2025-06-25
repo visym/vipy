@@ -281,7 +281,7 @@ class Dataset():
 
     def batch(self, n):
         """Yield batches of size n as datasets.  Last batch will be ragged.  Batches are not loaded.  Batches have appended id equal to the zero-indexed batch order"""
-        for (k,b) in enumerate(itertools.batched(self, n)):
+        for (k,b) in enumerate(chunkgenbysize(self, n)):  
             yield Dataset(b).id('%s:%d' % (self.id() if self.id() else '', k))
                                 
     def minibatch(self, n, ragged=True, loader=None, bufsize=1024, accepter=None, preprocessor=None):
@@ -318,7 +318,7 @@ class Dataset():
         ..note:: If there exists a vipy.parallel.exeuctor(), then loading and preprocessing will be performed concurrently
 
         """
-        for (k,b) in enumerate(itertools.batched(vipy.parallel.iter(self, mapper=loader, bufsize=max(bufsize,n), accepter=accepter), n)):
+        for (k,b) in enumerate(chunkgenbysize(vipy.parallel.iter(self, mapper=loader, bufsize=max(bufsize,n), accepter=accepter), n)): 
             if ragged or len(b) == n:
                 yield Dataset.cast(b).id('%s:%d' % (self.id() if self.id() else '', k))                    
                     

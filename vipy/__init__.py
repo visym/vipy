@@ -522,6 +522,7 @@ To grab a single frame:
 ```python
 im = vipy.video.Video(url='rtsp://user:password@10.0.1.19/live0').frame()
 ```
+
 To iterate:
 
 ```python
@@ -529,6 +530,13 @@ for im in vipy.video.Video(url='rtsp://user:password@10.0.1.19/live0'):
     print(im)
 ```
 
+To save to a video file:
+
+```python
+vipy.video.Video(url='rtsp://user:password@10.0.1.19/live0').save('/path/to/video.mp4')
+```
+
+You will need to interrupt the saving when you're done and the video up to that point will be available in the video file
 
 ### Split a video into activity clips
 
