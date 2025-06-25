@@ -26,7 +26,7 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/data/ucf101.py#L1-L33" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/095a3bb922809af0de26f3bbf8f0fb8f9c4157a4/vipy/data/ucf101.py#L1-L33" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">import os
 from vipy.dataset import Dataset
@@ -113,7 +113,7 @@ Use self.load() then serialize</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/data/ucf101.py#L12-L33" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/095a3bb922809af0de26f3bbf8f0fb8f9c4157a4/vipy/data/ucf101.py#L12-L33" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class UCF101(Dataset):
     def __init__(self, datadir):
@@ -152,7 +152,7 @@ Use self.load() then serialize</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/data/ucf101.py#L30-L33" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/095a3bb922809af0de26f3bbf8f0fb8f9c4157a4/vipy/data/ucf101.py#L30-L33" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">@staticmethod
 def to_space_separated_category(c):
@@ -171,7 +171,7 @@ def to_space_separated_category(c):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/data/ucf101.py#L27-L28" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/095a3bb922809af0de26f3bbf8f0fb8f9c4157a4/vipy/data/ucf101.py#L27-L28" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def as_space_separated_category(self):
     return self.map(lambda im: im.new_category(UCF101.to_space_separated_category(im.category())))</code></pre>

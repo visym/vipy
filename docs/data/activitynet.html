@@ -26,7 +26,7 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/data/activitynet.py#L1-L76" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/095a3bb922809af0de26f3bbf8f0fb8f9c4157a4/vipy/data/activitynet.py#L1-L76" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">import os
 from vipy.util import filetail, remkdir, readjson, groupbyasdict
@@ -125,7 +125,7 @@ class ActivityNet():
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/data/activitynet.py#L13-L76" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/095a3bb922809af0de26f3bbf8f0fb8f9c4157a4/vipy/data/activitynet.py#L13-L76" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class ActivityNet():
     &#34;&#34;&#34;http://activity-net.org&#34;&#34;&#34;
@@ -202,7 +202,7 @@ class ActivityNet():
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/data/activitynet.py#L64-L76" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/095a3bb922809af0de26f3bbf8f0fb8f9c4157a4/vipy/data/activitynet.py#L64-L76" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def analysis(self):
     C = self.categories()
@@ -227,7 +227,7 @@ class ActivityNet():
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/data/activitynet.py#L61-L62" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/095a3bb922809af0de26f3bbf8f0fb8f9c4157a4/vipy/data/activitynet.py#L61-L62" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def categories(self):
     return set([v.category() for v in self.trainset()])</code></pre>
@@ -241,7 +241,7 @@ class ActivityNet():
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/data/activitynet.py#L25-L27" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/095a3bb922809af0de26f3bbf8f0fb8f9c4157a4/vipy/data/activitynet.py#L25-L27" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def download(self):
     vipy.downloader.download(URL, os.path.join(self.datadir, filetail(URL)))
@@ -256,7 +256,7 @@ class ActivityNet():
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/data/activitynet.py#L50-L55" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/095a3bb922809af0de26f3bbf8f0fb8f9c4157a4/vipy/data/activitynet.py#L50-L55" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def testset(self):
     &#34;&#34;&#34;ActivityNet test set does not include any annotations&#34;&#34;&#34;
@@ -274,7 +274,7 @@ class ActivityNet():
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/data/activitynet.py#L46-L48" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/095a3bb922809af0de26f3bbf8f0fb8f9c4157a4/vipy/data/activitynet.py#L46-L48" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def trainset(self):
     loader = lambda x: VideoCategory(url=x[0], filename=x[1], category=x[2], startsec=x[3], endsec=x[4], framerate=None)
@@ -289,7 +289,7 @@ class ActivityNet():
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/data/activitynet.py#L57-L59" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/095a3bb922809af0de26f3bbf8f0fb8f9c4157a4/vipy/data/activitynet.py#L57-L59" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def valset(self):
     loader = lambda x: VideoCategory(url=x[0], filename=x[1], category=x[2], startsec=x[3], endsec=x[4], framerate=None)

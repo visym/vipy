@@ -26,7 +26,7 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/metrics.py#L1-L513" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/095a3bb922809af0de26f3bbf8f0fb8f9c4157a4/vipy/metrics.py#L1-L513" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">import numpy as np
 import matplotlib.pyplot as plt
@@ -565,7 +565,7 @@ The bar_width controls how wide the overall bars are in characters</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/metrics.py#L346-L362" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/095a3bb922809af0de26f3bbf8f0fb8f9c4157a4/vipy/metrics.py#L346-L362" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def ascii_bar_chart(soft_labels, bar_width=40, min_conf=0, max_conf=1):
     &#34;&#34;&#34;Given a list of soft_labels = [(label, confidence), ...], return an ascii horizontal bar chart for each label sorted by confidence.
@@ -594,7 +594,7 @@ The bar_width controls how wide the overall bars are in characters</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/metrics.py#L238-L252" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/095a3bb922809af0de26f3bbf8f0fb8f9c4157a4/vipy/metrics.py#L238-L252" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def average_precision_chart(ap, categories, title=None, outfile=None):
     &#34;&#34;&#34;Plot Average-Precision bar chart using matplotlib, with optional figure save&#34;&#34;&#34;
@@ -621,7 +621,7 @@ The bar_width controls how wide the overall bars are in characters</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/metrics.py#L29-L81" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/095a3bb922809af0de26f3bbf8f0fb8f9c4157a4/vipy/metrics.py#L29-L81" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def cmc_curve(rank=None, tdr=None, similarityMatrix=None, truthMatrix=None, label=None, title=None, outfile=None, logscale=True, logy=False, figure=None, style=None, fontsize=None, xlabel=&#39;Rank&#39;, ylabel=&#39;Correct Retrieval Rate&#39;, legendSwap=False, errorbars=None, miny=0.0, color=None):
     &#34;&#34;&#34;Plot cumulative match characteristic (CMC) curve &#34;&#34;&#34;
@@ -686,7 +686,7 @@ The bar_width controls how wide the overall bars are in characters</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/metrics.py#L179-L209" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/095a3bb922809af0de26f3bbf8f0fb8f9c4157a4/vipy/metrics.py#L179-L209" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def confusion_matrix_plot(cm, outfile=None, figure=None, fontsize=5, xlabel=None, ylabel=None, classes=None, colorbar=False, figsize=None):
     &#34;&#34;&#34;Generate a confusion matrix plot for a confusion matrix cm&#34;&#34;&#34;
@@ -729,7 +729,7 @@ The bar_width controls how wide the overall bars are in characters</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/metrics.py#L10-L26" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/095a3bb922809af0de26f3bbf8f0fb8f9c4157a4/vipy/metrics.py#L10-L26" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def cumulative_match_characteristic(similarityMatrix, gtMatrix):
     &#34;&#34;&#34;CMC curve for probe x gallery similarity matrix (larger is more similar) and ground truth match matrix (one +1 per row, rest zeros)&#34;&#34;&#34;
@@ -758,7 +758,7 @@ The bar_width controls how wide the overall bars are in characters</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/metrics.py#L116-L120" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/095a3bb922809af0de26f3bbf8f0fb8f9c4157a4/vipy/metrics.py#L116-L120" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def fpr_at_tpr(y_true, y_pred, at=0.85):
     &#34;&#34;&#34;Janus metric for false positive rate at a specific true positive rate&#34;&#34;&#34;
@@ -784,7 +784,7 @@ list of named colors equal to the length of categories</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/metrics.py#L255-L290" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/095a3bb922809af0de26f3bbf8f0fb8f9c4157a4/vipy/metrics.py#L255-L290" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def histogram(freq, categories, barcolors=None, title=None, outfile=None, figure=None, ylabel=&#39;Frequency&#39;, xrot=&#39;vertical&#39;, xlabel=None, fontsize=10, xshow=True):
     &#34;&#34;&#34;Plot histogram bar chart using matplotlib with vertical axis labels on x-axis,, with optional figure save.
@@ -832,7 +832,7 @@ list of named colors equal to the length of categories</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/metrics.py#L293-L313" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/095a3bb922809af0de26f3bbf8f0fb8f9c4157a4/vipy/metrics.py#L293-L313" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def pie(sizes, labels, explode=None, outfile=None, shadow=False, legend=True, fontsize=10, rotatelabels=False):
     &#34;&#34;&#34;Generate a matplotlib style pie chart with wedges with specified size and labels, with an optional outfile&#34;&#34;&#34;
@@ -866,7 +866,7 @@ Call this multiple times with same figure number to plot multiple curves.</p></d
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/metrics.py#L212-L235" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/095a3bb922809af0de26f3bbf8f0fb8f9c4157a4/vipy/metrics.py#L212-L235" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def precision_recall_curve(precision, recall, title=None, label=&#39;Precision-Recall&#39;, outfile=None, figure=None, fontsize=8, loc=&#39;upper right&#39;):
     &#34;&#34;&#34;Plot precision recall curve using matplotlib, with optional figure save.  Call this multiple times with same figure number to plot multiple curves.&#34;&#34;&#34;
@@ -902,7 +902,7 @@ Call this multiple times with same figure number to plot multiple curves.</p></d
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/metrics.py#L123-L175" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/095a3bb922809af0de26f3bbf8f0fb8f9c4157a4/vipy/metrics.py#L123-L175" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def receiver_operating_curve(y_true=None, y_pred=None, fpr=None, tpr=None, label=None, title=None, outfile=None, figure=None, logx=False, style=None, fontsize=None, xlabel=&#39;False Positive Rate&#39;, ylabel=&#39;True Positive Rate&#39;, legendSwap=False, errorbars=None):
     &#34;&#34;&#34;Plot ROC: http://scikit-learn.org/stable/auto_examples/plot_roc.html&#34;&#34;&#34;
@@ -969,7 +969,7 @@ Scatterplot saved to outfile (if provided).</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/metrics.py#L316-L343" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/095a3bb922809af0de26f3bbf8f0fb8f9c4157a4/vipy/metrics.py#L316-L343" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def scatterplot(X, labels, outfile=None):
     &#34;&#34;&#34;Generate a scatterplot of 2D points in an Nx2 matrix (X) with provided category labels in list of length N (labels).  Each label will be assigned a unique color.  Scatterplot saved to outfile (if provided).&#34;&#34;&#34; 
@@ -1009,7 +1009,7 @@ Scatterplot saved to outfile (if provided).</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/metrics.py#L84-L107" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/095a3bb922809af0de26f3bbf8f0fb8f9c4157a4/vipy/metrics.py#L84-L107" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def tdr_at_rank(rank=None, tdr=None, y_true=None, y_pred=None, numGallery=None, at=10):
     &#34;&#34;&#34;Janus metric for correct retrieval (true detection rate) within a specific rank&#34;&#34;&#34;
@@ -1045,7 +1045,7 @@ Scatterplot saved to outfile (if provided).</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/metrics.py#L109-L113" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/095a3bb922809af0de26f3bbf8f0fb8f9c4157a4/vipy/metrics.py#L109-L113" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def tpr_at_fpr(y_true, y_pred, at=0.01):
     &#34;&#34;&#34;Janus metric for true positive rate at a specific false positive rate&#34;&#34;&#34;
@@ -1068,7 +1068,7 @@ Scatterplot saved to outfile (if provided).</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/metrics.py#L365-L513" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/095a3bb922809af0de26f3bbf8f0fb8f9c4157a4/vipy/metrics.py#L365-L513" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class SSIM():
     &#34;&#34;&#34;Structural similarity (SSIM) index &#34;&#34;&#34;
@@ -1232,7 +1232,7 @@ Scatterplot saved to outfile (if provided).</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/metrics.py#L493-L513" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/095a3bb922809af0de26f3bbf8f0fb8f9c4157a4/vipy/metrics.py#L493-L513" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">@staticmethod
 def demo(im=None):
@@ -1268,7 +1268,7 @@ def demo(im=None):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/metrics.py#L412-L415" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/095a3bb922809af0de26f3bbf8f0fb8f9c4157a4/vipy/metrics.py#L412-L415" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def align(self, img1, img2):
     &#34;&#34;&#34;Return an image which is the warped version of img1 (MxN uint8 numpy) that aligns with img2 (MxN uint8 numpy)&#34;&#34;&#34;
@@ -1284,7 +1284,7 @@ def demo(im=None):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/metrics.py#L379-L400" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/095a3bb922809af0de26f3bbf8f0fb8f9c4157a4/vipy/metrics.py#L379-L400" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def match(self, img1, img2):
     &#34;&#34;&#34;Return a set of matching points in img1 (MxN uint8 numpy) and img2 (MxN uint8 numpy) in the form suitable for homography estimation&#34;&#34;&#34;
@@ -1318,7 +1318,7 @@ def demo(im=None):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/metrics.py#L417-L422" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/095a3bb922809af0de26f3bbf8f0fb8f9c4157a4/vipy/metrics.py#L417-L422" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def rgb2gray(self, I):
     &#34;&#34;&#34;Convert RGB image to grayscale; accesory function&#34;&#34;&#34;
@@ -1348,7 +1348,7 @@ Outputs:
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/metrics.py#L424-L471" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/095a3bb922809af0de26f3bbf8f0fb8f9c4157a4/vipy/metrics.py#L424-L471" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def similarity(self, I1, I2, returnMap=True):
     &#34;&#34;&#34;Compute the Structural Similarity Index (SSIM) score of two images
@@ -1413,7 +1413,7 @@ Outputs:
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/metrics.py#L474-L491" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/095a3bb922809af0de26f3bbf8f0fb8f9c4157a4/vipy/metrics.py#L474-L491" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def ssim(self, im_reference, im_degraded, returnAligned=False):
     &#34;&#34;&#34;Return structural similarity score when aligning im_degraded to im_reference
@@ -1443,7 +1443,7 @@ Outputs:
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/metrics.py#L402-L410" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/095a3bb922809af0de26f3bbf8f0fb8f9c4157a4/vipy/metrics.py#L402-L410" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def warp(self, src_pts, dst_pts, im_src):
     &#34;&#34;&#34;Warp an image im_src with points src_pts to align with dst_pts&#34;&#34;&#34;

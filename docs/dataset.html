@@ -26,7 +26,7 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/dataset.py#L1-L928" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/095a3bb922809af0de26f3bbf8f0fb8f9c4157a4/vipy/dataset.py#L1-L928" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">import os
 import numpy as np
@@ -1005,7 +1005,7 @@ If None, return (trainset, valset, testset) tuple</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/dataset.py#L730-L928" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/095a3bb922809af0de26f3bbf8f0fb8f9c4157a4/vipy/dataset.py#L730-L928" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def registry(name=None, datadir=None, freeze=True, clean=False, download=False, split=&#39;train&#39;):
     &#34;&#34;&#34;Common entry point for loading datasets by name.
@@ -1254,7 +1254,7 @@ Use self.load() then serialize</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/dataset.py#L20-L556" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/095a3bb922809af0de26f3bbf8f0fb8f9c4157a4/vipy/dataset.py#L20-L556" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Dataset():
     &#34;&#34;&#34;vipy.dataset.Dataset() class
@@ -1863,7 +1863,7 @@ Use self.load() then serialize</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/dataset.py#L553-L556" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/095a3bb922809af0de26f3bbf8f0fb8f9c4157a4/vipy/dataset.py#L553-L556" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">@staticmethod
 def identity_shuffler(D):
@@ -1879,7 +1879,7 @@ def identity_shuffler(D):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/dataset.py#L534-L551" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/095a3bb922809af0de26f3bbf8f0fb8f9c4157a4/vipy/dataset.py#L534-L551" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">@staticmethod
 def streaming_shuffler(D):
@@ -1910,7 +1910,7 @@ Iterable access will be slow due to random access</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/dataset.py#L527-L532" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/095a3bb922809af0de26f3bbf8f0fb8f9c4157a4/vipy/dataset.py#L527-L532" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">@staticmethod
 def uniform_shuffler(D):
@@ -1931,7 +1931,7 @@ def uniform_shuffler(D):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/dataset.py#L203-L204" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/095a3bb922809af0de26f3bbf8f0fb8f9c4157a4/vipy/dataset.py#L203-L204" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def all(self, mapper):
     return self.tuple(mapper=mapper, reducer=all)</code></pre>
@@ -1945,7 +1945,7 @@ def uniform_shuffler(D):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/dataset.py#L210-L212" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/095a3bb922809af0de26f3bbf8f0fb8f9c4157a4/vipy/dataset.py#L210-L212" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def balanced(self, f):
     &#34;&#34;&#34;Is the dataset balanced (e.g. the frequencies returned from the lambda f are all the same)?&#34;&#34;&#34;
@@ -1963,7 +1963,7 @@ Batches have appended id equal to the zero-indexed batch order</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/dataset.py#L282-L285" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/095a3bb922809af0de26f3bbf8f0fb8f9c4157a4/vipy/dataset.py#L282-L285" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def batch(self, n):
     &#34;&#34;&#34;Yield batches of size n as datasets.  Last batch will be ragged.  Batches are not loaded.  Batches have appended id equal to the zero-indexed batch order&#34;&#34;&#34;
@@ -1980,7 +1980,7 @@ Last chunk will be ragged.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/dataset.py#L277-L280" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/095a3bb922809af0de26f3bbf8f0fb8f9c4157a4/vipy/dataset.py#L277-L280" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def chunk(self, n):
     &#34;&#34;&#34;Yield n chunks as list.  Last chunk will be ragged.&#34;&#34;&#34;
@@ -1996,7 +1996,7 @@ Last chunk will be ragged.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/dataset.py#L380-L389" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/095a3bb922809af0de26f3bbf8f0fb8f9c4157a4/vipy/dataset.py#L380-L389" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def chunks(self, sizes):
     &#34;&#34;&#34;Partition the dataset into chunks of size given by the tuple in partitions, and give the dataset suffix if provided&#34;&#34;&#34;
@@ -2018,7 +2018,7 @@ Last chunk will be ragged.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/dataset.py#L166-L171" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/095a3bb922809af0de26f3bbf8f0fb8f9c4157a4/vipy/dataset.py#L166-L171" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def clone(self, deep=False):
     &#34;&#34;&#34;Return a copy of the dataset object&#34;&#34;&#34;
@@ -2045,7 +2045,7 @@ Last chunk will be ragged.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/dataset.py#L214-L223" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/095a3bb922809af0de26f3bbf8f0fb8f9c4157a4/vipy/dataset.py#L214-L223" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def count(self, f):
     &#34;&#34;&#34;Counts for each element for which lamba returns true.  
@@ -2067,7 +2067,7 @@ Last chunk will be ragged.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/dataset.py#L225-L226" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/095a3bb922809af0de26f3bbf8f0fb8f9c4157a4/vipy/dataset.py#L225-L226" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def countby(self, f):
     return self.frequency(f)</code></pre>
@@ -2082,7 +2082,7 @@ If the dataset length is odd, then one element will be dropped</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/dataset.py#L435-L437" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/095a3bb922809af0de26f3bbf8f0fb8f9c4157a4/vipy/dataset.py#L435-L437" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def even_split(self):
     &#34;&#34;&#34;Split the dataset into two datasets, each half the size of the dataset.  If the dataset length is odd, then one element will be dropped&#34;&#34;&#34;
@@ -2098,7 +2098,7 @@ Callable should return bool</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/dataset.py#L228-L231" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/095a3bb922809af0de26f3bbf8f0fb8f9c4157a4/vipy/dataset.py#L228-L231" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def filter(self, f):
     &#34;&#34;&#34;In place filter with lambda function f, keeping those elements obj in-place where f(obj) evaluates true.  Callable should return bool&#34;&#34;&#34;
@@ -2115,7 +2115,7 @@ For example f=lambda im: im.category() returns a dictionary of category names an
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/dataset.py#L206-L208" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/095a3bb922809af0de26f3bbf8f0fb8f9c4157a4/vipy/dataset.py#L206-L208" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def frequency(self, f):
     &#34;&#34;&#34;Frequency counts for which lambda returns the same value.  For example f=lambda im: im.category() returns a dictionary of category names and counts in this category&#34;&#34;&#34;
@@ -2130,7 +2130,7 @@ For example f=lambda im: im.category() returns a dictionary of category names an
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/dataset.py#L240-L243" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/095a3bb922809af0de26f3bbf8f0fb8f9c4157a4/vipy/dataset.py#L240-L243" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def groupby(self, f):
     &#34;&#34;&#34;Group the dataset according to the callable f, returning dictionary of grouped datasets.&#34;&#34;&#34;
@@ -2146,7 +2146,7 @@ For example f=lambda im: im.category() returns a dictionary of category names an
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/dataset.py#L148-L153" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/095a3bb922809af0de26f3bbf8f0fb8f9c4157a4/vipy/dataset.py#L148-L153" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def id(self, new_id=None):
     &#34;&#34;&#34;Change the dataset ID to the provided ID, or return it if None&#34;&#34;&#34;
@@ -2164,7 +2164,7 @@ For example f=lambda im: im.category() returns a dictionary of category names an
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/dataset.py#L155-L163" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/095a3bb922809af0de26f3bbf8f0fb8f9c4157a4/vipy/dataset.py#L155-L163" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def index(self, index=None, strict=False):
     &#34;&#34;&#34;Update the index, useful for filtering of large datasets&#34;&#34;&#34;
@@ -2186,7 +2186,7 @@ Returns a dictionary of the callable output to inverse frequency</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/dataset.py#L267-L271" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/095a3bb922809af0de26f3bbf8f0fb8f9c4157a4/vipy/dataset.py#L267-L271" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def inverse_frequency(self, f):
     &#34;&#34;&#34;Return the inverse frequency of elements grouped by the callable f.  Returns a dictionary of the callable output to inverse frequency &#34;&#34;&#34;
@@ -2203,7 +2203,7 @@ Returns a dictionary of the callable output to inverse frequency</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/dataset.py#L132-L133" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/095a3bb922809af0de26f3bbf8f0fb8f9c4157a4/vipy/dataset.py#L132-L133" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def is_streaming(self):
     return self._idx is None</code></pre>
@@ -2217,7 +2217,7 @@ Returns a dictionary of the callable output to inverse frequency</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/dataset.py#L135-L136" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/095a3bb922809af0de26f3bbf8f0fb8f9c4157a4/vipy/dataset.py#L135-L136" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def len(self):
     return len(self._idx) if self._idx is not None else (len(self._ds) if hasattr(self._ds, &#39;__len__&#39;) else None)</code></pre>
@@ -2231,7 +2231,7 @@ Returns a dictionary of the callable output to inverse frequency</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/dataset.py#L195-L197" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/095a3bb922809af0de26f3bbf8f0fb8f9c4157a4/vipy/dataset.py#L195-L197" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def list(self, mapper=None, flatten=False):
     &#34;&#34;&#34;Return a tuple as a list, loading into memory&#34;&#34;&#34;
@@ -2246,7 +2246,7 @@ Returns a dictionary of the callable output to inverse frequency</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/dataset.py#L273-L275" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/095a3bb922809af0de26f3bbf8f0fb8f9c4157a4/vipy/dataset.py#L273-L275" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def load(self):
     &#34;&#34;&#34;Cache the entire dataset into memory&#34;&#34;&#34;
@@ -2261,7 +2261,7 @@ Returns a dictionary of the callable output to inverse frequency</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/dataset.py#L506-L508" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/095a3bb922809af0de26f3bbf8f0fb8f9c4157a4/vipy/dataset.py#L506-L508" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def localmap(self, f):
     &#34;&#34;&#34;A map performed without any parallel processing&#34;&#34;&#34;
@@ -2305,7 +2305,7 @@ Use <code><a title="vipy.batch.Batch" href="batch.html#vipy.batch.Batch">Batch</
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/dataset.py#L443-L504" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/095a3bb922809af0de26f3bbf8f0fb8f9c4157a4/vipy/dataset.py#L443-L504" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def map(self, f_map, strict=True, oneway=False, ordered=False):        
     &#34;&#34;&#34;Parallel map.
@@ -2412,7 +2412,7 @@ Minibatches will be yielded loaded and preprocessed (processing done concurrentl
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/dataset.py#L287-L323" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/095a3bb922809af0de26f3bbf8f0fb8f9c4157a4/vipy/dataset.py#L287-L323" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def minibatch(self, n, ragged=True, loader=None, bufsize=1024, accepter=None, preprocessor=None):
     &#34;&#34;&#34;Yield preprocessed minibatches of size n of this dataset.
@@ -2483,7 +2483,7 @@ To randomize split, shuffle dataset first</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/dataset.py#L391-L428" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/095a3bb922809af0de26f3bbf8f0fb8f9c4157a4/vipy/dataset.py#L391-L428" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def partition(self, trainfraction=0.9, valfraction=0.1, testfraction=0, trainsuffix=&#39;:train&#39;, valsuffix=&#39;:val&#39;, testsuffix=&#39;:test&#39;):
     &#34;&#34;&#34;Partition the dataset into the requested (train,val,test) fractions.  
@@ -2562,7 +2562,7 @@ Iterator over tuples (head,tail) of <code><a title="vipy.dataset.Dataset" href="
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/dataset.py#L338-L377" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/095a3bb922809af0de26f3bbf8f0fb8f9c4157a4/vipy/dataset.py#L338-L377" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def pipeline(self, n, m, ragged=True, prepad=True, postpad=True):
     &#34;&#34;&#34;Yield pipelined minibatches of size n with pipeline length m.
@@ -2614,7 +2614,7 @@ Iterator over tuples (head,tail) of <code><a title="vipy.dataset.Dataset" href="
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/dataset.py#L128-L130" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/095a3bb922809af0de26f3bbf8f0fb8f9c4157a4/vipy/dataset.py#L128-L130" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def raw(self):
     &#34;&#34;&#34;Return a view of this dataset without the loader&#34;&#34;&#34;
@@ -2630,7 +2630,7 @@ If n=0, the dataset is unchanged, if n=1 the dataset is doubled in length, etc.<
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/dataset.py#L181-L184" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/095a3bb922809af0de26f3bbf8f0fb8f9c4157a4/vipy/dataset.py#L181-L184" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def repeat(self, n):
     &#34;&#34;&#34;Repeat the dataset n times.  If n=0, the dataset is unchanged, if n=1 the dataset is doubled in length, etc.&#34;&#34;&#34;
@@ -2646,7 +2646,7 @@ If n=0, the dataset is unchanged, if n=1 the dataset is doubled in length, etc.<
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/dataset.py#L258-L260" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/095a3bb922809af0de26f3bbf8f0fb8f9c4157a4/vipy/dataset.py#L258-L260" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def sample(self):
     &#34;&#34;&#34;Return a single element sampled uniformly at random&#34;&#34;&#34;
@@ -2662,7 +2662,7 @@ Mapper must be a lambda function that returns a hashable type</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/dataset.py#L199-L201" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/095a3bb922809af0de26f3bbf8f0fb8f9c4157a4/vipy/dataset.py#L199-L201" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def set(self, mapper=None, flatten=False):
     &#34;&#34;&#34;Return the dataset as a set.  Mapper must be a lambda function that returns a hashable type&#34;&#34;&#34;
@@ -2678,7 +2678,7 @@ Circular shift for boundary handling so that self.shift(m)[-1] == self[m-1]</p><
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/dataset.py#L326-L328" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/095a3bb922809af0de26f3bbf8f0fb8f9c4157a4/vipy/dataset.py#L326-L328" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def shift(self, m):
     &#34;&#34;&#34;Circular shift the dataset m elements to the left, so that self[k+m] == self.shift(m)[k].  Circular shift for boundary handling so that self.shift(m)[-1] == self[m-1]&#34;&#34;&#34;
@@ -2694,7 +2694,7 @@ This method will use either Dataset.streaming_shuffler (for iterable datasets) o
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/dataset.py#L173-L179" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/095a3bb922809af0de26f3bbf8f0fb8f9c4157a4/vipy/dataset.py#L173-L179" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def shuffle(self, shuffler=None):
     &#34;&#34;&#34;Permute elements in this dataset uniformly at random in place using the optimal shuffling strategy for the dataset structure to maximize performance.
@@ -2713,7 +2713,7 @@ This method will use either Dataset.streaming_shuffler (for iterable datasets) o
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/dataset.py#L330-L332" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/095a3bb922809af0de26f3bbf8f0fb8f9c4157a4/vipy/dataset.py#L330-L332" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def slice(self, start=0, stop=-1, step=1):
     &#34;&#34;&#34;Slice the dataset to contain elements defined by slice(start, stop, step)&#34;&#34;&#34;
@@ -2731,7 +2731,7 @@ This method will use either Dataset.streaming_shuffler (for iterable datasets) o
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/dataset.py#L514-L524" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/095a3bb922809af0de26f3bbf8f0fb8f9c4157a4/vipy/dataset.py#L514-L524" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def sort(self, f):
     &#34;&#34;&#34;Sort the dataset in-place using the sortkey lambda function f
@@ -2754,7 +2754,7 @@ This method will use either Dataset.streaming_shuffler (for iterable datasets) o
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/dataset.py#L430-L433" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/095a3bb922809af0de26f3bbf8f0fb8f9c4157a4/vipy/dataset.py#L430-L433" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def split(self, size):
     &#34;&#34;&#34;Split the dataset into two datasets, one of length size, the other of length len(self)-size&#34;&#34;&#34;
@@ -2771,7 +2771,7 @@ Performs the map in parallel if used in the vipy.globals.parallel context manage
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/dataset.py#L439-L441" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/095a3bb922809af0de26f3bbf8f0fb8f9c4157a4/vipy/dataset.py#L439-L441" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def streaming_map(self, mapper, accepter=None, bufsize=1024):
     &#34;&#34;&#34;Returns a generator that will apply the mapper and yield only those elements that return True from the accepter.  Performs the map in parallel if used in the vipy.globals.parallel context manager&#34;&#34;&#34;
@@ -2786,7 +2786,7 @@ Performs the map in parallel if used in the vipy.globals.parallel context manage
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/dataset.py#L233-L237" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/095a3bb922809af0de26f3bbf8f0fb8f9c4157a4/vipy/dataset.py#L233-L237" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def take(self, n, inplace=False):
     &#34;&#34;&#34;Randomly Take n elements from the dataset, and return a dataset (in-place or cloned). If n is greater than the size of the dataset, sample with replacement, if n is less than the size of the dataset, sample without replacement&#34;&#34;&#34;
@@ -2803,7 +2803,7 @@ Performs the map in parallel if used in the vipy.globals.parallel context manage
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/dataset.py#L262-L265" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/095a3bb922809af0de26f3bbf8f0fb8f9c4157a4/vipy/dataset.py#L262-L265" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def take_fraction(self, p, inplace=False):
     &#34;&#34;&#34;Randomly take a percentage of the dataset, returning a clone or in-place&#34;&#34;&#34;
@@ -2821,7 +2821,7 @@ If n==1, return a singleton</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/dataset.py#L245-L248" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/095a3bb922809af0de26f3bbf8f0fb8f9c4157a4/vipy/dataset.py#L245-L248" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def takeby(self, f, n):
     &#34;&#34;&#34;Filter the dataset according to the callable f, take n from each group and return a dataset.  Callable should return bool.  If n==1, return a singleton&#34;&#34;&#34;
@@ -2838,7 +2838,7 @@ The elements are loaded and not cloned.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/dataset.py#L250-L252" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/095a3bb922809af0de26f3bbf8f0fb8f9c4157a4/vipy/dataset.py#L250-L252" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def takelist(self, n):
     &#34;&#34;&#34;Take n elements and return list.  The elements are loaded and not cloned.&#34;&#34;&#34;
@@ -2853,7 +2853,7 @@ The elements are loaded and not cloned.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/dataset.py#L254-L256" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/095a3bb922809af0de26f3bbf8f0fb8f9c4157a4/vipy/dataset.py#L254-L256" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def takeone(self):
     &#34;&#34;&#34;Randomly take one element from the dataset and return a singleton&#34;&#34;&#34;
@@ -2868,7 +2868,7 @@ The elements are loaded and not cloned.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/dataset.py#L334-L336" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/095a3bb922809af0de26f3bbf8f0fb8f9c4157a4/vipy/dataset.py#L334-L336" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def truncate(self, m):
     &#34;&#34;&#34;Truncate the dataset to contain the first m elements only&#34;&#34;&#34;
@@ -2883,7 +2883,7 @@ The elements are loaded and not cloned.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/dataset.py#L186-L193" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/095a3bb922809af0de26f3bbf8f0fb8f9c4157a4/vipy/dataset.py#L186-L193" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def tuple(self, mapper=None, flatten=False, reducer=None):
     &#34;&#34;&#34;Return the dataset as a tuple, applying the optional mapper lambda on each element, applying optional flattener on sequences returned by mapper, and applying the optional reducer lambda on the final tuple, return a generator&#34;&#34;&#34;
@@ -2903,7 +2903,7 @@ The elements are loaded and not cloned.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/dataset.py#L510-L512" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/095a3bb922809af0de26f3bbf8f0fb8f9c4157a4/vipy/dataset.py#L510-L512" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def zip(self, iter):
     &#34;&#34;&#34;Returns a new dataset constructed by applying the callable on elements from zip(self,iter)&#34;&#34;&#34;
@@ -2929,7 +2929,7 @@ The goal is to preserve data locality to minimize cache misses.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/dataset.py#L559-L619" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/095a3bb922809af0de26f3bbf8f0fb8f9c4157a4/vipy/dataset.py#L559-L619" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Paged(Dataset):
     &#34;&#34;&#34; Paged dataset.
@@ -3012,7 +3012,7 @@ The goal is to preserve data locality to minimize cache misses.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/dataset.py#L610-L619" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/095a3bb922809af0de26f3bbf8f0fb8f9c4157a4/vipy/dataset.py#L610-L619" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">@staticmethod
 def chunk_shuffler(D, chunker, chunksize=64):
@@ -3037,7 +3037,7 @@ def chunk_shuffler(D, chunker, chunksize=64):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/dataset.py#L606-L608" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/095a3bb922809af0de26f3bbf8f0fb8f9c4157a4/vipy/dataset.py#L606-L608" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def flush(self):
     self._pagecache = {}
@@ -3052,7 +3052,7 @@ def chunk_shuffler(D, chunker, chunksize=64):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/dataset.py#L586-L589" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/095a3bb922809af0de26f3bbf8f0fb8f9c4157a4/vipy/dataset.py#L586-L589" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def shuffle(self, shuffler=None):
     &#34;&#34;&#34;Permute elements while preserve page locality to minimize cache misses&#34;&#34;&#34;
@@ -3129,7 +3129,7 @@ def chunk_shuffler(D, chunker, chunksize=64):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/dataset.py#L622-L727" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/095a3bb922809af0de26f3bbf8f0fb8f9c4157a4/vipy/dataset.py#L622-L727" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Union(Dataset):
     &#34;&#34;&#34;vipy.dataset.Union() class
@@ -3252,7 +3252,7 @@ def chunk_shuffler(D, chunker, chunksize=64):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/dataset.py#L712-L714" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/095a3bb922809af0de26f3bbf8f0fb8f9c4157a4/vipy/dataset.py#L712-L714" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def datasets(self):
     &#34;&#34;&#34;Return the dataset union elements, useful for generating unions of unions&#34;&#34;&#34;
@@ -3267,7 +3267,7 @@ def chunk_shuffler(D, chunker, chunksize=64):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/dataset.py#L653-L654" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/095a3bb922809af0de26f3bbf8f0fb8f9c4157a4/vipy/dataset.py#L653-L654" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def is_streaming(self):
     return self._idx is None and all(d.is_streaming() for d in self.datasets())</code></pre>
@@ -3281,7 +3281,7 @@ def chunk_shuffler(D, chunker, chunksize=64):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/a3e4013930bb458420e1fcc86216fa191c42b880/vipy/dataset.py#L716-L719" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/095a3bb922809af0de26f3bbf8f0fb8f9c4157a4/vipy/dataset.py#L716-L719" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def shuffle(self, shuffler=None):
     &#34;&#34;&#34;Permute elements in this dataset uniformly at random in place using the best shuffler for the dataset structure&#34;&#34;&#34;
