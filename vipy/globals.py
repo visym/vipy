@@ -4,6 +4,7 @@ import tempfile
 import builtins
 import logging 
 import concurrent.futures 
+import multiprocessing as mp
 
 
 # Global mutable dictionary
@@ -235,22 +236,26 @@ def parallel(workers=None, pct=None, threaded=True):
         def __enter__(self):
             pass
             
-        def __exit__(self, *args):            
-            self.shutdown() 
+        def __exit__(self, exc_type, exc_value, tb):
+            if exc_type is KeyboardInterrupt:
+                self.shutdown(wait=False, cancel_futures=True)
+            else:
+                self.shutdown(wait=True, cancel_futures=False)                
             
         def __repr__(self):
             return '<vipy.globals.parallel: workers=%d, cf=%s>' % (self.num_workers(), GLOBAL['CONCURRENT_FUTURES'] if GLOBAL['CONCURRENT_FUTURES'] else 'stopped')
 
         def start(self):
+            mp.set_start_method("spawn", force=True)  # Spawn starts a new interpreter and only imports the minimal state needed, rather than forking parent 
             if not GLOBAL['CONCURRENT_FUTURES'] and self._workers>0:                
                 cf(num_workers=self._workers, threaded=self._threaded)
             GLOBAL['LOGGER'].info('Parallel executor initialized %s' % self)
             return self
         
-        def shutdown(self):
+        def shutdown(self, wait=True, cancel_futures=False):
             if GLOBAL['CONCURRENT_FUTURES']:
                 GLOBAL['LOGGER'].info('Parallel executor shutdown %s' % self)                            
-                GLOBAL['CONCURRENT_FUTURES'].shutdown(wait=True)
+                GLOBAL['CONCURRENT_FUTURES'].shutdown(wait=wait, cancel_futures=cancel_futures)
             GLOBAL['CONCURRENT_FUTURES'] = None
         
         def num_workers(self):
