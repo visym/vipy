@@ -17,7 +17,7 @@ def identity(x):
     return x
 
 
-def iter(ingen, mapper=identity, bufsize=1024, progress=False, accepter=None):
+def iter(ingen, mapper=identity, bufsize=1024, progress=False, accepter=None, zipped=False):
     """Return an iterator on the input generator that will apply the mapper to each object and yield only those elements where the accepter is true
 
     ```python
@@ -31,9 +31,10 @@ def iter(ingen, mapper=identity, bufsize=1024, progress=False, accepter=None):
     Args:
         ingen [generator]:
         mapper [callable]: A function applied to each element before yielding
-        bufsize [int]: The maximum size of the parallel queue used by producers.  
+        bufsize [int]: The maximum size of the parallel queue used by producers.  This defines the maximum number of tasks in-flight, avoids submitting every element in a long iterator
         accepter [callable]: A function which returns true or false, such that the iterator only yields elements for which the accepter returns true
-
+        zipped [bool]: If true, yield (x, mapper(x)) tuples, if false yield mapper(x) only.  Usefulf for `vipy.parallel.zipmap`
+    
     Returns:
         An iterator that yields mapped and accepted elements from ingen, whre mapping is performed in parallel by vipy.parallel.cf() executor
 
@@ -42,55 +43,59 @@ def iter(ingen, mapper=identity, bufsize=1024, progress=False, accepter=None):
     # local iterator fallback
     if vipy.globals.cf() is None:
         for x in ingen:  # iterable access (faster)
-            x = mapper(x) if mapper is not None else x
-            if accepter is None or accepter(x):
-                yield x                
+            y = mapper(x) if mapper is not None else x
+            if accepter is None or accepter(y):
+                yield y if not zipped else (x,y)
 
-    else:    
-        assert vipy.globals.cf(), "vipy.globals.cf() executor required - Try 'with vipy.globals.parallel(n=4): result = [x for x in vipy.parallel.iter(...)]' "    
+    else:
+        mapper = identity if mapper is None else mapper
+        
+        assert vipy.globals.cf(), "vipy.globals.cf() executor required - Try 'with vipy.globals.parallel(n=4): result = [x for x in vipy.parallel.iter(...)]' "
         assert callable(mapper)
         assert accepter is None or callable(accepter)
         assert bufsize>0
         
-        e = vipy.globals.cf()
+        e = vipy.globals.cf()        
         q = Queue()
         sem = threading.BoundedSemaphore(bufsize)
     
         if progress:
             vipy.util.try_import('tqdm','tqdm'); from tqdm import tqdm;
             ingen = tqdm(ingen, total=len(ingen) if hasattr(ingen, '__len__') else None)
-    
-        # Producer worker: this is useful for filling the pipeline while waiting on GPU I/O    
+                    
+        # Producer worker: this is useful for filling the pipeline up to a max depth for long iterators while waiting on GPU I/O    
         def _producer():
             for i in ingen:
                 sem.acquire()  # block when buffer is full
                 f = e.submit(mapper, i)
-                def _callback(fut, sem=sem, q=q):
-                    q.put(fut.result())      
+                def _callback(fut, sem=sem, q=q, i=i):
+                    q.put((i,fut.result()))      
                     sem.release()
                 f.add_done_callback(_callback)
             for k in range(bufsize):
                 sem.acquire()  # wait until all callbacks have fired
-            q.put(None)
+            q.put((None,None))
         
         threading.Thread(target=_producer, daemon=True).start()
 
         # Consumer loop: yield loaded elements from the producers
         while True:        
-            res = q.get()
-            if res is None:
+            (x,y) = q.get()
+            if x is None and y is None:
                 break
-            if accepter is None or accepter(res):
-                yield res
+            if accepter is None or accepter(y):
+                yield y if not zipped else (x,y)
     
 
-def ordered_map(f, ingen):
+def map(f, ingen):
     """Apply the function f to each element in the iterator, returning tuples (order, result) results sorted by order"""
-    assert vipy.globals.cf(), "vipy.globals.cf() executor required - Try 'with vipy.globals.parallel(n=4): vipy.parallel.ordered_map(...)' "    
+    assert vipy.globals.cf(), "vipy.globals.cf() executor required - Try 'with vipy.globals.parallel(n=4): vipy.parallel.map(...)' "    
     assert callable(f), "mapper required"    
-    return sorted(vipy.globals.cf().map(f, enumerate(ingen)), key=lambda x: x[0])  # expensive
+    return vipy.globals.cf().map(f, ingen)  # ordered
 
 
-
+def zipmap(ingen, mapper=identity, bufsize=1024, progress=False, accepter=None):
+    """Return an iterator that yields (x, mapper(x)) tuples where x is yielded from ingen, and mapper is a callable.  This is equivalent to zip(ingen, map(mapper, ingen)), without keeping two copies of ingen"""
+    return iter(ingen, mapper=mapper, bufsize=bufsize, progress=progress, accepter=accepter, zipped=True)
     
     

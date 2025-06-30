@@ -964,7 +964,7 @@ class Image():
         from torch import from_numpy;  # optional package pytorch not installed, run "pip install torch" (don't use try_import here, it's too slow)
         
         assert order in ['CHW', 'HWC', 'NCHW', 'NHWC']
-        img = self.numpy() if self.array().ndim >= 3 else np.expand_dims(self.array(), 2)  # HxW -> HxWx1 
+        img = self.numpy() if self.array().ndim >= 3 else np.expand_dims(self.numpy(), 2)  # HxW -> HxWx1 
         
         if order in ['CHW']:
             assert img.ndim == 3, "invalid array"  
@@ -3016,7 +3016,7 @@ class Transform():
         return im.clone().load().rgb().mindim(256).gain(1/255) if not im.loaded() else im
     
     @staticmethod
-    def tensor(image, shape=None, gain=None, mindim=None, colorspace=None, centersquare=None, tensor=None, ignore_errors=False, jitter=None, num_augmentations=None):
+    def sequence(image, shape=None, gain=None, mindim=None, colorspace=None, centersquare=None, tensor=None, ignore_errors=False, jitter=None):
         try:
             im = image.clone()
             if colorspace == 'lum':
@@ -3025,9 +3025,9 @@ class Transform():
                 im = im.rgb()
             if colorspace == 'float':
                 im = im.float()
-            if jitter == 'randomcrop':
-                import vipy.noise                  
-                im = vipy.noise.randomcrop(im)                
+            if jitter:
+                assert callable(jitter)
+                im = jitter(im)                
             if centersquare:
                 im = im.centersquare()
             if shape is not None:
@@ -3037,12 +3037,7 @@ class Transform():
             if gain is not None:
                 im = im.gain(gain)
             if tensor:
-                im = im.torch()  # CHW
-            if num_augmentations:
-                augmentations = np.stack([np.atleast_3d(Transform.tensor(image, shape=shape, gain=gain, mindim=mindim, colorspace=colorspace, centersquare=centersquare, ignore_errors=ignore_errors, jitter=jitter).array())
-                                          for k in range(num_augmentations+1)], axis=3)  # +1 for mean 
-                return image.clone().array(augmentations)  # packed nd-array, use im.torch('NCHW') to access
-                
+                im = im.torch()  # CHW                
             return im
         
         except KeyboardInterrupt:
@@ -3053,8 +3048,8 @@ class Transform():
             return None
 
     @staticmethod
-    def to_tensor(**kwargs):
-        return functools.partial(Transform.tensor, **kwargs)
+    def sequencer(**kwargs):
+        return functools.partial(Transform.sequence, **kwargs)
 
     @staticmethod
     def is_transformed(im):

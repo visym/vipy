@@ -4,6 +4,7 @@ from io import BytesIO
 import PIL
 import random
 import math
+import functools
 
 
 vipy.util.try_import('torchvision.transforms', 'torchvision'); import torchvision.transforms
@@ -70,11 +71,13 @@ def barrel(im):
     return im.array(dst)
 
 def left_swirl(im, center=None, strength=2):
-    assert isinstance(im, vipy.image.Image)        
+    assert isinstance(im, vipy.image.Image)
+    center = center if center is not None else (im.width()*center[0], im.height()*center[1])
     return im.array(np.array(skimage.transform.swirl(im.load().array(), rotation=0, strength=strength, center=center, radius=im.maxdim())).astype(np.float32)).mat2gray(0,1)
 
 def right_swirl(im, strength=2, center=None):
-    assert isinstance(im, vipy.image.Image)            
+    assert isinstance(im, vipy.image.Image)
+    center = center if center is not None else (im.mindim()*center[0], im.mindim()*center[1])    
     return im.array(np.array(skimage.transform.swirl(im.load().fliplr().array(), rotation=0, center=center, strength=strength, radius=im.maxdim())).astype(np.float32)).mat2gray(0,1).fliplr()
 
 def horizontal_mirror(im):
@@ -93,19 +96,21 @@ def vertical_mirror(im):
 
 def vertical_motion_blur(im, kernel_size):
     assert isinstance(im, vipy.image.Image)
+    kernel_size = int(im.mindim()*kernel_size)    
     kernel_v = np.zeros((kernel_size, kernel_size) )  
     kernel_v[:, int((kernel_size - 1)/2)] = np.ones(kernel_size)  
     kernel_v /= kernel_size
     return im.load().map(lambda img: cv2.filter2D(img, -1, kernel_v)).mat2gray(0,255).colorspace('float')
 
 def horizontal_motion_blur(im, kernel_size):
-    assert isinstance(im, vipy.image.Image)    
+    assert isinstance(im, vipy.image.Image)
+    kernel_size = int(im.mindim()*kernel_size)
     kernel_h = np.zeros((kernel_size, kernel_size) )  
     kernel_h[int((kernel_size - 1)/2), :] = np.ones(kernel_size)
     kernel_h /= kernel_size
     return im.load().map(lambda img: cv2.filter2D(img, -1, kernel_h)).mat2gray(0,255).colorspace('float')
 
-def ghost(im, txr=5, tyr=5, txg=-5, tyg=-5, txb=5, tyb=-5):
+def ghost(im, txr=0.01, tyr=0.01, txg=-0.01, tyg=-0.01, txb=0.01, tyb=-0.01):
     assert isinstance(im, vipy.image.Image)
     (imc,imz) = (im.clone().load(), im.clone().load().zeros())
     img = imz.numpy()
@@ -130,9 +135,9 @@ def rot90ccw(im):
     return im.load().rot90ccw()
 
 def translate(im, dx, dy): 
-    """Translate by (dx,dy) pixels, with zero border handling"""
-    assert isinstance(im, vipy.image.Image)
-    return im.load().padcrop(im.imagebox().translate(dx,dy))
+    """Translate by (dx,dy) normalized pixels, with zero border handling"""
+    assert isinstance(im, vipy.image.Image)    
+    return im.load().padcrop(im.imagebox().translate(int(dx*im.mindim()), int(dy*im.mindim())))
 
 def isotropic_scale(im, s, border='zero'):
     assert isinstance(im, vipy.image.Image)
@@ -152,7 +157,7 @@ def zoom(im, s, zx=None, zy=None, border='zero'):
 # <PHOTOMETRIC>
 def blur(im, sigma):
     assert isinstance(im, vipy.image.Image)
-    imblur = im.rgb().blur(sigma=sigma)
+    imblur = im.rgb().blur(sigma=sigma*im.mindim())
     return imblur.greyscale().colorspace_like(im) if im.channels() == 1 else imblur.colorspace_like(im)
 
 def salt_and_pepper(im, p):
@@ -177,6 +182,7 @@ def bit_depth(im, d):
     return im.array(np.array(PIL.ImageOps.posterize(im.load().pil(), d)))
 
 def solarize(im, t):
+    """All pixels above threshold are inverted"""
     assert t>=0 and t<=255    
     return im.array(np.array(PIL.ImageOps.solarize(im.load().pil(), t)))
 
@@ -244,59 +250,58 @@ def additive_gaussian_noise(im, sigma=0.1):
     return im.float().map(lambda img: img + max(sigma*im.maxpixel(), sigma)*np.random.randn(img.shape[0], img.shape[1], im.channels()).astype(np.float32)).saturate(0,255).mat2gray(0,255).colorspace('float')
 
 
-
 class Noise():
     def __init__(self, magnitude=0.25, provenance=False, register=None, deregister=['hot','rainbow','vertical_mirror','flipud','rot90cw','rot90ccw']):
 
         n = magnitude
-        (shear, dx, dy, rot, z, border, sigma, gain) = (n*0.25, n*0.15, n*0.15, n*25, n*0.2, 'replicate', 1.0, 0.5)
+        (shear, dx, dy, deg, z, border, sigma, gain) = (n*0.25, n*0.15, n*0.15, n*25, n*0.2, 'replicate', 1.0, 0.5)
         
         self._provenance = provenance        
-        self._registry = {'blur': lambda im: blur(im, sigma=n*random.uniform(im.mindim()*0.01, im.mindim()*0.05)),
-                          'salt_and_pepper': lambda im: salt_and_pepper(im, n*0.1*random.random()),
-                          'jpeg_compression': lambda im: jpeg_compression(im, random.randint(50,95-int(10*n))),
-                          'greyscale': lambda im: greyscale(im),
-                          'bgr': lambda im: bgr(im),
-                          'hot': lambda im: hot(im),
-                          'rainbow': lambda im: rainbow(im),
-                          'saturate': lambda im: saturate(im, random.randint(0, 64), random.randint(255-64, 255)),
-                          'edge': lambda im: edge(im),
-                          'emboss': lambda im: emboss(im),
-                          'darken': lambda im: darken(im, 1-n*random.random()),
-                          'negative': lambda im: negative(im),
-                          'scan_lines': lambda im: scan_lines(im),
-                          'additive_gaussian_noise': lambda im: additive_gaussian_noise(im, np.random.uniform(n*0.01, n*0.5)),
-                          'translate': lambda im, dx=dx, dy=dy, b=border: translate(im, np.random.uniform(-dx,dx), np.random.uniform(-dy,dy)),                          
-                          'horizontal_motion_blur': lambda im: horizontal_motion_blur(im, random.randint(math.ceil(im.mindim()*0.05*n), math.ceil(im.mindim()*0.15*n))),
-                          'vertical_motion_blur': lambda im: vertical_motion_blur(im, random.randint(math.ceil(im.mindim()*0.05*n), math.ceil(im.mindim()*0.15*n))),                          
-                          'barrel': lambda im: barrel(im),
-                          'left_swirl': lambda im: left_swirl(im, center=(random.randint(0, im.mindim()), random.randint(0,im.mindim())), strength=n),
-                          'right_swirl': lambda im: right_swirl(im, center=(random.randint(0, im.mindim()), random.randint(0, im.mindim())), strength=n),
-                          'horizontal_mirror': lambda im: horizontal_mirror(im),
-                          'vertical_mirror': lambda im: vertical_mirror(im),
-                          'left_shear': lambda im, s=shear, b=border: left_shear(im, np.random.uniform(0,s), border=b),
-                          'right_shear': lambda im, s=shear, b=border: right_shear(im, np.random.uniform(0,s), border=b),
-                          'rotate': lambda im, deg=rot, b=border: rotate(im, deg=np.random.uniform(-deg,deg), border=b),
-                          'isotropic_scale': lambda im, z=z, b=border: isotropic_scale(im, np.random.uniform(1.0-z, 1.0+z)),
-                          'ghost': lambda im: ghost(im,
-                                                    random.randint(-int(im.mindim()*0.05*n),int(im.mindim()*0.05*n)),
-                                                    random.randint(-int(im.mindim()*0.05*n),int(im.mindim()*0.05*n)),
-                                                    random.randint(-int(im.mindim()*0.05*n),int(im.mindim()*0.05*n)),
-                                                    random.randint(-int(im.mindim()*0.05*n),int(im.mindim()*0.05*n)),
-                                                    random.randint(-int(im.mindim()*0.05*n),int(im.mindim()*0.05*n)),
-                                                    random.randint(-int(im.mindim()*0.05*n),int(im.mindim()*0.05*n))),
-                          'bit_depth': lambda im: bit_depth(im, random.randint(1,7)),
-                          'permute_color_channels': lambda im: permute_color_channels(im, random.sample([[0,2,1],[1,0,2],[1,2,0],[2,0,1],[2,1,0]], 1)[0]),
-                          'fliplr': lambda im: fliplr(im),
-                          'flipud': lambda im: flipud(im),
-                          'rot90cw': lambda im: rot90cw(im),
-                          'rot90ccw': lambda im: rot90ccw(im),
-                          'solarize': lambda im: solarize(im, random.randint(32, 255-32)),
-                          'colorjitter': lambda im: colorjitter(im),
-                          'autocontrast': lambda im: autocontrast(im),
-                          'sharpness': lambda im: sharpness(im, 10*random.random()),
-                          'gamma': lambda im: gamma(im, random.random()+0.5),
-                          'crop': lambda im: crop(im, 1-0.2*random.random()),
+        self._registry = {'blur': functools.partial(blur, sigma=n*random.uniform(0.01, 0.05)),
+                          'salt_and_pepper': functools.partial(salt_and_pepper, p=n*0.1*random.random()),
+                          'jpeg_compression': functools.partial(jpeg_compression, quality=random.randint(50,95-int(10*n))),
+                          'greyscale': functools.partial(greyscale),
+                          'bgr': functools.partial(bgr),
+                          'hot': functools.partial(hot),
+                          'rainbow': functools.partial(rainbow),
+                          'saturate': functools.partial(saturate, low=random.randint(0, 64), high=random.randint(255-64, 255)),
+                          'edge': functools.partial(edge),
+                          'emboss': functools.partial(emboss),
+                          'darken': functools.partial(darken, g=1-n*random.random()),
+                          'negative': functools.partial(negative),
+                          'scan_lines': functools.partial(scan_lines),
+                          'additive_gaussian_noise': functools.partial(additive_gaussian_noise, sigma=np.random.uniform(n*0.01, n*0.5)),
+                          'translate': functools.partial(translate, dx=np.random.uniform(-dx,dx), dy=np.random.uniform(-dy,dy)),                          
+                          'horizontal_motion_blur': functools.partial(horizontal_motion_blur, kernel_size=random.uniform(0.05*n, 0.15*n)),
+                          'vertical_motion_blur': functools.partial(vertical_motion_blur, kernel_size=random.uniform(0.05*n, 0.15*n)),                          
+                          'barrel': functools.partial(barrel),
+                          'left_swirl': functools.partial(left_swirl, center=(random.random(),random.random()), strength=n),
+                          'right_swirl': functools.partial(right_swirl, center=(random.random(), random.random()), strength=n),
+                          'horizontal_mirror': functools.partial(horizontal_mirror),
+                          'vertical_mirror': functools.partial(vertical_mirror),
+                          'left_shear': functools.partial(left_shear, border=border, s=np.random.uniform(0,shear)),
+                          'right_shear': functools.partial(right_shear, border=border, s=np.random.uniform(0,shear)),
+                          'rotate': functools.partial(rotate, deg=np.random.uniform(-deg,deg), border=border),
+                          'isotropic_scale': functools.partial(isotropic_scale, s=np.random.uniform(1.0-z, 1.0+z), border=border),
+                          'ghost': functools.partial(ghost,
+                                                     txr=random.uniform(-0.01, 0.01),
+                                                     tyr=random.uniform(-0.01, 0.01),
+                                                     txg=random.uniform(-0.01, 0.01),
+                                                     tyg=random.uniform(-0.01, 0.01),
+                                                     txb=random.uniform(-0.01, 0.01),
+                                                     tyb=random.uniform(-0.01, 0.01)),
+                          'bit_depth': functools.partial(bit_depth, d=random.randint(1,7)),
+                          'permute_color_channels': functools.partial(permute_color_channels, order=random.sample([[0,2,1],[1,0,2],[1,2,0],[2,0,1],[2,1,0]], 1)[0]),
+                          'fliplr': functools.partial(fliplr),
+                          'flipud': functools.partial(flipud),
+                          'rot90cw': functools.partial(rot90cw),
+                          'rot90ccw': functools.partial(rot90ccw),
+                          'solarize': functools.partial(solarize, t=random.randint(128, 255)),
+                          'colorjitter': functools.partial(colorjitter),
+                          'autocontrast': functools.partial(autocontrast),
+                          'sharpness': functools.partial(sharpness, f=10*random.random()),
+                          'gamma': functools.partial(gamma, f=random.random()+0.5),
+                          'crop': functools.partial(crop, s=1-0.2*random.random()),
                           }
 
         if deregister is not None:

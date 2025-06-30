@@ -10,13 +10,12 @@ VIPY is a python package for representation, transformation and visualization of
 VIPY provides:  
 
 * Representation of videos with labeled activities that can be resized, clipped, rotated, scaled, padded, cropped and resampled
-* Representation of images with object bounding boxes that can be manipulated as easily as editing an image
+* Representation of images with object bounding boxes and keypoints that can be manipulated as easily as editing an image
 * Clean visualization of annotated images and video
 * Fluent interface for chaining operations on videos and images
-* Lazy loading of images and videos suitable for distributed processing (e.g. dask, spark)
-* Straightforward integration into machine learning toolchains (e.g. torch, numpy)
-* Visual dataset download, unpack and import (e.g. Imagenet21k, Coco 2014, Visual Genome, Open Images V7, Kinetics700, YoutubeBB, ActivityNet, ... )
-* Minimum dependencies for easy installation (e.g. AWS Lambda, Flask)
+* Visual dataset download, unpack and import, including Imagenet21k, Coco 2014, Visual Genome, Open Images V7, Kinetics700, YoutubeBB, ActivityNet, ... 
+* Lazy loading of images and videos suitable for distributed processing
+* Minimum dependencies for easy installation 
 
 
 Requirements

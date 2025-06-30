@@ -284,7 +284,7 @@ class Dataset():
         for (k,b) in enumerate(chunkgenbysize(self, n)):  
             yield Dataset(b).id('%s:%d' % (self.id() if self.id() else '', k))
                                 
-    def minibatch(self, n, ragged=True, loader=None, bufsize=1024, accepter=None, preprocessor=None):
+    def minibatch(self, n, ragged=True, mapper=None, bufsize=1024, accepter=None):
         """Yield preprocessed minibatches of size n of this dataset.
 
         To yield chunks of this dataset, suitable for minibatch training/testing
@@ -300,7 +300,7 @@ class Dataset():
         ```python
         D = vipy.dataset.registry('yfcc100m_url:train').take(128)
         with vipy.globals.parallel(4):
-            for b in D.minibatch(16, loader=vipy.image.Transform.download, accepter=lambda im: im.is_downloaded()):
+            for b in D.minibatch(16, mapper=vipy.image.Transform.download, accepter=lambda im: im.is_downloaded()):
                 print(b)  # complete minibatch that passed accepter
         ```
 
@@ -309,7 +309,7 @@ class Dataset():
             ragged [bool]: If ragged=true, then the last chunk will be ragged with len(chunk)<n, else skipped
             bufsize [int]:  The size of the buffer used in parallel processing of elements.  Useful for parallel loading
             accepter [callable]:  A callable that returns true|false on an element, where only elements that return true are included in the minibatch.  useful for parallel loading of elements that may fail to download
-            loader [callable]: A callable that is applied to every element of the dataset.  Useful for parallel loading
+            mapper [callable]: A callable that is applied to every element of the dataset.  Useful for parallel loading
 
         Returns:        
             Iterator over `vipy.dataset.Dataset` elements of length n.  Minibatches will be yielded loaded and preprocessed (processing done concurrently if vipy.parallel.executor() is initialized)
@@ -318,7 +318,7 @@ class Dataset():
         ..note:: If there exists a vipy.parallel.exeuctor(), then loading and preprocessing will be performed concurrently
 
         """
-        for (k,b) in enumerate(chunkgenbysize(vipy.parallel.iter(self, mapper=loader, bufsize=max(bufsize,n), accepter=accepter), n)): 
+        for (k,b) in enumerate(chunkgenbysize(vipy.parallel.iter(self, mapper=mapper, bufsize=max(bufsize,n), accepter=accepter, zipped=False), n)): 
             if ragged or len(b) == n:
                 yield Dataset.cast(b).id('%s:%d' % (self.id() if self.id() else '', k))                    
                     
@@ -436,7 +436,7 @@ class Dataset():
         """Split the dataset into two datasets, each half the size of the dataset.  If the dataset length is odd, then one element will be dropped"""
         return self.chunks((len(self)//2, len(self)//2, len(self)%2))[0:2]
         
-    def streaming_map(self, mapper, accepter=None, bufsize=1024):
+    def stream(self, mapper, accepter=None, bufsize=1024):
         """Returns a generator that will apply the mapper and yield only those elements that return True from the accepter.  Performs the map in parallel if used in the vipy.globals.parallel context manager"""
         return vipy.parallel.iter(self, mapper=mapper, accepter=accepter, bufsize=bufsize)
         
