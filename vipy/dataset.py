@@ -179,10 +179,12 @@ class Dataset():
         return shuffler(self)
 
     def repeat(self, n):
-        """Repeat the dataset n times.  If n=0, the dataset is unchanged, if n=1 the dataset is doubled in length, etc."""
-        assert n>=0
-        return self.index( self.index()*(n+1) )
-    
+        """Return an iterator that repeats the dataset n times interleaved"""
+        assert n>=0, "invalid repeat"
+        for x in self:
+            for k in range(n):
+                yield x
+
     def tuple(self, mapper=None, flatten=False, reducer=None):
         """Return the dataset as a tuple, applying the optional mapper lambda on each element, applying optional flattener on sequences returned by mapper, and applying the optional reducer lambda on the final tuple, return a generator"""
         assert mapper is None or callable(mapper)
@@ -192,6 +194,10 @@ class Dataset():
         reduced = reducer(flattened) if reducer else flattened
         return reduced
 
+    def flatten(self):
+        """Given a length N dataset with elements length M lists or tuples, return a flattened dataset of length N*M containing elements previously in the lists/tuples"""
+        return Dataset(self.list(flatten=True), id=self.id())
+    
     def list(self, mapper=None, flatten=False):
         """Return a tuple as a list, loading into memory"""
         return self.tuple(mapper, flatten, reducer=list)
@@ -284,7 +290,7 @@ class Dataset():
         for (k,b) in enumerate(chunkgenbysize(self, n)):  
             yield Dataset(b).id('%s:%d' % (self.id() if self.id() else '', k))
                                 
-    def minibatch(self, n, ragged=True, mapper=None, bufsize=1024, accepter=None):
+    def minibatch(self, n, ragged=True, mapper=None, bufsize=1024, accepter=None, repeat=1):
         """Yield preprocessed minibatches of size n of this dataset.
 
         To yield chunks of this dataset, suitable for minibatch training/testing
@@ -310,7 +316,8 @@ class Dataset():
             bufsize [int]:  The size of the buffer used in parallel processing of elements.  Useful for parallel loading
             accepter [callable]:  A callable that returns true|false on an element, where only elements that return true are included in the minibatch.  useful for parallel loading of elements that may fail to download
             mapper [callable]: A callable that is applied to every element of the dataset.  Useful for parallel loading
-
+            repeat [int]: Repeat each element a given number of times.  This is useful for yielding elements for data augmentation
+        
         Returns:        
             Iterator over `vipy.dataset.Dataset` elements of length n.  Minibatches will be yielded loaded and preprocessed (processing done concurrently if vipy.parallel.executor() is initialized)
 
@@ -318,7 +325,7 @@ class Dataset():
         ..note:: If there exists a vipy.parallel.exeuctor(), then loading and preprocessing will be performed concurrently
 
         """
-        for (k,b) in enumerate(chunkgenbysize(vipy.parallel.iter(self, mapper=mapper, bufsize=max(bufsize,n), accepter=accepter, zipped=False), n)): 
+        for (k,b) in enumerate(chunkgenbysize(vipy.parallel.iter(self.repeat(repeat), mapper=mapper, bufsize=max(bufsize,n), accepter=accepter, zipped=False), n)): 
             if ragged or len(b) == n:
                 yield Dataset.cast(b).id('%s:%d' % (self.id() if self.id() else '', k))                    
                     

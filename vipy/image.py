@@ -3016,7 +3016,7 @@ class Transform():
         return im.clone().load().rgb().mindim(256).gain(1/255) if not im.loaded() else im
     
     @staticmethod
-    def sequence(image, shape=None, gain=None, mindim=None, colorspace=None, centersquare=None, tensor=None, ignore_errors=False, jitter=None):
+    def compose(image, shape=None, gain=None, mindim=None, colorspace=None, centersquare=None, tensor=None, ignore_errors=False, jitter=None, augmentations=None):
         try:
             im = image.clone()
             if colorspace == 'lum':
@@ -3037,7 +3037,11 @@ class Transform():
             if gain is not None:
                 im = im.gain(gain)
             if tensor:
-                im = im.torch()  # CHW                
+                im = im.torch()  # CHW
+            if augmentations:
+                im.set_attribute('augmentations', [self.compose(im, shape=shape, gain=gain, mindim=mindim, colorspace=colorspace,
+                                                                centersquare=centersquare, tensor=tensor, ignore_errors=ignore_errors,
+                                                                jitter=jitter, augmentations=None)for k in range(augmentations)])
             return im
         
         except KeyboardInterrupt:
@@ -3048,8 +3052,8 @@ class Transform():
             return None
 
     @staticmethod
-    def sequencer(**kwargs):
-        return functools.partial(Transform.sequence, **kwargs)
+    def composer(**kwargs):
+        return functools.partial(Transform.compose, **kwargs)
 
     @staticmethod
     def is_transformed(im):
