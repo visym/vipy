@@ -70,14 +70,14 @@ class Dataset():
 
 
     @classmethod
-    def from_directory(cls, indir, filetype='json', id=None):
+    def from_directory(cls, indir, filetype='json', id=None, recursive=True):
         """Recursively search indir for filetype, construct a dataset from all discovered files of that type"""
         if filetype == 'json':
-            return cls([x for f in findjson(indir) for x in to_iterable(vipy.load(f))], id=id)
+            return cls([x for f in findjson(indir, recursive=recursive) for x in to_iterable(vipy.load(f))], id=id)
         elif filetype.lower() in ['jpg','jpeg','images']:
-            return cls([vipy.image.Image(filename=f) for f in findimages(indir)], id=id)            
+            return cls([vipy.image.Image(filename=f) for f in findimages(indir, recursive=recursive)], id=id)            
         elif filetype.lower() in ['mp4','videos']:
-            return cls([vipy.image.Video(filename=f) for f in findvideos(indir)], id=id)            
+            return cls([vipy.image.Video(filename=f) for f in findvideos(indir, recursive=recursive)], id=id)            
         else:
             raise ValueError('unsupported file type "%s"' % filetype)
 
@@ -759,7 +759,7 @@ def registry(name=None, datadir=None, freeze=True, clean=False, download=False, 
        'activitynet', 'open_images_v7', 'imagenet', 'imagenet21k', 'visualgenome' ,'widerface','meva_kf1',
        'objectnet','lfw','inaturalist_2021','kinetics','hmdb','places365','ucf101','lvis','kitti',
        'imagenet_localization','laion2b','datacomp_1b','imagenet2014_det','imagenet_faces','youtubeBB',
-       'pip_370k','pip_175k','cap','cap_pad','cap_detection','tiny_virat'
+       'pip_370k','pip_175k','cap','cap_pad','cap_detection','tiny_virat', 'wakevision'
 
     Returns:
        (trainset, valset, testset) tuple where each is a `vipy.dataset.Dataset` or None, or a single split if name has a ":SPLIT" suffix or split kwarg provided
@@ -773,7 +773,7 @@ def registry(name=None, datadir=None, freeze=True, clean=False, download=False, 
                 'activitynet','open_images_v7','imagenet','imagenet21k','visualgenome','widerface', 'youtubeBB',
                 'objectnet','lfw','inaturalist_2021','kinetics','hmdb','places365','ucf101','kitti','meva_kf1',
                 'lvis','imagenet_localization','laion2b','datacomp_1b','imagenet2014_det','imagenet_faces',
-                'pip_175k','pip_370k','cap','cap_pad','cap_detection','tiny_virat')  # Add to docstring too...
+                'pip_175k','pip_370k','cap','cap_pad','cap_detection','tiny_virat', 'wakevision')  # Add to docstring too...
     
     if name is None:
         return tuple(sorted(datasets))
@@ -917,6 +917,8 @@ def registry(name=None, datadir=None, freeze=True, clean=False, download=False, 
     elif name == 'tiny_virat':
         dataset = vipy.data.tiny_virat.TinyVIRAT(namedir)
         (trainset, valset, testset) = (dataset.trainset(), dataset.valset(), dataset.testset())
+    elif name == 'wakevision':
+        (trainset, valset, testset) = vipy.data.hf.wakevision()
     else:
         raise ValueError('unknown dataset "%s" - choose from "%s"' % (name, ', '.join(sorted(datasets))))
     

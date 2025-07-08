@@ -163,8 +163,8 @@ def coyo300m(threshold=0.2):
     d_idx_to_category = {k:[c.strip() for c in v.split(',')] for (k,v) in labels['class_description'].items()}
     d_idx_to_wnid = {v:k for (k,v) in labels['class_list'].items()}
     loader = lambda r, d_idx_to_wnid=d_idx_to_wnid, d_idx_to_category=d_idx_to_category, threshold=threshold: TaggedImage(url=r['url'], 
-                                                                                                                                     tags=flatlist([d_idx_to_category[str(c)] for (c,p) in zip(r['labels'], r['label_probs']) if float(p)>threshold]),
-                                                                                                                                     attributes={'wordnet':[d_idx_to_wnid[c] for (c,p) in zip(r['labels'], r['label_probs']) if float(p)>threshold]})
+                                                                                                                          tags=flatlist([d_idx_to_category[str(c)] for (c,p) in zip(r['labels'], r['label_probs']) if float(p)>threshold]),
+                                                                                                                          attributes={'wordnet':[d_idx_to_wnid[c] for (c,p) in zip(r['labels'], r['label_probs']) if float(p)>threshold]})
     return Dataset(dataset['train'], id='coyo300m', loader=loader)
 
 def coyo700m():
@@ -211,3 +211,10 @@ def objects365():
             Dataset(dataset['validation'], id='objects365:val', loader=loader))
             
     
+def wakevision():
+    ds = load_dataset("Harvard-Edge/Wake-Vision")
+
+    loader = lambda r: ImageCategory(category='person' if r['person']==1 else 'non-person', attributes={k:v for (k,v) in r.items() if k not in ['image']}).loader(Image.PIL_loader, r['image'])
+    return (Dataset(ds['train'], id='wakevision:train', loader=loader),
+            Dataset(ds['validation'], id='wakevision:val', loader=loader),
+            Dataset(ds['test'], id='wakevision:test', loader=loader))            

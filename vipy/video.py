@@ -1223,15 +1223,17 @@ class Video():
         if colorspace is None:
             return self._colorspace
         elif self.isloaded():
-            assert str(colorspace).lower() in ['rgb', 'bgr', 'lum', 'float']
+            assert str(colorspace).lower() in ['rgba', 'rgb', 'bgr', 'lum', 'float']
             if self.array().dtype == np.float32:
                 assert str(colorspace).lower() in ['float']
             elif self.array().dtype == np.uint8:
-                assert str(colorspace).lower() in ['rgb', 'bgr', 'lum']
+                assert str(colorspace).lower() in ['rgba', 'rgb', 'bgr', 'lum']
                 if str(colorspace).lower() in ['lum']:
                     assert self.channels() == 1, "Luminance colorspace must be one channel uint8"
                 elif str(colorspace).lower() in ['rgb', 'bgr']:
                     assert self.channels() == 3, "RGB or BGR colorspace must be three channel uint8"
+                elif str(colorspace).lower() in ['rgba']:
+                    assert self.channels() == 4, "RGBA must be four channel uint8"
             else:
                 raise ValueError('Invalid array() type "%s" - only np.float32 or np.uint8 allowed' % str(self.array().dtype))
             self._colorspace = str(colorspace).lower()
@@ -1378,7 +1380,7 @@ class Video():
 
 
     @classmethod
-    def from_directory(self, indir, sortkey=None, framerate=30.):
+    def from_directory(cls, indir, sortkey=None, framerate=30., recursive=True):
         """Create a video from a directory of frames stored as individual image filenames.
         
         Given a directory with files:
@@ -1387,12 +1389,22 @@ class Video():
         framedir/image_0002.jpg
         
         ```python
-        vipy.video.Video(frames='/path/to/framedir')
+        vipy.video.Video.from_directory('/path/to/framedir')
         ```
 
+        There is an optional sortkey, specified as a lambda function on filenames
+        
+        This will load all frames into memory.  To load the frames lazy, use:
+
+        ```python
+        vipy.dataset.Dataset.from_directory('/path/to/framedir').sort(sortkey)
+        ```
+
+        This will return a dataset object which can be iterated and frames individually loaded, where the sortkey is a lambda on `vipy.image.Image` objects which may use `vipy.image.Image.filename` for sorting
+
         """
-        assert os.path.isdir(frames)
-        return cls(frames=[vipy.image.Image(filename=f) for f in sorted(vipy.util.findimages(indir), key=sortkey)], framerate=framerate)   
+        assert os.path.isdir(indir)
+        return cls(frames=[vipy.image.Image(filename=f) for f in sorted(vipy.util.findimages(indir, recursive=recursive), key=sortkey)], framerate=framerate)   
 
     @classmethod
     def from_frames(cls, framelist, framerate=30.0):

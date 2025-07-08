@@ -354,9 +354,9 @@ def findjpg(basedir):
     """Return a list of absolute paths to jpg files recursively discovered by walking the directory tree rooted at basedir"""
     return [str(path.resolve()) for path in pathlib.Path(basedir).rglob('*.jpg')]
 
-def findjson(basedir):
+def findjson(basedir, recursive=True):
     """Return a list of absolute paths to json files recursively discovered by walking the directory tree rooted at basedir"""
-    return [str(path.resolve()) for path in pathlib.Path(basedir).rglob('*.json')]
+    return [str(path.resolve()) for path in (pathlib.Path(basedir).rglob('*.json') if recursive else pathlib.Path(basedir).glob('*.json'))]
 
 def findtxt(basedir):
     """Return a list of absolute paths to txt files recursively discovered by walking the directory tree rooted at basedir"""
@@ -370,17 +370,17 @@ def findtargz(basedir):
     """Return a list of absolute paths to .pkl.bz2 files recursively discovered by walking the directory tree rooted at basedir"""
     return [str(path.resolve()) for path in pathlib.Path(basedir).rglob('*.tar.gz')]
 
-def findimage(basedir):
-    """Return a list of absolute paths to image files recursively discovered by walking the directory tree rooted at basedir"""
-    return [str(path.resolve()) for path in pathlib.Path(basedir).rglob('*') if isimage(str(path.resolve()))]
+def findimage(basedir, recursive=True):
+    """Return a list of absolute paths to image files recursively  discovered by walking the directory tree rooted at basedir.  If recursive=False, just use images discovered in basedir"""
+    return [str(path.resolve()) for path in (pathlib.Path(basedir).rglob('*') if recursive else pathlib.Path(basedir).glob('*')) if isimage(str(path.resolve()))]
 
-def findimages(basedir):
+def findimages(basedir, recursive=True):
     """Alias for `vipy.util.findimage`"""
-    return findimage(basedir)
+    return findimage(basedir, recursive=recursive)
 
-def findvideo(basedir):
+def findvideo(basedir, recursive=True):
     """Return a list of absolute paths to video files recursively discovered by walking the directory tree rooted at basedir"""
-    return [str(path.resolve()) for path in pathlib.Path(basedir).rglob('*') if isvideo(str(path.resolve()))]
+    return [str(path.resolve()) for path in (pathlib.Path(basedir).rglob('*') if recursive else pathlib.Path(basedir).glob('*')) if isvideo(str(path.resolve()))]
 
 def findwebp(basedir):
     """Return a list of absolute paths to video files recursively discovered by walking the directory tree rooted at basedir"""
