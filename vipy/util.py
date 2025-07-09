@@ -325,9 +325,15 @@ def try_import(package, pipname=None, message=None):
             raise ImportError('Optional package "%s" not installed -  Run "pip install %s" or "pip install vipy[all]" ' % (package, package if pipname is None else pipname))
 
 
-def findyaml(basedir):
+def findext(basedir, ext, recursive=True):
+    """Return a list of absolute paths files with a given extension ext='*.ext' recursively discovered by walking the directory tree rooted at basedir"""
+    assert ext.startswith('*.')
+    return [str(path.resolve()) for path in (pathlib.Path(basedir).rglob(ext) if recursive else pathlib.Path(basedir).glob(ext))]
+        
+
+def findyaml(basedir, recursive=True):
     """Return a list of absolute paths to yaml files recursively discovered by walking the directory tree rooted at basedir"""
-    return [str(path.resolve()) for path in pathlib.Path(basedir).rglob('*.yml')]
+    return findext(basedir, ext='*.yaml', recursive=recursive)
 
 
 def findpkl(basedir):

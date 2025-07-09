@@ -429,6 +429,7 @@ class Image():
         
         This lambda function will be executed during load and the result will be stored in self._array
         """
+        (f,x) = (f,x) if not isinstance(f, tuple) else (f[0], f[1])  # to allow for self.loader(self._loader)
         self._loader = (f, x if x is not None else self.filename()) if f is not None else None
         return self
 
@@ -1999,6 +2000,11 @@ class ImageCategory(Labeled):
         return self.category() != other.category() if isinstance(other, ImageCategory) else True
 
     @classmethod
+    def cast(cls, im):
+        assert isinstance(im, vipy.image.Image), "Invalid input - must be derived from vipy.image.Image"
+        return cls(filename=im._filename, url=im._url, attributes=im.attributes, array=im._array, colorspace=im._colorspace).loader(im._loader)
+        
+    @classmethod
     def from_json(obj, s):
         d = json.loads(s) if not isinstance(s, dict) else s
         return cls(filename=d['filename'] if 'filename' in d else None,
@@ -2013,6 +2019,10 @@ class ImageCategory(Labeled):
     def new_category(self, c):
         return self.set_attribute('category', c)
 
+    def relabel(self):
+        log.info('Enter a new category name for this image')
+        return self.show().new_category(input('Category: '))
+    
     def clear_category(self):
         if 'category' in self.attributes:
             del self.attributes['category']
@@ -2195,7 +2205,7 @@ class Scene(TaggedImage):
     def cast(cls, im):
         assert isinstance(im, vipy.image.Image), "Invalid input - must be derived from vipy.image.Image"
         if im.__class__ != vipy.image.Scene:
-            return cls(filename=im._filename, url=im._url, attributes=im.attributes, array=im._array, colorspace=im._colorspace).loader(*im._loader)
+            return cls(filename=im._filename, url=im._url, attributes=im.attributes, array=im._array, colorspace=im._colorspace).loader(im._loader)
         return im
     
     @classmethod
@@ -2270,6 +2280,15 @@ class Scene(TaggedImage):
         assert isinstance(k, int), "Indexing by object in scene must be integer"
         return self.clone(shallow=True).objects([self._objectlist[k].clone()])
 
+    def relabel(self):
+        log.info('Enter a new category name for each object, enter|return for no change ...')
+        for (im,o) in zip(self, self.objects()):
+            im.show()
+            c = input('%s New category: ' % o)
+            if len(c)>0:
+                o.new_category(c)
+        return self
+    
     def image_tags(self, tags=None):
         """Return the image level tags of the scene"""
         return super().tags(tags)

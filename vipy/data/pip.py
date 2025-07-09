@@ -10,10 +10,7 @@ class PIP_175k(vipy.dataset.Dataset):
         jsonfile = os.path.join(datadir, 'pip_175k', 'pip_175k.json')
         if not os.path.exists(jsonfile):
 
-            if vipy.util.isinstalled('wget'):
-                os.system('wget --no-check-certificate --continue --tries=32 -O %s %s ' % (os.path.join(datadir, vipy.util.filetail(PIP_175k.URL)), PIP_175k.URL))  # server fails many times, need smart continue
-            else:
-                vipy.downloader.download_and_unpack(PIP_175k.URL, datadir, md5=PIP_370k_stabilized.MD5)  # downloader fails many times ...
+            vipy.downloader.download_and_unpack(PIP_175k.URL, datadir, md5=PIP_175k.MD5, tries=16)  # download fails repeatedly, keep trying
 
             if vipy.util.isinstalled('tar'):
                 vipy.globals.log.info('extracting %s -> %s' % (os.path.join(datadir, vipy.util.filetail(PIP_175k.URL)), datadir))
@@ -32,10 +29,7 @@ class PIP_370k_stabilized(vipy.dataset.Dataset):
         jsonfile = os.path.join(datadir, 'pip_370k', 'pip_370k.json')
 
         if not os.path.exists(jsonfile):        
-            if vipy.util.isinstalled('wget'):
-                os.system('wget --no-check-certificate --continue --tries=32 -O %s %s ' % (os.path.join(datadir, vipy.util.filetail(PIP_370k_stabilized.URL)), PIP_370k_stabilized.URL))  # server fails many times, need smart continue
-            else:
-                vipy.downloader.download_and_unpack(PIP_370k_stabilized.URL, datadir, md5=PIP_370k_stabilized.MD5)  # downloader fails many times ...
+            vipy.downloader.download_and_unpack(PIP_370k_stabilized.URL, datadir, md5=PIP_370k_stabilized.MD5, tries=16)  # download fails repeatedly, keep trying
 
             if vipy.util.isinstalled('tar'):                
                 vipy.globals.log.info('extracting %s -> %s' % (os.path.join(datadir, vipy.util.filetail(PIP_370k_stabilized.URL)), datadir))

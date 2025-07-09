@@ -219,68 +219,116 @@ def downloadif(url, output_filename, sha1):
     """Downloads file at `url` and write it in `output_filename` only if the file does not exist with the provided SHA1 hash"""    
     return output_filename if os.path.exists(output_filename) and verify_sha1(output_filename, sha1) else download(url=url, output_filename=output_filename, sha1=sha1)
 
-def download(url, output_filename, sha1=None, verbose=True, md5=None, timeout=None, username=None, password=None, progress=True):
-    """Downloads file at `url` and write it in `output_filename`"""
+def download(url, output_filename, sha1=None, verbose=True, md5=None, timeout=None, username=None, password=None, progress=True, continue_download=True, tries=3):
+    """Downloads file at `url` and write it in `output_filename` showing progress and continuing download from previous try, checking md4 or sha1 when done"""
     if timeout is None:
         timeout = 10
 
-    if username is None and password is None:
-        request = urllib.request.Request(url)
-        request.add_header('User-agent', 'vipy/%s (https://visym.com; info@visym.com)' % vipy.version.VERSION)  # https://meta.wikimedia.org/wiki/User-Agent_policy
-        page = urllib.request.urlopen(request, timeout=timeout)               
-    else:
-        request = urllib.request.Request(url)
-        base64string = base64.encodestring('%s:%s' % (username, password)).replace('\n', '')
-        request.add_header("Authorization", "Basic %s" % base64string)        
-        page = urllib.request.urlopen(request, timeout=timeout)
-
-    page_info = page.info()
-
-    output_file = open(premkdir(output_filename), 'wb+')  # will raise IOError exception on invalid permissions, parent directory not created
-
     # size of the download unit
     block_size = 2 ** 15
-    dl_size = 0
 
-    if verbose:
-        log.info("Downloading '%s' -> '%s'" % (url, output_filename))
+    # Retries
+    for t in range(tries):
+        # Server supports continue and there is a partial file?
+        downloaded_size = os.path.getsize(output_filename) if os.path.exists(output_filename) else 0
+        if continue_download == False or (downloaded_size % block_size != 0) or username is not None or password is not None:
+            downloaded_size = 0  # corrupted file or authentication required, start fresh
+        elif continue_download and downloaded_size>0:
+            try:
+                headers = {'User-agent': 'vipy/%s (https://visym.com; info@visym.com)' % vipy.version.VERSION,  # https://meta.wikimedia.org/wiki/User-Agent_policy         
+                           'Range': "bytes=0-0", # first byte only
+                           "Accept-Encoding": "identity"}              
+                req = urllib.request.Request(url, method='GET', headers=headers)  # some servers don't support HEAD
+                with urllib.request.urlopen(req, timeout=timeout) as r:
+                    accept_ranges = r.headers.get('Accept-Ranges')                                
+                    if r.status == 206 and "Content-Range" in r.headers:
+                        pass  # server supports it
+                    elif accept_ranges and accept_ranges.lower() != 'none':
+                        pass  # server supports it
+                    else:
+                        downloaded_size = 0  # server doesn't support it    
+            except:
+                downoaded_size = 0  # get first byte failed, start fresh
+            
+        if username is None and password is None:
+            request = urllib.request.Request(url)
+            request.add_header('User-agent', 'vipy/%s (https://visym.com; info@visym.com)' % vipy.version.VERSION)  # https://meta.wikimedia.org/wiki/User-Agent_policy
+            if downloaded_size > 0:
+                request.add_header('Range', f'bytes={downloaded_size}-')
+            page = urllib.request.urlopen(request, timeout=timeout)               
+        else:
+            request = urllib.request.Request(url)
+            base64string = base64.encodestring('%s:%s' % (username, password)).replace('\n', '')
+            request.add_header("Authorization", "Basic %s" % base64string)
+            if downloaded_size > 0:
+                request.add_header('Range', f'bytes={downloaded_size}-')        
+            page = urllib.request.urlopen(request, timeout=timeout)
 
-    # display progress only if we know the length
-    if 'content-length' in page_info:
-        # file size in Kilobytes
-        file_size = int(page_info['content-length']) / 1024.
-        while True:
-            buffer = page.read(block_size)
-            if not buffer:
-                break
-            dl_size += block_size / 1024
-            output_file.write(buffer)
-            percent = min(100, 100. * dl_size / file_size)
-            status = r"Progress: %10d KB [%4.1f%%]" % (dl_size, percent)
-            status = status + chr(8) * (len(status) )
+        page_info = page.info()
+
+        if downloaded_size == 0:
+            output_file = open(premkdir(output_filename), 'wb+')  # will raise IOError exception on invalid permissions, parent directory not created
+        else:
+            output_file = open(premkdir(output_filename), 'ab+')  # open for appending, continue download
+        
+        dl_size = downloaded_size / 1024
+
+        if verbose:
+            if downloaded_size > 0:
+                log.info("Continuing download '%s' -> '%s'" % (url, output_filename))        
+            else:
+                log.info("Downloading '%s' -> '%s'" % (url, output_filename))
+    
+        
+        # display progress only if we know the length
+        if 'content-length' in page_info:
+            # file size in Kilobytes
+            file_size = (float(page_info['content-length']) + downloaded_size) / 1024
+
+            while True:
+                buffer = page.read(block_size)
+                if not buffer:
+                    break
+                elif (len(buffer) != block_size) and ((len(buffer) / 1024)+dl_size) != file_size:
+                    break  # buffer truncated and not end of file, don't write this so that we can restart
+                dl_size += len(buffer) / 1024
+                output_file.write(buffer)
+                percent = min(100, 100. * dl_size / file_size)
+                status = r"Progress: %10d KB [%4.1f%%]" % (dl_size, percent)
+                status = status + chr(8) * (len(status) )
+                if progress:
+                    print(status, end='')  # space instead of newline
+                    sys.stdout.flush()
             if progress:
-                print(status, end='')  # space instead of newline
-                sys.stdout.flush()
-        if progress:
-            print(' '*len(status) + chr(8) * (len(status) ), end='') # erase line
+                print(' '*len(status) + chr(8) * (len(status) ), end='') # erase line
+
+            if dl_size != file_size:
+                if t == tries-1:
+                    output_file.close()
+                    raise ValueError('File download error')
+                else:
+                    output_file.close()
+                    log.warning('File download error - retrying ... ')
+            else:
+                break  # success
+        else:
+            while True:
+                buffer = page.read(block_size)
+                if not buffer:
+                    break
+                dl_size += block_size / 1024
+                output_file.write(buffer)
+                # percent = min(100, 100. * dl_size / file_size)
+                status = r"Progress: %10d KB" % (dl_size)
+                status = status + chr(8) * (len(status) )
+                if progress:
+                    print(status, end='')  # space instead of newline
+                    sys.stdout.flush()
+            if progress:
+                print(' '*len(status) + chr(8) * (len(status) ), end='') # erase line
                 
-    else:
-        while True:
-            buffer = page.read(block_size)
-            if not buffer:
-                break
-            dl_size += block_size / 1024
-            output_file.write(buffer)
-            # percent = min(100, 100. * dl_size / file_size)
-            status = r"Progress: %10d KB" % (dl_size)
-            status = status + chr(8) * (len(status) )
-            if progress:
-                print(status, end='')  # space instead of newline
-                sys.stdout.flush()
-        if progress:
-            print(' '*len(status) + chr(8) * (len(status) ), end='') # erase line            
-        # output_file.write(page.read())
-
+            break  # no length, don't know if it was complete or not
+            
     output_file.close()
 
     if sha1 is not None:
@@ -329,7 +377,7 @@ def unpack(archive_filename, output_dirname, sha1=None, verbose=True, passwd=Non
             raise
 
 
-def download_and_unpack(url, output_dirname, sha1=None, verbose=True, md5=None, passwd=None, progress=True):
+def download_and_unpack(url, output_dirname, sha1=None, verbose=True, md5=None, passwd=None, progress=True, tries=1):
     """Downloads and extracts archive in `url` into `output_dirname`.
 
     Note that `output_dirname` has to exist and won't be created by this
@@ -337,7 +385,7 @@ def download_and_unpack(url, output_dirname, sha1=None, verbose=True, md5=None, 
     """
     archive_basename = path.basename(url)
     archive_filename = path.join(output_dirname, archive_basename)
-    download(url, archive_filename, sha1=sha1, verbose=verbose, md5=md5, progress=progress)
+    download(url, archive_filename, sha1=sha1, verbose=verbose, md5=md5, progress=progress, tries=tries)
     unpack(archive_filename, output_dirname, passwd=passwd, progress=progress, verbose=verbose, sha1=sha1)
 
 

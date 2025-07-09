@@ -3,14 +3,15 @@ import numpy as np
 import json
 import io
 
+from vipy.downloader import download_and_unpack
 from vipy.dataset import Dataset
 from vipy.image import ImageCategory, TaggedImage, Scene, Image
-from vipy.util import try_import, readjson, tocache, cache, flatlist
+from vipy.util import try_import, readjson, tocache, cache, flatlist, filebase
 from vipy.object import Detection
 
 
 # Huggingface datasets
-try_import('datasets');
+try_import('datasets'); import datasets
 from datasets import load_dataset
 from datasets import Image as HFImage
 
@@ -215,6 +216,18 @@ def wakevision():
     ds = load_dataset("Harvard-Edge/Wake-Vision")
 
     loader = lambda r: ImageCategory(category='person' if r['person']==1 else 'non-person', attributes={k:v for (k,v) in r.items() if k not in ['image']}).loader(Image.PIL_loader, r['image'])
-    return (Dataset(ds['train'], id='wakevision:train', loader=loader),
+    return (Dataset(ds['train_quality'], id='wakevision:train', loader=loader),
             Dataset(ds['validation'], id='wakevision:val', loader=loader),
             Dataset(ds['test'], id='wakevision:test', loader=loader))            
+
+
+def rasmd():
+    """https://huggingface.co/datasets/STL-Yonsei/RASMD/"""
+    outdir = os.path.join(datasets.config.HF_DATASETS_CACHE, 'rasmd')
+    if not os.path.isdir(os.path.join(outdir, 'RASMD_DATASET')):
+        download_and_unpack('https://huggingface.co/datasets/STL-Yonsei/RASMD/resolve/main/RASMD_aligned.zip', outdir)
+    D = Dataset.from_directory(outdir, filetype='images')
+    swir = {int(filebase(im.filename()).split('_')[-1]):im for im in D.clone().filter(lambda im: 'swir/' in im.filename())}
+    rgb = {int(filebase(im.filename()).split('_')[-1]):im for im in D.clone().filter(lambda im: 'rgb/' in im.filename())}    
+    return Dataset([(ImageCategory.cast(swir[k]).new_category('swir_original'),
+                     ImageCategory.cast(rgb[k]).new_category('rgb_aligned')) for k in rgb.keys()], id='rasmd_aligned')
