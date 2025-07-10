@@ -955,16 +955,16 @@ class Image():
         """Convert the batch of 1 HxWxC images to a CxHxW torch tensor.
 
         Args:
-            order: ['CHW', 'HWC', 'NCHW', 'NHWC'].  The axis order of the torch tensor (channels, height, width) or (height, width, channels) or (1, channels, height, width) or (1, height, width, channels)
+            order: ['CHW', 'HWC', 'NCHW', 'NHWC', 'ND'].  The axis order of the torch tensor (channels, height, width) or (height, width, channels) or (1, channels, height, width) or (1, height, width, channels)
 
         Returns:
-            A CxHxW or HxWxC or 1xCxHxW or 1xHxWxC [torch tensor](https://pytorch.org/docs/stable/tensors.html) that shares the pixel buffer of this image object by reference.
+            A CxHxW or HxWxC or 1xCxHxW or 1xHxWxC or 1xC*H*W [torch tensor](https://pytorch.org/docs/stable/tensors.html) that shares the pixel buffer of this image object by reference.
 
         .. note:: This supports numpy types and does not support bfloat16
         """
         from torch import from_numpy;  # optional package pytorch not installed, run "pip install torch" (don't use try_import here, it's too slow)
         
-        assert order in ['CHW', 'HWC', 'NCHW', 'NHWC']
+        assert order in ['CHW', 'HWC', 'NCHW', 'NHWC', 'ND']
         img = self.numpy() if self.array().ndim >= 3 else np.expand_dims(self.numpy(), 2)  # HxW -> HxWx1 
         
         if order in ['CHW']:
@@ -972,8 +972,10 @@ class Image():
             img = img.transpose(2,0,1) # HxWxC -> CxHxW
         elif order in ['NCHW']:
             img = img.transpose(3,2,0,1) if img.ndim == 4 else np.expand_dims(img.transpose(2,0,1), 0)
-        if order in ['NHWC']:
+        elif order in ['NHWC']:
             img = img.transpose(3,0,1,2) if img.ndim == 4 else np.expand_dims(img, 0)
+        elif order in ['ND']: 
+            img = (img.transpose(3,2,0,1) if img.ndim == 4 else np.expand_dims(img.transpose(2,0,1), 0)).reshape(1,-1) # HxWxC -> 1xCxHxW -> 1xCHW
         return from_numpy(img)   # pip install torch
 
     
@@ -1895,7 +1897,7 @@ class Image():
             - To retain boxes, use self.face_detection().blurmask()
         """
         im = self.face_detection(mindim=mindim)  # only faces
-        return im.setattribute('face_blur', [o.int().json(encode=False) for o in im.objects()]).blurmask(radius=radius).downcast()
+        return im.setattribute('face_blur', [o.int().json(encode=False) for o in im.objects()]).blur_mask(radius=radius).downcast()
 
     def face_pixelize(self, radius=7, mindim=256):
         """Replace pixels for all detected faces with `vipy.image.Scene.pixelize`, add locations of detected faces into attributes.
@@ -1947,6 +1949,8 @@ class Image():
         """        
         return self.padcrop(self.imagebox().centroid(p))
 
+
+        
     
 class Labeled(Image):
     """A labeled image is an image that contains some form of annotation.  This class is useful for identifying if an image has any annotatation at all or is completely unlabeled.
@@ -2581,13 +2585,24 @@ class Scene(TaggedImage):
                 immask[mask>0] = 1
         return immask
 
-    def binarymask(self):
+    def binary_mask(self):
         """Alias for rectangular_mask with in-place update"""
         mask = self.rectangular_mask() if self.channels() == 1 else np.expand_dims(self.rectangular_mask(), axis=2)
         img = self.numpy()
         img[:] = mask[:]  # in-place update
         return self
-        
+
+    def alpha_mask(self, alpha):
+        """Convex combination of binary_mask and inverse_binary_mask.  If alpha=0, binary_mask, if alpha=1, inverse_binary_mask"""
+        assert alpha>=0 and alpha<=1, "invalid alpha"
+        im = self.clone().binary_mask()
+        im._array = (1-alpha)*im._array + alpha*(1-im._array)
+        return im
+
+    def inverse_binary_mask(self):
+        """(1-vipy.image.Image.binary_mask`)"""
+        return self.alpha_mask(alpha=1)
+    
     def bgmask(self):
         """Set all pixels outside object bounding boxes to zero"""
         mask = self.rectangular_mask() if self.channels() == 1 else np.expand_dims(self.rectangular_mask(), axis=2)
@@ -2602,7 +2617,7 @@ class Scene(TaggedImage):
         img[:] = np.multiply(img, 1.0-mask)  # in-place update
         return self
     
-    def pixelmask(self, pixelsize=8):
+    def pixel_mask(self, pixelsize=8):
         """Replace pixels within all foreground objects with a privacy preserving pixelated foreground with larger pixels (e.g. like privacy glass)"""
         assert pixelsize > 1, "Pixelsize is a scale factor such that pixels within the foreground are pixelsize times larger than the background"
         (img, mask) = (self.numpy(), self.rectangular_mask())  # force writeable
@@ -2611,24 +2626,30 @@ class Scene(TaggedImage):
 
     def pixelize(self, radius=16):
         """Alias for pixelmask"""
-        return self.pixelmask(pixelsize=radius)
+        return self.pixel_mask(pixelsize=radius)
     def pixelate(self, radius=16):
         """Alias for pixelmask"""
-        return self.pixelmask(pixelsize=radius)
+        return self.pixel_mask(pixelsize=radius)
         
     
-    def blurmask(self, radius=7):
+    def blur_mask(self, radius=7):
         """Replace pixels within all foreground objects with a privacy preserving blurred foreground"""
         (img, mask) = (self.numpy(), self.rectangular_mask())  # force writeable
         img[mask > 0] = self.clone().blur(radius).numpy()[mask > 0]  # in-place update
         return self
 
-    def blurmask_only(self, categories, radius=7):
+    def inverse_blur_mask(self, radius=7):
+        """Replace pixels outwide all foreground objects with a privacy preserving blurred background"""
+        (img, mask) = (self.numpy(), 1-self.rectangular_mask())  # force writeable
+        img[mask > 0] = self.clone().blur(radius).numpy()[mask > 0]  # in-place update
+        return self
+    
+    def blur_mask_only(self, categories, radius=7):
         """Replace pixels within all foreground objects with specified category with a privacy preserving blurred foreground"""
         assert radius > 1, "Pixelsize is a scale factor such that pixels within the foreground are pixelsize times larger than the background"
 
         objects = self.objects()
-        return self.clone().objects([o for o in objects if o.category() in categories]).blurmask(radius=radius).objects(objects)
+        return self.clone().objects([o for o in objects if o.category() in categories]).blur_mask(radius=radius).objects(objects)
     
     def replace(self, newim, broadcast=False):
         """Set all image values within the bounding box equal to the provided img, triggers load() and imclip()"""
@@ -2642,12 +2663,18 @@ class Scene(TaggedImage):
                                                       int(d.xmin()):int(d.xmax())] if not broadcast else newim.clone().resize(int(d.width()), int(d.height())).array()
         return self
     
-    def meanmask(self):
+    def mean_mask(self):
         """Replace pixels within the foreground objects with the mean pixel color"""
         img = self.numpy()  # force writeable
         img[self.rectangular_mask() > 0] = self.meanchannel()  # in-place update
         return self
 
+    def inverse_mean_mask(self):
+        """Replace pixels outside the foreground objects with the mean pixel color"""
+        img = self.numpy()  # force writeable
+        img[(1-self.rectangular_mask()) > 0] = self.meanchannel()  # in-place update
+        return self
+    
     
     def perceptualhash(self, bits=128, asbinary=False, asbytes=False, objmask=False):
         """Perceptual differential hash function.
@@ -2673,7 +2700,7 @@ class Scene(TaggedImage):
         allowablebits = [2*k*k for k in range(2, 17)]
         assert bits in allowablebits, "Bits must be in %s" % str(allowablebits)
         sq = int(np.ceil(np.sqrt(bits/2.0)))
-        im = self.clone() if not objmask else self.clone().meanmask()        
+        im = self.clone() if not objmask else self.clone().mean_mask()        
         b = (np.dstack(np.gradient(im.resize(cols=sq+1, rows=sq+1).greyscale().numpy()))[0:-1, 0:-1] > 0).flatten()
         return bytes(np.packbits(b)).hex() if not (asbytes or asbinary) else bytes(np.packbits(b)) if asbytes else b
 

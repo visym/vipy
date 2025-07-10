@@ -4184,23 +4184,23 @@ class Scene(Video):
         from vipy.flow import Flow  # requires opencv
         return Flow(flowdim=256, gpu=gpu).stabilize(self.clone(), residual=True, strict=True, padheightfrac=padheightfrac, padwidthfrac=padwidthfrac, padheightpx=padheightpx, padwidthpx=padwidthpx, outfile=outfile)
     
-    def pixelmask(self, pixelsize=8):
+    def pixel_mask(self, pixelsize=8):
         """Replace all pixels in foreground boxes with pixelation (e.g. bigger pixels, like privacy glass)"""
         for im in self.mutable():  # convert to writeable numpy array, triggers writeable copy          
-            im.pixelmask(pixelsize)  # shared numpy array
+            im.pixel_mask(pixelsize)  # shared numpy array
         return self
 
     def pixelize(self, radius=16):
         """Alias for pixelmask()"""
-        return self.pixelmask(pixelsize=radius)
+        return self.pixel_mask(pixelsize=radius)
     def pixelate(self, radius=16):
         """Alias for pixelmask()"""
-        return self.pixelmask(pixelsize=radius)
+        return self.pixel_mask(pixelsize=radius)
     
-    def binarymask(self):
+    def binary_mask(self):
         """Replace all pixels in foreground boxes with white, zero in background"""
         for im in self.mutable():  # convert to writeable numpy array, triggers writeable copy  
-            im.binarymask()  # shared numpy array
+            im.binary_mask()  # shared numpy array
         return self
 
     def asfloatmask(self, fg=1.0, bg=0.0):
@@ -4214,10 +4214,10 @@ class Scene(Video):
                     array[k, int(round(bb._ymin)):int(round(bb._ymax)), int(round(bb._xmin)):int(round(bb._xmax))] = fg   # does not need imclip
         return vipy.video.Video(array=array, framerate=self.framerate(), colorspace='float')
     
-    def meanmask(self):
+    def mean_mask(self):
         """Replace all pixels in foreground boxes with mean color"""
         for im in self.mutable():  # convert to writeable numpy array, triggers writeable copy                  
-            im.meanmask()  # shared numpy array
+            im.mean_mask()  # shared numpy array
         return self
 
     def fgmask(self):
@@ -4226,14 +4226,14 @@ class Scene(Video):
             im.fgmask()  # shared numpy array
         return self
 
-    def zeromask(self):
+    def zero_mask(self):
         """Alias for fgmask"""
         return self.fgmask()
     
-    def blurmask(self, radius=7):
+    def blur_mask(self, radius=7):
         """Replace all pixels in foreground boxes with gaussian blurred foreground"""
         for im in self.mutable():  # convert to writeable numpy array, triggers writeable copy                                  
-            im.blurmask(radius)  # shared numpy array
+            im.blur_mask(radius)  # shared numpy array
         return self
 
     def downcast(self):

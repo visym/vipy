@@ -18,7 +18,7 @@ import base64
 from urllib.request import urlopen
 from os import path
 import hashlib
-from vipy.util import isfile, try_import
+from vipy.util import isfile, try_import, hidden_cursor
 import os
 import tarfile
 import zipfile
@@ -223,10 +223,11 @@ def download(url, output_filename, sha1=None, verbose=True, md5=None, timeout=No
     """Downloads file at `url` and write it in `output_filename` showing progress and continuing download from previous try, checking md4 or sha1 when done"""
     if timeout is None:
         timeout = 10
-
+    
     # size of the download unit
     block_size = 2 ** 15
 
+    
     # Retries
     for t in range(tries):
         # Server supports continue and there is a partial file?
@@ -281,54 +282,55 @@ def download(url, output_filename, sha1=None, verbose=True, md5=None, timeout=No
     
         
         # display progress only if we know the length
-        if 'content-length' in page_info:
-            # file size in Kilobytes
-            file_size = (float(page_info['content-length']) + downloaded_size) / 1024
+        with hidden_cursor():
+            if 'content-length' in page_info:
+                # file size in Kilobytes
+                file_size = (float(page_info['content-length']) + downloaded_size) / 1024
 
-            while True:
-                buffer = page.read(block_size)
-                if not buffer:
-                    break
-                elif (len(buffer) != block_size) and ((len(buffer) / 1024)+dl_size) != file_size:
-                    break  # buffer truncated and not end of file, don't write this so that we can restart
-                dl_size += len(buffer) / 1024
-                output_file.write(buffer)
-                percent = min(100, 100. * dl_size / file_size)
-                status = r"Progress: %10d KB [%4.1f%%]" % (dl_size, percent)
-                status = status + chr(8) * (len(status) )
+                while True:
+                    buffer = page.read(block_size)
+                    if not buffer:
+                        break
+                    elif (len(buffer) != block_size) and ((len(buffer) / 1024)+dl_size) != file_size:
+                        break  # buffer truncated and not end of file, don't write this so that we can restart
+                    dl_size += len(buffer) / 1024
+                    output_file.write(buffer)
+                    percent = min(100, 100. * dl_size / file_size)
+                    status = r"Progress: %10d KB [%4.1f%%]" % (dl_size, percent)
+                    status = status + chr(8) * (len(status) )
+                    if progress:
+                        print(status, end='')  # space instead of newline
+                        sys.stdout.flush()
                 if progress:
-                    print(status, end='')  # space instead of newline
-                    sys.stdout.flush()
-            if progress:
-                print(' '*len(status) + chr(8) * (len(status) ), end='') # erase line
+                    print(' '*len(status) + chr(8) * (len(status) ), end='') # erase line
 
-            if dl_size != file_size:
-                if t == tries-1:
-                    output_file.close()
-                    raise ValueError('File download error')
+                if dl_size != file_size:
+                    if t == tries-1:
+                        output_file.close()
+                        raise ValueError('File download error')
+                    else:
+                        output_file.close()
+                        log.warning('File download error - retrying ... ')
                 else:
-                    output_file.close()
-                    log.warning('File download error - retrying ... ')
+                    break  # success
             else:
-                break  # success
-        else:
-            while True:
-                buffer = page.read(block_size)
-                if not buffer:
-                    break
-                dl_size += block_size / 1024
-                output_file.write(buffer)
-                # percent = min(100, 100. * dl_size / file_size)
-                status = r"Progress: %10d KB" % (dl_size)
-                status = status + chr(8) * (len(status) )
+                while True:
+                    buffer = page.read(block_size)
+                    if not buffer:
+                        break
+                    dl_size += block_size / 1024
+                    output_file.write(buffer)
+                    # percent = min(100, 100. * dl_size / file_size)
+                    status = r"Progress: %10d KB" % (dl_size)
+                    status = status + chr(8) * (len(status) )
+                    if progress:
+                        print(status, end='')  # space instead of newline
+                        sys.stdout.flush()
                 if progress:
-                    print(status, end='')  # space instead of newline
-                    sys.stdout.flush()
-            if progress:
-                print(' '*len(status) + chr(8) * (len(status) ), end='') # erase line
+                    print(' '*len(status) + chr(8) * (len(status) ), end='') # erase line
                 
-            break  # no length, don't know if it was complete or not
-            
+                break  # no length, don't know if it was complete or not
+
     output_file.close()
 
     if sha1 is not None:
@@ -475,18 +477,19 @@ class ExtractInterface(object):
     def extract(self, output_dirname, progress=True):
         members = self.get_members()
         n_members = len(members)
-        for mi, member in enumerate(members):
-            self._archive.extract(member, path=output_dirname)
-            extracted = mi + 1
+
+        with hidden_cursor():
+            for mi, member in enumerate(members):
+                self._archive.extract(member, path=output_dirname)
+                extracted = mi + 1
+                if progress:
+                    status = (r"Progress: %10i files [%4.1f%%]"
+                              % (extracted, extracted * 100. / n_members))
+                    status += chr(8) * (len(status) )
+                    print(status, end='')
+                    sys.stdout.flush()
             if progress:
-                status = (r"Progress: %10i files [%4.1f%%]"
-                          % (extracted, extracted * 100. / n_members))
-                status += chr(8) * (len(status) )
-                print(status, end='')
-                sys.stdout.flush()
-        if progress:
-            print(' '*len(status) + chr(8) * (len(status) ), end='') # erase line                        
-                
+                print(' '*len(status) + chr(8) * (len(status) ), end='') # erase line                        
                 
 class TarArchive(ExtractInterface, BaseArchive):
     def __init__(self, filename, passwd=None):

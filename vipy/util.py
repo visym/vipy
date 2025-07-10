@@ -29,6 +29,8 @@ import copy
 import bz2
 import random
 import gc
+import contextlib
+import platform
 
 from vipy.globals import log
 
@@ -43,6 +45,7 @@ try:
     import dill as default_pickle
 except:
     import pickle as default_pickle
+
     
 def class_registry():
     """Return a dictionary mapping str(type(obj)) to a JSON loader for all vipy objects.
@@ -1964,3 +1967,26 @@ def escape_string_for_innerHTML(s, escape=(('\n','<br>'),('{',"&#123;"),('}','&#
         s = s.replace(c,e)
     return s
     
+
+@contextlib.contextmanager
+def hidden_cursor(stream=sys.stdout):
+    """Context‐manager that hides the cursor *only* when the stream is a TTY.  Should work just about everywhere, disabled in jupyter notebooks"""
+
+    HIDE_CURSOR = "\x1b[?25l"  # ansi escape sequence
+    SHOW_CURSOR = "\x1b[?25h"  # ansi escape sequence
+
+    # -------- Windows VT enablement (runs only once) --------
+    if platform.system() == "Windows" and not getattr(hidden_cursor, "_vt_ready", False):
+        os.system("")                      # enable virtual-terminal processing
+        hidden_cursor._vt_ready = True
+    # -------------------------------------------------------
+
+    try:
+        if stream.isatty():
+            stream.write(HIDE_CURSOR)
+            stream.flush()
+        yield
+    finally:
+        if stream.isatty():
+            stream.write(SHOW_CURSOR)
+            stream.flush()

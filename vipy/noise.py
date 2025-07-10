@@ -155,6 +155,53 @@ def zoom(im, s, zx=None, zy=None, border='zero'):
 
 
 # <PHOTOMETRIC>
+def mask(im, num_masks=1, xywh_range=((0.1,0.9),(0,1,0.9),(0.3,0.5),(0.3,0.5)), mask_type='zeros', radius=7):
+    """Introduce one or more rectangular masks filled by mask_type.
+
+    The position and size of masks are uniformly sampled from the provided range of xywh = (xmin, ymin, width, height)
+    
+    xywh_range = ((xmin_lowerbound, xmin_upperbound), (ymin_lb,ymin_ub), (width_lb,width_ub), (height_lb,height_ub))) relative to the normalized height and width
+
+    Allowable mask_types = ['zeros', 'inverse_zeros', 'mean', 'blur', 'pixelize', 'inverse_mean', 'inverse_blur']
+    
+    - zeros: all masks are replaced with zeros
+    - inverse_zeros: all pixels outside masks are replaced with zeros
+    - mean: all pixels inside masks are replaced with the mean pixel
+    - inverse_mean: all pixels outside masks are replaced with the mean pixel    
+    - blur: all pixels inside masks are replaced with blurred pixels with a given gaussian radius
+    - inverse_blur: all pixels outside masks are replaced with blurred pixels with a given gaussian radius
+    - pixelize: all pixels inside masks are replaced with low resolution pixels with a given downscale pixel radius
+
+    Radius is specific to blur and pixelize masks only and ignored for others
+    """
+    (H,W) = (im.height(), im.width())
+    masks = [vipy.object.Detection(category='mask%d' % k,
+                                   xmin=np.random.randint(xywh_range[0][0]*W, xywh_range[0][1]*W),
+                                   ymin=np.random.randint(xywh_range[1][0]*H, xywh_range[1][1]*H),
+                                   width=np.random.randint(xywh_range[2][0]*W, xywh_range[2][1]*W),
+                                   height=np.random.randint(xywh_range[3][0]*H, xywh_range[3][1]*H))
+             for k in range(num_masks)]
+    im = vipy.image.Scene.cast(im.clone()).objects(masks)
+
+    if mask_type == 'zeros':
+        im = im.fgmask()
+    elif mask_type == 'inverse_zeros':
+        im = im.bgmask()
+    elif mask_type == 'mean':
+        im = im.mean_mask()
+    elif mask_type == 'inverse_mean':
+        im = im.inverse_mean_mask()
+    elif mask_type == 'blur':
+        im = im.blur_mask(radius=radius)
+    elif mask_type == 'inverse_blur':
+        im = im.inverse_blur_mask(radius=radius)
+    elif mask_type in ['pixel', 'pixelize', 'pixelate']:
+        im = im.pixel_mask(radius=radius)
+    else:
+        raise ValueError("unknown mask type '%s'" % mask_type)
+    return im
+
+
 def blur(im, sigma):
     assert isinstance(im, vipy.image.Image)
     imblur = im.rgb().blur(sigma=sigma*im.mindim())
