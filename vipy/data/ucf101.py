@@ -14,15 +14,13 @@ class UCF101(Dataset):
         self.datadir = remkdir(datadir)
 
         if not os.path.exists(os.path.join(datadir, filetail(URL))):
-            if not isinstalled('wget'):
-                raise ValueError('Downloading requires the wget utility on the command line.  On Ubuntu: "sudo apt install wget"')                
-            os.system('wget --no-check-certificate --continue --tries=32 -O %s %s ' % (os.path.join(self.datadir, filetail(URL)), URL))  # server fails many times, need smart continue
+            vipy.downloader.download(URL, os.path.join(self.datadir, filetail(URL)), tries=32)  # server fails many times, need smart continue
         if not len(vipy.util.videolist(datadir)) > 1:
             if not isinstalled('unrar'):
-                raise ValueError('Unpacking requires the unrar utility on the command line.  On Ubuntu: "sudo apt install unrar"')
+                raise ValueError('Unpacking requires the unrar utility on the command line.  On Ubuntu: "sudo apt install unrar", on macos "brew install rar"')
             os.system('unrar e %s %s' % (os.path.join(self.datadir, filetail(URL)), self.datadir))
             
-        super().__init__([VideoCategory(filename=f, category=filetail(f).split('_')[1]) for f in vipy.util.videolist(self.datadir)], 'ucf101')
+        super().__init__([VideoCategory(filename=f, category=filetail(f).split('_')[1]).instanceid(f'ucf101:{k}') for (k,f) in enumerate(vipy.util.videolist(self.datadir))], 'ucf101')
 
     def as_space_separated_category(self):
         return self.map(lambda im: im.new_category(UCF101.to_space_separated_category(im.category())))

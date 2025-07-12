@@ -34,17 +34,22 @@ class ActivityNet():
         jsonfile = os.path.join(self.datadir, filetail(URL))
         json = readjson(jsonfile)
 
-        return [(v['url'],
-                 os.path.join(self.datadir, youtubeid),
-                 a['label'],
-                 float(a['segment'][0]),
-                 float(a['segment'][1]))
-                for (youtubeid, v) in json['database'].items()
-                for a in v['annotations']
-                if v['subset'] == subset]
+        k = 0
+        videolist = []
+        for (youtubeid, v) in json['database'].items():
+            if v['subset'] == subset:                            
+                for a in v['annotations']:
+                    videolist.append( (v['url'],
+                                       os.path.join(self.datadir, youtubeid),
+                                       a['label'],
+                                       float(a['segment'][0]),
+                                       float(a['segment'][1]),
+                                       f'activitynet:{subset}:{k}'))
+                    k += 1
+        return videolist
 
     def trainset(self):
-        loader = lambda x: VideoCategory(url=x[0], filename=x[1], category=x[2], startsec=x[3], endsec=x[4], framerate=None)
+        loader = lambda x: VideoCategory(url=x[0], filename=x[1], category=x[2], startsec=x[3], endsec=x[4], framerate=None).instanceid(x[5])
         return vipy.dataset.Dataset(self._dataset('training'), id='activitynet:train', loader=loader)
 
     def testset(self):
@@ -55,7 +60,7 @@ class ActivityNet():
         return vipy.dataset.Dataset([(v['url'], os.path.join(self.datadir, youtubeid)) for (youtubeid, v) in json['database'].items() if v['subset'] == 'testing'], id='activitynet:test', loader=loader)
 
     def valset(self):
-        loader = lambda x: VideoCategory(url=x[0], filename=x[1], category=x[2], startsec=x[3], endsec=x[4], framerate=None)
+        loader = lambda x: VideoCategory(url=x[0], filename=x[1], category=x[2], startsec=x[3], endsec=x[4], framerate=None).instanceid(x[5])
         return vipy.dataset.Dataset(self._dataset('validation'), id='activitynet:val', loader=loader)
         
     def categories(self):

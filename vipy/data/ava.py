@@ -34,7 +34,7 @@ class AVA(object):
     def _isdownloaded(self):
         return os.path.exists(os.path.join(self.datadir, 'ava_train_v2.2.csv'))
     
-    def _dataset(self, csvfile, downloaded=False, verbose=False):
+    def _dataset(self, csvfile, split, downloaded=False, verbose=False):
         # AVA csv format: video_id, middle_frame_timestamp, scaled_person_box (xmin, ymin, xmax, ymax), action_id, person_id
 
         # video_id: YouTube identifier
@@ -88,7 +88,8 @@ class AVA(object):
 
             start = float(max(0, (min([float(x[1]) for x in rowlist])-1.5)))
             end = float(max([float(x[1]) for x in rowlist])+1.5)
-            v = v.clip(start, end)                
+            v = v.clip(start, end)
+            v = v.instanceid('ava:%s:%d' % (split, k_video))
             vidlist.append(v)
         return vidlist
 
@@ -107,9 +108,9 @@ class AVA(object):
         return d_category_to_index
 
     def trainset(self):
-        return Dataset(self._dataset(os.path.join(self.datadir, 'ava_train_v2.2.csv')), id='ava:train')
-
+        return Dataset(self._dataset(os.path.join(self.datadir, 'ava_train_v2.2.csv'), 'train'), id='ava:train')
+    
     def valset(self):
-        return Dataset(self._dataset(os.path.join(self.datadir, 'ava_val_v2.2.csv')), id='ava:val')
+        return Dataset(self._dataset(os.path.join(self.datadir, 'ava_val_v2.2.csv'), 'val'), id='ava:val')
 
     

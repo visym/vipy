@@ -29,13 +29,14 @@ class Kinetics700():
     def _dataset(self, jsonfile, id=None):
         assert self.isdownloaded(), "Dataset not downloaded.  download() first or manually download '%s' to '%s' and unpack the tarball there" % (self._url, self.datadir)
 
-        loader = lambda x: VideoCategory(url=x[0], filename=x[1], category=x[2], startsec=x[3], endsec=x[4])
+        loader = lambda x: VideoCategory(url=x[0], filename=x[1], category=x[2], startsec=x[3], endsec=x[4]).instanceid(x[5])
         return vipy.dataset.Dataset([(v['url'],
                                       os.path.join(self.datadir, self._name, youtubeid),
                                       v['annotations']['label'],
                                       float(v['annotations']['segment'][0]),
-                                      float(v['annotations']['segment'][1]))
-                                     for (youtubeid, v) in readjson(jsonfile).items()], loader=loader, id=id)
+                                      float(v['annotations']['segment'][1]),
+                                      f'{id}:{k}')
+                                     for (k,(youtubeid, v)) in enumerate(readjson(jsonfile).items())], loader=loader, id=id)
 
     def trainset(self):
         return self._dataset(os.path.join(self.datadir, self._name, 'train.json'), self._name + ':train')

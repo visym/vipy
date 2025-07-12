@@ -1090,6 +1090,30 @@ class Image():
         else:
             raise ValueError('No URI defined')
 
+        
+    def instanceid(self, iid=None, n=None):
+        """Return an instance id of the image object.  Once created, this instance id is cached in attributes and subsequent calls to instanceid will return the same globally unique string.
+
+           Args:
+              n [int|None]: if integer, create and persist a new short uuid of length n.  If none, return the last persisted instanceid
+              iid [str|None]: if string, create and persist this as a new instance id.  If none, return the last persisted instanceid
+           Returns:
+              the persisted uuid string of length n
+        
+           This is useful for uniquely identifying images across dataset shuffles, when dataset index may be unreliable
+           A common use case is a dataset of images, where each image has an instanceid, which can be used to filter or select instances
+           Instance id use `vipy.util.shortuuid` which includes 62 upper|lower|digits, with a collision probability of 1/62^n
+
+        .. notes:: This instanceid is persistent, but not deterministic.  Image objects containing the same image may have different instance ids.  
+        """
+        if n is not None:
+            self.attributes['instanceid'] = shortuuid(n)
+            return self
+        if iid is not None:
+            self.attributes['instanceid'] = iid
+            return self
+        return self.get_attribute('instanceid')
+        
     def set_attribute(self, key, value):
         """Set element self.attributes[key]=value"""
         if self.attributes is None:
@@ -1897,7 +1921,7 @@ class Image():
             - To retain boxes, use self.face_detection().blurmask()
         """
         im = self.face_detection(mindim=mindim)  # only faces
-        return im.setattribute('face_blur', [o.int().json(encode=False) for o in im.objects()]).blur_mask(radius=radius).downcast()
+        return vipy.image.Image.cast(im.setattribute('face_blur', [o.int().json(encode=False) for o in im.objects()]).blur_mask(radius=radius))
 
     def face_pixelize(self, radius=7, mindim=256):
         """Replace pixels for all detected faces with `vipy.image.Scene.pixelize`, add locations of detected faces into attributes.
@@ -1915,7 +1939,7 @@ class Image():
             - To retain boxes, use self.face_detection().pixelize()
         """
         im = self.face_detection(mindim=mindim)          
-        return im.setattribute('face_pixelize', [o.int().json(encode=False) for o in im.objects()]).pixelize(radius=radius).downcast()
+        return vipy.image.Image.cast(im.setattribute('face_pixelize', [o.int().json(encode=False) for o in im.objects()]).pixelize(radius=radius))
 
 
     def viewport(self):
@@ -3062,9 +3086,12 @@ class Transform():
         return im.clone().load().rgb().mindim(256).gain(1/255) if not im.loaded() else im
     
     @staticmethod
-    def compose(image, shape=None, gain=None, mindim=None, colorspace=None, centersquare=None, tensor=None, ignore_errors=False, jitter=None, augmentations=None):
+    def compose(im, shape=None, gain=None, mindim=None, colorspace=None, centersquare=None, tensor=None, ignore_errors=False, jitter=None, augmentations=None, instanceid=None, clone=True):
         try:
-            im = image.clone()
+            if instanceid:
+                im.instanceid(n=instanceid if isinstance(instanceid, int) else 12) # set before clone so that this instance id propagates back to dataset for next shuffle
+            if clone:
+                im = im.clone()  # clone here so that transformations do not pollute the source dataset
             if colorspace == 'lum':
                 im = im.lum()
             if colorspace == 'rgb':

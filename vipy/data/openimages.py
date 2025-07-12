@@ -55,7 +55,7 @@ def open_images_v7(datadir=None):
     
     imlist = [vipy.image.Scene(url=d_train_imageid_to_url[iid],
                                tags=d_train_url_to_category[d_train_imageid_to_url[iid]],
-                               objects=[vipy.object.Detection(category=d_label_to_object_category[o[1]], ulbr=(o[2],o[3],o[4],o[5]), normalized_coordinates=True) for o in obj if o[1] in d_label_to_object_category])
+                               objects=[vipy.object.Detection(category=d_label_to_object_category[o[1]], ulbr=(o[2],o[3],o[4],o[5]), normalized_coordinates=True) for o in obj if o[1] in d_label_to_object_category]).instanceid(f'open_images_v7:{iid}')
               for (iid, obj) in d_train_imageid_to_objects.items()]  
     
     return vipy.dataset.Dataset(imlist, id='open_images_v7')

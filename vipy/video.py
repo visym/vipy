@@ -685,6 +685,29 @@ class Video():
             self.attributes = {k:v for (k,v) in self.attributes.items() if not k.startswith('__')}
         return self
         
+    def instanceid(self, iid=None, n=None):
+        """Return an instance id of the videoobject.  Once created, this instance id is cached in attributes and subsequent calls to instanceid will return the same globally unique string.
+
+           Args:
+              n [int|None]: if integer, create and persist a new short uuid of length n.  If none, return the last persisted instanceid
+              iid [str|None]: if string, create and persist this as a new instance id.  If none, return the last persisted instanceid
+        
+           Returns:
+              the persisted uuid string of length n
+        
+           This is useful for uniquely identifying videos across dataset shuffles, when dataset index may be unreliable
+           A common use case is a dataset of videos, where each video has an instanceid, which can be used to filter or select instances
+           Instance id use `vipy.util.shortuuid` which includes 62 upper|lower|digits, with a collision probability of 1/62^n
+
+        .. notes:: This instanceid is persistent, but not deterministic.  Video objects containing the same pixels may have different instance ids.  
+        """
+        if n is not None:
+            self.attributes['instanceid'] = shortuuid(n)
+            return self
+        if iid is not None:
+            self.attributes['instanceid'] = iid
+            return self
+        return self.attributes['instanceid'] if 'instanceid' in self.attributes else self.videoid()
         
     def videoid(self, newid=None):
         """Return a unique video identifier for this video, as specified in the 'video_id' attribute

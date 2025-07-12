@@ -169,7 +169,16 @@ class Dataset():
             return copy.copy(self) 
         else:
             return copy.deepcopy(self)
-    
+
+    def copy(self, other):
+        assert isinstance(other, Dataset)
+        self._id = other._id
+        self._ds = other._ds
+        self._idx = other._idx
+        self._type = other._type
+        self._loader = other._loader
+        return self
+        
     def shuffle(self, shuffler=None):
         """Permute elements in this dataset uniformly at random in place using the optimal shuffling strategy for the dataset structure to maximize performance.
            This method will use either Dataset.streaming_shuffler (for iterable datasets) or Dataset.uniform_shuffler (for random access datasets)
@@ -447,7 +456,7 @@ class Dataset():
         """Returns a generator that will apply the mapper and yield only those elements that return True from the accepter.  Performs the map in parallel if used in the vipy.globals.parallel context manager"""
         return vipy.parallel.iter(self, mapper=mapper, accepter=accepter, bufsize=bufsize)
         
-    def map(self, f_map, strict=True, oneway=False, ordered=False):        
+    def map(self, f_map, strict=True, oneway=False, ordered=False, inplace=False):        
         """Parallel map.
 
         To perform this in parallel across four threads:
@@ -462,9 +471,10 @@ class Dataset():
             f_map: [lambda] The lambda function to apply in parallel to all elements in the dataset.  This must return a JSON serializable object (or set oneway=True)
             strict: [bool] If true, raise exception on distributed map failures, otherwise the map will return only those that succeeded
             oneway: [bool] If true, do not pass back results unless exception.  This is useful for distributed processing
+            inplace: [bool]  If true, modify this dataset with the mapped result (possibly in a different order), otherwise return a new dataset
         
         Returns:
-            A `vipy.dataset.Dataset` containing the elements f_map(v).  This operation is order preserving if ordered=True.
+            A `vipy.dataset.Dataset` containing the elements f_map(v).  This operation is order preserving if ordered=True.  This operation is inplace modifying self if inplace=True
 
         .. note:: 
             - This method uses dask distributed and `vipy.batch.Batch` operations
@@ -482,7 +492,7 @@ class Dataset():
         elif vipy.globals.cf() is not None:
             # This will fail on multiprocessing if dataset contains a loader lambda, or any element in the dataset contains a loader.  Use distributed instead
             assert ordered == False, "not order preserving, use localmap()"
-            return Dataset(tuple(vipy.parallel.map(f_map, self)), id=self.id()) 
+            mapped = Dataset(tuple(vipy.parallel.map(f_map, self)), id=self.id()) 
                                               
         # Distributed map
         elif vipy.globals.dask() is not None:
@@ -504,11 +514,13 @@ class Dataset():
                 log.warning('Exceptions in distributed processing:\n%s\n\n[vipy.dataset.Dataset.map]: %d/%d items failed' % (str(bad), len(bad), len(self)))
                 if strict:
                     raise ValueError('exceptions in distributed processing')
-            return Dataset(good, id=self.id()) if not oneway else None
+            mapped = Dataset(good, id=self.id()) if not oneway else None
 
         # Local map
         else:
-            return self.localmap(f_map)
+            mapped = self.localmap(f_map)
+
+        return mapped if not inplace else self.copy(mapped)
         
     def localmap(self, f):
         """A map performed without any parallel processing"""

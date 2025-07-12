@@ -20,14 +20,16 @@ class Caltech256(Dataset):
             download_and_unpack(URL, self._datadir, sha1=SHA1)            
             
         # Create dataset
+        idx = 0
         imlist = []
         categorydir = os.path.join(self._datadir, '256_ObjectCategories')        
         for (idx_category, category) in enumerate(os.listdir(categorydir)):
             imdir = os.path.join(categorydir, category)
             for imf in os.listdir(imdir):
-                imlist.append((category.split('.')[1], os.path.join(categorydir, category, imf)))
-
-        loader = lambda x, categorydir=categorydir: ImageCategory(filename=x[1], category=x[0])
+                imlist.append((category.split('.')[1], os.path.join(categorydir, category, imf), f'caltech-256:{idx}'))
+                idx += 1
+                
+        loader = lambda x, categorydir=categorydir: ImageCategory(filename=x[1], category=x[0]).instanceid(x[2])
         super().__init__(imlist, id='caltech-256', loader=loader)
             
         # Done

@@ -1327,8 +1327,10 @@ def isurl(path):
         return False
 
 def shortuuid(n=8):
-    """Generate a short UUID with n charaters sampled uniformly at random from lowercase|uppercase|numbers"""
-    return ''.join(random.sample(ALPHABET, n))
+    """Generate a short UUID with n charaters sampled uniformly at random with replacement from lowercase|uppercase|numbers.
+       Collision likelihood is 1/(62^n), for n=8 -> ~5E-15
+    """
+    return ''.join(random.choices(ALPHABET, k=n))
 
 def stringhash(s, n=16):
     """Generate a repeatable hash with n characters for a string s"""

@@ -35,7 +35,7 @@ class LVIS():
                         url=i['coco_url'],
                         objects=[Detection(tags=d_categoryid_to_category[a['category_id']]['synonyms'], xywh=a['bbox'],
                                            attributes={'synset':d_categoryid_to_category[a['category_id']]['synset'], 'def':d_categoryid_to_category[a['category_id']]['def']})
-                                 for a in d_imageid_to_annotations[i['id']]] if i['id'] in d_imageid_to_annotations else [])
+                                 for a in d_imageid_to_annotations[i['id']]] if i['id'] in d_imageid_to_annotations else []).instanceid(f'lvis:train:{i["id"]}')
                   for i in d['images']]
             
         return vipy.dataset.Dataset(images, id='lvis:train')
@@ -50,7 +50,7 @@ class LVIS():
                         url=i['coco_url'],
                         objects=[Detection(tags=d_categoryid_to_category[a['category_id']]['synonyms'], xywh=a['bbox'],
                                            attributes={'synset':d_categoryid_to_category[a['category_id']]['synset'], 'def':d_categoryid_to_category[a['category_id']]['def']})
-                                 for a in d_imageid_to_annotations[i['id']]] if i['id'] in d_imageid_to_annotations else [])
+                                 for a in d_imageid_to_annotations[i['id']]] if i['id'] in d_imageid_to_annotations else []).instanceid(f'lvis:val:{i["id"]}')
                   for i in d['images']]
             
         return vipy.dataset.Dataset(images, id='lvis:val')

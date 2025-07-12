@@ -24,13 +24,13 @@ class VisualGenome(vipy.dataset.Dataset):
 
         imlist = []
         for obj in vipy.util.readjson(os.path.join(self._datadir, 'objects.json')):
-            imlist.append( (d_imageid_to_filename[obj['image_id']], obj['objects']) )
+            imlist.append( (d_imageid_to_filename[obj['image_id']], obj['objects'], obj['image_id']) )
 
         loader = lambda x: vipy.image.Scene(filename=x[0],
                                             objects=[vipy.object.Detection(tags=o['names'],
                                                                            xmin = o['x'], ymin=o['y'], width=o['w'], height=o['h'],
                                                                            id = o['object_id'],
-                                                                           attributes={'synsets':o['synsets']}) for o in x[1]])
+                                                                           attributes={'synsets':o['synsets']}) for o in x[1]]).instanceid(f'visualgenome:{x[2]}')
         super().__init__(imlist, id=name, loader=loader)
         
 

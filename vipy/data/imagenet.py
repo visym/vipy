@@ -81,8 +81,8 @@ class Imagenet2012():
     def classification_trainset(self):
         """ImageNet2012 Classification, trainset"""
         imgfiles = vipy.util.findimages(os.path.join(self._datadir, 'ILSVRC2012_img_train'))  # slow-ish, may be better to cache
-        imlist = ([vipy.image.TaggedImage(filename=f, attributes={'wordnet_id':f.rsplit('/',2)[-2]}, tags=self._wnid_to_categorylist[f.rsplit('/',2)[-2]]) for f in imgfiles] if os.name == 'posix' else
-                  [vipy.image.TaggedImage(filename=f, attributes={'wordnet_id':os.path.basename(os.path.dirname(f))}, tags=self._wnid_to_categorylist[os.path.basename(os.path.dirname(f))]) for f in imgfiles])
+        imlist = ([vipy.image.TaggedImage(filename=f, attributes={'wordnet_id':f.rsplit('/',2)[-2]}, tags=self._wnid_to_categorylist[f.rsplit('/',2)[-2]]).instanceid(f'imagenet2012_classification:{j}') for (j,f) in enumerate(imgfiles)] if os.name == 'posix' else
+                  [vipy.image.TaggedImage(filename=f, attributes={'wordnet_id':os.path.basename(os.path.dirname(f))}, tags=self._wnid_to_categorylist[os.path.basename(os.path.dirname(f))]).instanceid(f'imagenet2012_classification:{j}') for (j,f) in enumerate(imgfiles)])
         
         return vipy.dataset.Dataset(imlist, 'imagenet2012_classification:train')
         
@@ -100,7 +100,7 @@ class Imagenet2012():
         synsets = self.synset_to_category()
         d_idx_to_category = {str(k):self.synset_to_category(r[0][1][0]) for (k,r) in enumerate(scipy.io.loadmat(os.path.join(self._datadir, 'ILSVRC2012_devkit_t12/ILSVRC2012_devkit_t12/data/meta.mat'))['synsets'], start=1) if r[0][1][0] in synsets}
 
-        imlist = [vipy.image.TaggedImage(filename=f, attributes={'synset_index':y}, tags=d_idx_to_category[y]) for (f,y) in imlist] 
+        imlist = [vipy.image.TaggedImage(filename=f, attributes={'synset_index':y}, tags=d_idx_to_category[y]).instanceid(f'imagenet2012_classification:val:{j}') for (j,(f,y)) in enumerate(imlist)] 
         return vipy.dataset.Dataset(imlist, 'imagenet2012_classification:val')
 
     def faces(self):
@@ -139,9 +139,9 @@ class Imagenet2012():
             imlist = []
             classification = self.classification_trainset()
             synsets = self.synset_to_category()
-            for f in classification._ds:                
+            for (j,f) in enumerate(classification._ds):                
                 xmlfile = '%s.xml' % filefull(f.replace('ILSVRC2012_img_train', 'ILSVRC2012_bbox_train_v2'))
-                im = vipy.image.Scene(filename=f)
+                im = vipy.image.Scene(filename=f).instanceid(f'imagenet2012_localization:{j}')
                 if os.path.exists(xmlfile):
                     root = ET.parse(xmlfile).getroot()  
                     for obj in root.findall("object"):
@@ -246,8 +246,8 @@ class Imagenet21K(vipy.dataset.Dataset):
         f_category = lambda c, synset_to_categorylist=self._synset_to_categorylist, aslemma=aslemma: synset_to_categorylist[c] if aslemma else c
         imglist = vipy.util.findimages(os.path.join(datadir, 'winter21_whole')) if not os.path.exists(cachefile) else vipy.util.readlist(cachefile)
         
-        imlist = ([vipy.image.TaggedImage(filename=f, attributes={'wordnet_id':f.rsplit('/',2)[-2]}, tags=f_category(f.rsplit('/',2)[-2])) for f in imglist] if os.name == 'posix' else
-                  [vipy.image.TaggedImage(filename=f, attributes={'wordnet_id':os.path.basename(os.path.dirname(f))}, tags=f_category(os.path.basename(os.path.dirname(f)))) for f in imglist])
+        imlist = ([vipy.image.TaggedImage(filename=f, attributes={'wordnet_id':f.rsplit('/',2)[-2]}, tags=f_category(f.rsplit('/',2)[-2])).instanceid(f'imagenet21k:{k}') for (k,f) in enumerate(imglist)] if os.name == 'posix' else
+                  [vipy.image.TaggedImage(filename=f, attributes={'wordnet_id':os.path.basename(os.path.dirname(f))}, tags=f_category(os.path.basename(os.path.dirname(f)))).instanceid(f'imagenet21k:{k}') for (k,f) in enumerate(imglist)])
         super().__init__(imlist, id='imagenet21k')
 
         if not os.path.exists(cachefile):
@@ -307,7 +307,7 @@ class Imagenet2014_DET():
             d_synset_to_category = self.synset_to_category()
             
             imlist = []        
-            for (k,f) in imgfiles.items():
+            for (j,(k,f)) in enumerate(imgfiles.items()):
                 im = vipy.image.Scene(filename=f)
                 if k in xmlfiles and os.path.exists(xmlfiles[k]):
                     root = ET.parse(xmlfiles[k]).getroot()  
@@ -321,7 +321,7 @@ class Imagenet2014_DET():
                         ymax = int(b.findtext("ymax"))
                         tags = (d_synset_to_category[name] if name in d_synset_to_category else [name]) + (d_synset_to_category[subcategory] if subcategory in d_synset_to_category else [subcategory])
                         im.add_object(vipy.object.Detection(tags=tags, xmin=int(xmin), ymin=int(ymin), xmax=int(xmax), ymax=int(ymax), attributes={'wordnet_id':name, 'subcategory':subcategory}))
-                imlist.append(im)                
+                imlist.append(im.instanceid(f'imagenet2014_det:train:{j}'))                
             vipy.save(imlist, cachefile)  # cached
         else:
             try:
@@ -346,7 +346,7 @@ class Imagenet2014_DET():
             d_synset_to_category = self.synset_to_category()
             
             imlist = []        
-            for (k,f) in imgfiles.items():
+            for (j,(k,f)) in enumerate(imgfiles.items()):
                 im = vipy.image.Scene(filename=f)
                 if k in xmlfiles and os.path.exists(xmlfiles[k]):
                     root = ET.parse(xmlfiles[k]).getroot()  
@@ -360,7 +360,7 @@ class Imagenet2014_DET():
                         ymax = int(b.findtext("ymax"))
                         tags = (d_synset_to_category[name] if name in d_synset_to_category else [name]) + (d_synset_to_category[subcategory] if subcategory in d_synset_to_category else [subcategory])
                         im.add_object(vipy.object.Detection(tags=tags, xmin=int(xmin), ymin=int(ymin), xmax=int(xmax), ymax=int(ymax), attributes={'wordnet_id':name, 'subcategory':subcategory}))
-                imlist.append(im)                
+                imlist.append(im.instanceid(f'imagenet2014_det:val:{j}'))
             vipy.save(imlist, cachefile)  # cached
         else:
             try:

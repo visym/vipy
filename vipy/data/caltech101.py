@@ -22,14 +22,16 @@ class Caltech101(Dataset):
             unpack(os.path.join(self._datadir, 'caltech-101/101_ObjectCategories.tar.gz'), os.path.join(self._datadir, 'caltech-101'))
             
         # Create dataset
+        idx = 0
         imlist = []
         categorydir = os.path.join(self._datadir, 'caltech-101', '101_ObjectCategories')        
         for (idx_category, category) in enumerate(os.listdir(categorydir)):
             imdir = os.path.join(categorydir, category)
             for imf in os.listdir(imdir):
-                imlist.append((category, os.path.join(categorydir, category, imf)))                
-
-        loader = lambda x, categorydir=categorydir: ImageCategory(filename=x[1], category=x[0])                
+                imlist.append((category, os.path.join(categorydir, category, imf), f'caltech101:{idx}'))                
+                idx += 1
+                
+        loader = lambda x, categorydir=categorydir: ImageCategory(filename=x[1], category=x[0]).instanceid(x[2])                
         super().__init__(imlist, id='caltech-101', loader=loader)
 
         # Done
