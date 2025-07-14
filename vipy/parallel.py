@@ -4,14 +4,8 @@ import collections
 import itertools
 import threading
 from queue import Queue
+import functools
 
-
-def map(f, ingen, reducer=None):
-    """Apply the function f to each element in the iterator, returning the results unordered.  Function cannot be anonymous if cf executor is multiprocess """
-    assert vipy.globals.cf() is not None, "vipy.globals.cf() executor required - Try 'with vipy.globals.parallel(n=4): vipy.parallel.map(...)' "    
-    assert callable(f)    
-    results = vipy.globals.cf().map(f, ingen)  # not order preserving
-    return reducer(results) if reducer else results
 
 def identity(x):
     return x
@@ -87,12 +81,12 @@ def iter(ingen, mapper=identity, bufsize=1024, progress=False, accepter=None, zi
                 yield y if not zipped else (x,y)
     
 
-def map(f, ingen):
-    """Apply the function f to each element in the iterator, returning an iterator.  This preserves order of the input generator, and blocks until the map is complete before yielding"""
-    assert vipy.globals.cf(), "vipy.globals.cf() executor required - Try 'with vipy.globals.parallel(n=4): vipy.parallel.map(...)' "    
-    assert callable(f), "mapper required"    
-    return vipy.globals.cf().map(f, ingen)  # ordered
-
+def map(f, ingen, **kwargs):
+    """Apply the function f with the provided kwargs to each element in the iterator, returning the results unordered.  Function cannot be anonymous if cf executor is multiprocess """
+    assert vipy.globals.cf() is not None, "vipy.globals.cf() executor required - Try 'with vipy.globals.parallel(n=4): vipy.parallel.map(...)' "    
+    assert callable(f)    
+    return vipy.globals.cf().map(functools.partial(f, **kwargs), ingen)  # order preserving
+                
 
 def zipmap(ingen, mapper=identity, bufsize=1024, progress=False, accepter=None):
     """Return an iterator that yields (x, mapper(x)) tuples where x is yielded from ingen, and mapper is a callable.  This is equivalent to zip(ingen, map(mapper, ingen)), without keeping two copies of ingen"""

@@ -756,12 +756,18 @@ def registry(name=None, datadir=None, freeze=True, clean=False, download=False, 
         >>> datasets = vipy.dataset.registry(('cifar10:train','cifar100:train'))   # return a union
         >>> vipy.dataset.registry()                                                # print allowable datasets
 
+    To download the entire registry in parallel using 75% of the sytem resources:
+
+        >>> with vipy.globals.multiprocessing(pct=0.75):
+        >>>     names = vipy.dataset.registry()  # dataset names to download
+        >>>     vipy.parallel.map(vipy.dataset.registry, names, download=True)
+    
     Args:
        name [str]: The string name for the dataset.  If tuple, return a `vipy.dataset.Union`.  If None, return the list of registered datasets.  Append name:train, name:val, name:test to output the requested split, or use the split keyword.
        datadir [str]: A path to a directory to store data.  Defaults to environment variable VIPY_DATASET_REGISTRY_HOME (then VIPY_CACHE if not found).  Also uses HF_HOME for huggingface datasets.  Datasets will be stored in datadir/name
        freeze [bool]:  If true, disable reference cycle counting for the loaded object (which will never contain cycles anyway) 
        clean [bool]: If true, force a redownload of the dataset to correct for partial download errors
-       download [bool]: If true, force a redownload of the dataset to correct for partial download errors.  This is a synonym for clean=True
+       download [bool]: If true, just download the dataset, and return None
        split [str]: return 'train', 'val' or 'test' split.  If None, return (trainset, valset, testset) tuple
 
     Datasets:
@@ -802,7 +808,7 @@ def registry(name=None, datadir=None, freeze=True, clean=False, download=False, 
 
     datadir = remkdir(datadir if datadir is not None else (env('VIPY_DATASET_REGISTRY_HOME') if 'VIPY_DATASET_REGISTRY_HOME' in env() else cache()))
     namedir = Path(datadir)/name    
-    if (clean or download) and name in datasets and os.path.exists(namedir):
+    if clean and name in datasets and os.path.exists(namedir):
         log.info('Removing cached dataset "%s"' % namedir)
         shutil.rmtree(namedir)  # delete cached subtree to force redownload ...
         
@@ -941,7 +947,9 @@ def registry(name=None, datadir=None, freeze=True, clean=False, download=False, 
         gc.collect()
         gc.freeze()  # python-3.7
 
-    if split == 'train':
+    if download == True:
+        return 
+    elif split == 'train':
         return trainset
     elif split == 'val':
         return valset
