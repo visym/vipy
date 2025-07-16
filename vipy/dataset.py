@@ -187,6 +187,10 @@ class Dataset():
         shuffler = shuffler if shuffler is not None else (Dataset.streaming_shuffler if self.is_streaming() else Dataset.uniform_shuffler)
         return shuffler(self)
 
+    def shuffle_if(self, b, shuffler=None):
+        """Shuffle only if the boolean b is true.  Useful for conditionally shuffling in a fluent chain"""
+        return self.shuffle(shuffler) if b else self
+    
     def repeat(self, n):
         """Return an iterator that repeats the dataset n times interleaved"""
         assert n>=0, "invalid repeat"
@@ -756,11 +760,11 @@ def registry(name=None, datadir=None, freeze=True, clean=False, download=False, 
         >>> datasets = vipy.dataset.registry(('cifar10:train','cifar100:train'))   # return a union
         >>> vipy.dataset.registry()                                                # print allowable datasets
 
-    To download the entire registry in parallel using 75% of the sytem resources:
+    To download a subset of the registry in parallel:
 
-        >>> with vipy.globals.multiprocessing(pct=0.75):
-        >>>     names = vipy.dataset.registry()  # dataset names to download
-        >>>     vipy.parallel.map(vipy.dataset.registry, names, download=True)
+        >>> with vipy.globals.multiprocessing(8):
+        >>>     names = random.sample(vipy.dataset.registry(), 8)  # randomly select 8 datasets to download
+        >>>     vipy.parallel.map(vipy.dataset.registry, names, download=True, freeze=False)
     
     Args:
        name [str]: The string name for the dataset.  If tuple, return a `vipy.dataset.Union`.  If None, return the list of registered datasets.  Append name:train, name:val, name:test to output the requested split, or use the split keyword.
@@ -948,6 +952,8 @@ def registry(name=None, datadir=None, freeze=True, clean=False, download=False, 
         gc.freeze()  # python-3.7
 
     if download == True:
+        del (trainset, valset, testset)
+        gc.collect()
         return 
     elif split == 'train':
         return trainset
