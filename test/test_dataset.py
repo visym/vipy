@@ -40,8 +40,8 @@ def test_union():
     assert D.clone().sort(lambda x: x).list() == sorted(raw)
     print('[test_union]: sort  PASSED')
 
-    assert list(D.clone().repeat(2)) == vipy.util.flatlist(list(zip(raw,raw)))
-    print('[test_union]: repeat PASSED')
+    assert list(D.clone().repeater(2)) == vipy.util.flatlist(list(zip(raw,raw)))
+    print('[test_union]: repeater PASSED')
 
     assert D.count(lambda x: x=='a') == 2
     print('[test_union]: count  PASSED')
@@ -84,8 +84,8 @@ def test_dataset():
     assert (D | D).list() == vipy.util.flatlist(zip(raw,raw))
     print('[test_dataset]: union  PASSED')
 
-    assert list(D.clone().repeat(2)) == vipy.util.flatlist(list(zip(raw,raw)))
-    print('[test_dataset]: repeat PASSED')
+    assert list(D.clone().repeater(2)) == vipy.util.flatlist(list(zip(raw,raw)))
+    print('[test_dataset]: repeater PASSED')
 
     assert D.count(lambda x: x=='a') == 2
     print('[test_dataset]: count  PASSED')

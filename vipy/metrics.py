@@ -313,14 +313,19 @@ def pie(sizes, labels, explode=None, outfile=None, shadow=False, legend=True, fo
         plt.show()
 
         
-def scatterplot(X, labels, outfile=None):
+def scatterplot(X, labels=None, outfile=None, figure=None):
     """Generate a scatterplot of 2D points in an Nx2 matrix (X) with provided category labels in list of length N (labels).  Each label will be assigned a unique color.  Scatterplot saved to outfile (if provided).""" 
     assert isinstance(X, np.ndarray) and X.ndim == 2 and X.shape[1] == 2
-    assert len(X) == len(labels)
+    assert labels is None or len(X) == len(labels)
     import vipy.show
+
+    labels = ['X']*len(X) if labels is None else labels
+
+    if figure is not None:
+        plt.figure(figure)
     
     plt.clf()
-    #plt.figure()
+
     plt.grid(True)
     colors = vipy.show.colorlist()
     d_label_to_color = {c:colors[k % len(colors)] for (k,c) in enumerate(set(labels))}

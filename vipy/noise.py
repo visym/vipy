@@ -155,14 +155,14 @@ def zoom(im, s, zx=None, zy=None, border='zero'):
 
 
 # <PHOTOMETRIC>
-def mask(im, num_masks=1, xywh_range=((0.1,0.9),(0,1,0.9),(0.3,0.5),(0.3,0.5)), mask_type='zeros', radius=7):
+def mask(im, num_masks=1, xywh_range=((0.1,0.9),(0,1,0.9),(0.3,0.5),(0.3,0.5)), fill='zeros', radius=7):
     """Introduce one or more rectangular masks filled by mask_type.
 
     The position and size of masks are uniformly sampled from the provided range of xywh = (xmin, ymin, width, height)
     
     xywh_range = ((xmin_lowerbound, xmin_upperbound), (ymin_lb,ymin_ub), (width_lb,width_ub), (height_lb,height_ub))) relative to the normalized height and width
 
-    Allowable mask_types = ['zeros', 'inverse_zeros', 'mean', 'blur', 'pixelize', 'inverse_mean', 'inverse_blur']
+    Allowable fills = ['zeros', 'inverse_zeros', 'mean', 'blur', 'pixelize', 'inverse_mean', 'inverse_blur']
     
     - zeros: all masks are replaced with zeros
     - inverse_zeros: all pixels outside masks are replaced with zeros
@@ -183,22 +183,24 @@ def mask(im, num_masks=1, xywh_range=((0.1,0.9),(0,1,0.9),(0.3,0.5),(0.3,0.5)), 
              for k in range(num_masks)]
     im = vipy.image.Scene.cast(im.clone()).objects(masks)
 
-    if mask_type == 'zeros':
+    if fill == 'zeros':
         im = im.fgmask()
-    elif mask_type == 'inverse_zeros':
+    elif fill == 'inverse_zeros':
         im = im.bgmask()
-    elif mask_type == 'mean':
+    elif fill == 'mean':
         im = im.mean_mask()
-    elif mask_type == 'inverse_mean':
+    elif fill == 'rand':
+        im = im.random_mask()
+    elif fill == 'inverse_mean':
         im = im.inverse_mean_mask()
-    elif mask_type == 'blur':
+    elif fill == 'blur':
         im = im.blur_mask(radius=radius)
-    elif mask_type == 'inverse_blur':
+    elif fill == 'inverse_blur':
         im = im.inverse_blur_mask(radius=radius)
-    elif mask_type in ['pixel', 'pixelize', 'pixelate']:
+    elif fill in ['pixel', 'pixelize', 'pixelate']:
         im = im.pixel_mask(radius=radius)
     else:
-        raise ValueError("unknown mask type '%s'" % mask_type)
+        raise ValueError("unknown mask type '%s'" % fill)
     return im
 
 

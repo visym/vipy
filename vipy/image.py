@@ -906,7 +906,19 @@ class Image():
         """Return alpha (transparency) channel as a cloned single channel `vipy.image.Image` object"""
         assert self.channels() == 4 and self.colorspace() in ['rgba', 'bgra'], "Must be four channnel color image"
         return self.channel(3)
-        
+
+    def transparent(self):
+        """Convert to an RGBA image and set the alpha channel to zero (transparent)"""
+        img = self.rgba().numpy()
+        img[:,:,3] = 0
+        return self        
+
+    def opaque(self):
+        """Convert to an RGBA image and set the alpha channel to 255 (opaque)"""
+        img = self.rgba().numpy()
+        img[:,:,3] = 255
+        return self        
+    
     def zeros(self):
         """Set the pixel buffer to all zeros of the same shape and datatype as this `vipy.image.Image` object.
         
@@ -1144,6 +1156,9 @@ class Image():
         return self
     
     def hasattribute(self, key):
+        return self.attributes is not None and key in self.attributes
+    
+    def has_attribute(self, key):
         return self.attributes is not None and key in self.attributes
 
     def delattribute(self, k):
@@ -2028,9 +2043,16 @@ class ImageCategory(Labeled):
         return self.category() != other.category() if isinstance(other, ImageCategory) else True
 
     @classmethod
-    def cast(cls, im):
+    def cast(cls, im, category=None):
         assert isinstance(im, vipy.image.Image), "Invalid input - must be derived from vipy.image.Image"
-        return cls(filename=im._filename, url=im._url, attributes=im.attributes, array=im._array, colorspace=im._colorspace).loader(im._loader)
+        if isinstance(im, vipy.image.Scene):
+            if im.num_objects() == 1:
+                category = im.primary_object().category()                
+                im = im.clone().objectsquare(dilate=1.2)  # triggers load, square crop centered on object
+                im.set_attribute('_object', im.primary_object().json())  # bounding box provenance (for vipy.image.Scene.cast)
+            elif im.num_objects() > 1:
+                raise ValueError("Invalid input - vipy.image.Scene must have at most one object")
+        return cls(filename=im._filename, url=im._url, attributes=im.attributes, array=im._array, colorspace=im._colorspace, category=category).loader(im._loader)
         
     @classmethod
     def from_json(obj, s):
@@ -2100,7 +2122,15 @@ class TaggedImage(Labeled):
         fields +=  ['tags=%s' % truncate_string(str(self.tags()), 40)] if len(self.tags())>1 else []
         return super().__repr__().replace('vipy.image.Image', 'vipy.image.TaggedImage').replace('>', ', %s>' % ', '.join(fields))
         
-
+    @classmethod
+    def cast(cls, im, tags=None):
+        assert isinstance(im, Image)
+        if isinstance(im, Scene):
+            tags = im.object_tags()
+        elif isinstance(im, ImageCategory):
+            tags = [im.category()]
+        return cls(filename=im._filename, url=im._url, attributes=im.attributes, array=im._array, colorspace=im._colorspace, tags=tags).loader(im._loader)
+        
     @classmethod
     def from_json(cls, s):
         d = json.loads(s) if not isinstance(s, dict) else s
@@ -2365,7 +2395,10 @@ class Scene(TaggedImage):
             assert isinstance(objectlist, list) and (len(objectlist) == 0 or all([isinstance(bb, vipy.object.Object) for bb in objectlist])), "Invalid object list"
             self._objectlist = objectlist
             return self
-
+            
+    def primary_object(self):
+        return self._objectlist[0] if len(self._objectlist)>0 else None
+        
     def objectmap(self, f):
         """Apply lambda function f to each object.  If f is a list of lambda, apply one to one with the objects"""
         assert callable(f)
@@ -2592,7 +2625,7 @@ class Scene(TaggedImage):
         return self.padcrop(BoundingBox(xmin=0, ymin=0, width=width, height=height))
     
     # Image export
-    def rectangular_mask(self, W=None, H=None):
+    def rectangular_mask(self, W=None, H=None, maskval=1):
         """Return a binary array of the same size as the image (or using the
         provided image width and height (W,H) size to avoid an image load),
         with ones inside all bounding boxes"""
@@ -2603,10 +2636,10 @@ class Scene(TaggedImage):
         for o in self._objectlist:
             if isinstance(o, vipy.geometry.BoundingBox) and o.hasoverlap(immask):
                 bbm = o.clone().imclip(self.numpy()).int()
-                immask[bbm.ymin():bbm.ymax(), bbm.xmin():bbm.xmax()] = 1
+                immask[bbm.ymin():bbm.ymax(), bbm.xmin():bbm.xmax()] = maskval
             if isinstance(o, vipy.geometry.Point2d) and o.boundingbox().hasoverlap(immask):
-                mask = vipy.calibration.circle(o.x, o.y, o.r, W, H)
-                immask[mask>0] = 1
+                mask = vipy.calibration.circle(o.x, o.y, o.r, W, H).array()
+                immask[mask>0] = maskval
         return immask
 
     def binary_mask(self):
@@ -2616,12 +2649,11 @@ class Scene(TaggedImage):
         img[:] = mask[:]  # in-place update
         return self
 
-    def alpha_mask(self, alpha):
-        """Convex combination of binary_mask and inverse_binary_mask.  If alpha=0, binary_mask, if alpha=1, inverse_binary_mask"""
-        assert alpha>=0 and alpha<=1, "invalid alpha"
-        im = self.clone().binary_mask()
-        im._array = (1-alpha)*im._array + alpha*(1-im._array)
-        return im
+    def alpha_mask(self):
+        """Convert to RGBA and set the alpha channel to an object mask, with opaque inside object bounding boxes and transparent outside"""
+        img = self.rgba().numpy()  # writeable
+        img[:,:,3] = np.uint8(self.rectangular_mask(maskval=255))
+        return self
 
     def inverse_binary_mask(self):
         """(1-vipy.image.Image.binary_mask`)"""
@@ -2662,6 +2694,13 @@ class Scene(TaggedImage):
         img[mask > 0] = self.clone().blur(radius).numpy()[mask > 0]  # in-place update
         return self
 
+    def random_mask(self, lower=None, upper=None):
+        """Replace pixels within all foreground objects with pixels sampled uniformly at random from within the range [lower,upper], defaults to (min,max) range of image"""
+        (img, mask) = (self.numpy(), self.rectangular_mask())  # force writeable
+        (lower, upper) = (lower, upper) if (lower,upper) != (None, None) else (img.min(), img.max())
+        img[mask > 0] = lower + (upper-lower)*np.random.rand(*img.shape)[mask > 0]
+        return self
+    
     def inverse_blur_mask(self, radius=7):
         """Replace pixels outwide all foreground objects with a privacy preserving blurred background"""
         (img, mask) = (self.numpy(), 1-self.rectangular_mask())  # force writeable
@@ -3086,7 +3125,7 @@ class Transform():
         return im.clone().load().rgb().mindim(256).gain(1/255) if not im.loaded() else im
     
     @staticmethod
-    def compose(im, shape=None, gain=None, mindim=None, colorspace=None, centersquare=None, tensor=None, ignore_errors=False, jitter=None, augmentations=None, instanceid=None, clone=True):
+    def compose(im, shape=None, gain=None, mindim=None, colorspace=None, centersquare=None, tensor=None, ignore_errors=False, jitter=None, samples=None, instanceid=None, clone=True, alpha_mask=None, objectsquare=None, dilate=1):
         try:
             if instanceid:
                 im.instanceid(n=instanceid if isinstance(instanceid, int) else 12) # set before clone so that this instance id propagates back to dataset for next shuffle
@@ -3096,25 +3135,31 @@ class Transform():
                 im = im.lum()
             if colorspace == 'rgb':
                 im = im.rgb()
+            if colorspace == 'rgba':
+                im = im.rgba()                                
             if colorspace == 'float':
-                im = im.float()
+                im = im.float()                
             if jitter:
                 assert callable(jitter)
-                im = jitter(im)                
+                im = jitter(im)
+            if objectsquare and isinstance(im, Scene) and len(im.objects())>0:
+                im = im.objectsquare(dilate=dilate)
             if centersquare:
                 im = im.centersquare()
             if shape is not None:
                 im = im.resize(*shape)
             if mindim:
                 im = im.mindim(mindim)
+            if alpha_mask:
+                im = im.alpha_mask() if isinstance(im, Scene) else im.transparent()                                
             if gain is not None:
                 im = im.gain(gain)
             if tensor:
                 im = im.torch()  # CHW
-            if augmentations:
-                im.set_attribute('augmentations', [self.compose(im, shape=shape, gain=gain, mindim=mindim, colorspace=colorspace,
-                                                                centersquare=centersquare, tensor=tensor, ignore_errors=ignore_errors,
-                                                                jitter=jitter, augmentations=None)for k in range(augmentations)])
+            if samples:
+                im.set_attribute('samples', [Transform.compose(im, shape=shape, gain=gain, mindim=mindim, colorspace=colorspace,
+                                                               centersquare=centersquare, tensor=tensor, ignore_errors=ignore_errors,
+                                                               jitter=jitter, samples=None, alpha_mask=alpha_mask)for k in range(samples)])
             return im
         
         except KeyboardInterrupt:

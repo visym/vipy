@@ -122,6 +122,10 @@ class Dataset():
             X = [self._ds[k] for k in idx[k.start:k.stop:k.step]]
             X = [self._loader(x) for x in X] if self._loader is not None else X
             return X
+        elif isinstance(k, (list, tuple)):
+            X = [self._ds[idx[j]] for j in k]
+            X = [self._loader(x) for x in X] if self._loader is not None else X
+            return X            
         else:
             raise ValueError('invalid slice "%s"' % type(k))            
 
@@ -191,7 +195,7 @@ class Dataset():
         """Shuffle only if the boolean b is true.  Useful for conditionally shuffling in a fluent chain"""
         return self.shuffle(shuffler) if b else self
     
-    def repeat(self, n):
+    def repeater(self, n):
         """Return an iterator that repeats the dataset n times interleaved"""
         assert n>=0, "invalid repeat"
         for x in self:
@@ -303,7 +307,7 @@ class Dataset():
         for (k,b) in enumerate(chunkgenbysize(self, n)):  
             yield Dataset(b).id('%s:%d' % (self.id() if self.id() else '', k))
                                 
-    def minibatch(self, n, ragged=True, mapper=None, bufsize=1024, accepter=None, repeat=1):
+    def minibatch(self, n, ragged=True, mapper=None, bufsize=1024, accepter=None, repeat=1, aslist=False):
         """Yield preprocessed minibatches of size n of this dataset.
 
         To yield chunks of this dataset, suitable for minibatch training/testing
@@ -330,6 +334,7 @@ class Dataset():
             accepter [callable]:  A callable that returns true|false on an element, where only elements that return true are included in the minibatch.  useful for parallel loading of elements that may fail to download
             mapper [callable]: A callable that is applied to every element of the dataset.  Useful for parallel loading
             repeat [int]: Repeat each element a given number of times.  This is useful for yielding elements for data augmentation
+            aslist [bool]: Yield minibatch as a list rather than a dataset
         
         Returns:        
             Iterator over `vipy.dataset.Dataset` elements of length n.  Minibatches will be yielded loaded and preprocessed (processing done concurrently if vipy.parallel.executor() is initialized)
@@ -338,9 +343,9 @@ class Dataset():
         ..note:: If there exists a vipy.parallel.exeuctor(), then loading and preprocessing will be performed concurrently
 
         """
-        for (k,b) in enumerate(chunkgenbysize(vipy.parallel.iter(self.repeat(repeat), mapper=mapper, bufsize=max(bufsize,n), accepter=accepter, zipped=False), n)): 
+        for (k,b) in enumerate(chunkgenbysize(vipy.parallel.iter(self.repeater(repeat), mapper=mapper, bufsize=max(bufsize,n), accepter=accepter, zipped=False), n)): 
             if ragged or len(b) == n:
-                yield Dataset.cast(b).id('%s:%d' % (self.id() if self.id() else '', k))                    
+                yield Dataset.cast(b).id('%s:%d' % (self.id() if self.id() else '', k)) if not aslist else b                    
                     
                         
     def shift(self, m):
@@ -750,7 +755,7 @@ class Union(Dataset):
         return D
     
 
-def registry(name=None, datadir=None, freeze=True, clean=False, download=False, split='train'):
+def registry(name=None, datadir=None, freeze=True, clean=False, download=False, split='train', cast=None):
     """Common entry point for loading datasets by name.
 
     Usage:
@@ -773,11 +778,12 @@ def registry(name=None, datadir=None, freeze=True, clean=False, download=False, 
        clean [bool]: If true, force a redownload of the dataset to correct for partial download errors
        download [bool]: If true, just download the dataset, and return None
        split [str]: return 'train', 'val' or 'test' split.  If None, return (trainset, valset, testset) tuple
-
+       cast [callable]: If not None, convert all elements in the dataset by applying this callable to every element
+    
     Datasets:
        'mnist','cifar10','cifar100','caltech101','caltech256','oxford_pets','sun397', 'food101','stanford_dogs',
        'flickr30k','oxford_fgvc_aircraft','oxford_flowers_102','eurosat','d2d','ethzshapes','coil100','kthactions',
-       'yfcc100m','yfcc100m_url','tiny_imagenet','coyo300m','coyo700m','pascal_voc_2007','coco_2014', 'ava',
+       'yfcc100m','yfcc100m_url','tiny_imagenet','coyo300m','coyo700m','pascal_voc_2007','coco_2014', 'coco_classification', 'ava',
        'activitynet', 'open_images_v7', 'imagenet', 'imagenet21k', 'visualgenome' ,'widerface','meva_kf1',
        'objectnet','lfw','inaturalist_2021','kinetics','hmdb','places365','ucf101','lvis','kitti',
        'imagenet_localization','laion2b','datacomp_1b','imagenet2014_det','imagenet_faces','youtubeBB',
@@ -791,11 +797,13 @@ def registry(name=None, datadir=None, freeze=True, clean=False, download=False, 
 
     datasets = ('mnist','cifar10','cifar100','caltech101','caltech256','oxford_pets','sun397', 'stanford_dogs','coil100',
                 'flickr30k','oxford_fgvc_aircraft','oxford_flowers_102', 'food101', 'eurosat','d2d','ethzshapes','kthactions',
-                'yfcc100m','yfcc100m_url','tiny_imagenet','coyo300m','coyo700m','pascal_voc_2007','coco_2014', 'ava',
-                'activitynet','open_images_v7','imagenet','imagenet21k','visualgenome','widerface', 'youtubeBB',
+                'yfcc100m','yfcc100m_url','tiny_imagenet','coyo300m','coyo700m','pascal','pascal_voc_2007','coco','coco_2014', 'coco_classification','ava',
+                'activitynet','open_images','open_images_v7','imagenet','imagenet21k','visualgenome','widerface', 'youtubeBB',
                 'objectnet','lfw','inaturalist_2021','kinetics','hmdb','places365','ucf101','kitti','meva_kf1',
                 'lvis','imagenet_localization','laion2b','datacomp_1b','imagenet2014_det','imagenet_faces',
-                'pip_175k','pip_370k','cap','cap_pad','cap_detection','tiny_virat', 'wakevision','rasmd')  # Add to docstring too...
+                'pip_175k','pip_370k','cap','cap_pad','cap_detection','tiny_virat', 'wakevision','rasmd','checkerboard')  # Add to docstring too...
+
+    aliases = {'coco':'coco_2014', 'open_images':'open_images_v7', 'pascal':'pascal_voc_2007', 'coco_classification':'coco_2014'}
     
     if name is None:
         return tuple(sorted(datasets))
@@ -810,7 +818,9 @@ def registry(name=None, datadir=None, freeze=True, clean=False, download=False, 
     if split not in [None, 'train', 'test', 'val']:
         raise ValueError('unknown split "%s" - choose from "%s"' % (split, ', '.join([str(None), 'train', 'test', 'val'])))
 
-    datadir = remkdir(datadir if datadir is not None else (env('VIPY_DATASET_REGISTRY_HOME') if 'VIPY_DATASET_REGISTRY_HOME' in env() else cache()))
+    datadir = remkdir(datadir if datadir is not None else (env('VIPY_DATASET_REGISTRY_HOME') if 'VIPY_DATASET_REGISTRY_HOME' in env() else cache()))    
+    if name in aliases and not os.path.islink(Path(datadir)/name):
+        os.symlink(Path(datadir)/aliases[name], Path(datadir)/name)  
     namedir = Path(datadir)/name    
     if clean and name in datasets and os.path.exists(namedir):
         log.info('Removing cached dataset "%s"' % namedir)
@@ -866,17 +876,19 @@ def registry(name=None, datadir=None, freeze=True, clean=False, download=False, 
         trainset = vipy.data.hf.coyo700m()
     elif name == 'datacomp_1b':
         trainset = vipy.data.hf.datacomp_1b()
-    elif name == 'pascal_voc_2007':
+    elif name in ['pascal_voc_2007', 'pascal']:
         (trainset, valset, testset) = vipy.data.hf.pascal_voc_2007()
-    elif name == 'coco_2014':
-        trainset = vipy.data.coco.COCO_2014(namedir)
+    elif name in ['coco', 'coco_2014']:
+        trainset = vipy.data.coco.COCO_2014(namedir).id(name)
+    elif name in ['coco_classification']:        
+        trainset = vipy.dataset.Dataset(vipy.data.coco.COCO_2014(namedir).map(lambda im: im.split()).flatten().list(), loader=vipy.image.ImageCategory.cast, id=name)
     elif name == 'ava':
         ava = vipy.data.ava.AVA(namedir)
         (trainset, valset) = (ava.trainset(), ava.valset())
     elif name == 'activitynet':
         activitynet = vipy.data.activitynet.ActivityNet(namedir)  # ActivityNet 200
         (trainset, valset, testset) = (activitynet.trainset(), activitynet.valset(), activitynet.testset())
-    elif name == 'open_images_v7':
+    elif name in ['open_images_v7', 'open_images']:
         trainset = vipy.data.openimages.open_images_v7(namedir)
     elif name == 'imagenet':
         imagenet = vipy.data.imagenet.Imagenet2012(namedir)
@@ -943,8 +955,15 @@ def registry(name=None, datadir=None, freeze=True, clean=False, download=False, 
         (trainset, valset, testset) = vipy.data.hf.wakevision()
     elif name == 'rasmd':
         trainset = vipy.data.hf.rasmd()
+    elif name == 'checkerboard':
+        import vipy.calibration
+        trainset = vipy.dataset.Dataset([vipy.image.ImageCategory.cast(vipy.calibration.checkerboard(1,1,8,8), 'checkerboard')]*256, id='checkerboard')
     else:
         raise ValueError('unknown dataset "%s" - choose from "%s"' % (name, ', '.join(sorted(datasets))))
+
+    if cast:
+        assert callable(cast), "invalid cast - must be a callable that will convert dataset elements to new type"
+        (trainset, valset, testset) = (d.map(cast) if d else None for d in (trainset, valset, testset))        
     
     if freeze:
         gc.enable()
