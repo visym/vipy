@@ -174,9 +174,10 @@ def tiny_imagenet():
     trainset = D['train'].add_column("instanceid", [f'tiny_imagenet:train:{i}' for i in range(len(D['train']))])
     valset = D['valid'].add_column("instanceid", [f'tiny_imagenet:val:{i}' for i in range(len(D['valid']))])    
     
-    labels = readjson(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'tiny_imagenet.json'))    
-    d_idx_to_category = {k: [l.strip() for l in labels['wnid_to_category'][wnid].split(',')]  for (k,wnid) in enumerate(labels['idx_to_wnid'])}    
-    loader = lambda r, d_idx_to_category=d_idx_to_category: TaggedImage(tags=d_idx_to_category[int(r['label'])]).loader(Image.bytes_array_loader, r['image']['bytes']).instanceid(r['instanceid'])
+    labels = readjson(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'tiny_imagenet.json'))
+    d_idx_to_category = {k: [l.strip() for l in labels['wnid_to_category'][wnid].split(',')]  for (k,wnid) in enumerate(labels['idx_to_wnid'])}
+    d_idx_to_wnid = {k:wnid for (k,wnid) in enumerate(labels['idx_to_wnid'])}
+    loader = lambda r, d_idx_to_category=d_idx_to_category: TaggedImage(tags=d_idx_to_category[int(r['label'])], attributes={'wordnetid':d_idx_to_wnid[int(r['label'])]}).loader(Image.bytes_array_loader, r['image']['bytes']).instanceid(r['instanceid'])
     return (Dataset(trainset, id='tiny_imagenet:train', loader=loader),
             Dataset(valset, id='tiny_imagenet:val', loader=loader))
 
