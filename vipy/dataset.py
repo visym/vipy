@@ -139,7 +139,7 @@ class Dataset():
         return self._idx is None
 
     def len(self):
-        return len(self._idx) if self._idx is not None else (len(self._ds) if hasattr(self._ds, '__len__') else None)
+        return len(self._idx) if self._idx is not None else (len(self._ds) if hasattr(self._ds, '__len__') else (self._ds.__dict__['vipy.dataset.Dataset.len'] if 'vipy.dataset.Dataset.len' in self._ds.__dict__ else None))
 
     def __len__(self):
         len = self.len()
@@ -194,7 +194,7 @@ class Dataset():
            This method will use either Dataset.streaming_shuffler (for iterable datasets) or Dataset.uniform_shuffler (for random access datasets)
         """
         assert shuffler is None or callable(shuffler)
-        shuffler = shuffler if shuffler is not None else (Dataset.streaming_shuffler if self.is_streaming() else Dataset.uniform_shuffler)
+        shuffler = shuffler if shuffler is not None else Dataset.uniform_shuffler  # pass shuffler=Dataset.streaming_shuffler if needed
         return shuffler(self)
 
     def shuffle_if(self, b, shuffler=None):
@@ -578,9 +578,11 @@ class Dataset():
             random.shuffle(D._ds)  # in-place shuffle objects
                 
         elif isinstance(D._ds, HuggingfaceDataset):
-            # Special case: Arrow backed dataset            
-            D._ds = D._ds.to_iterable_dataset()  # no random access
+            # Special case: Arrow backed dataset
+            dataset_length = len(D)
+            D._ds = D._ds.to_iterable_dataset(num_shards=dataset_length/128)  # no random access            
             D._ds.shuffle()  # approximate shuffling for IterableDataset is much more efficient for __iter__
+            D._ds.__dict__['vipy.dataset.Dataset.len'] = dataset_length  # cache me
         else:
             raise ValueError('shuffle error')
         return D

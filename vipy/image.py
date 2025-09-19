@@ -659,7 +659,7 @@ class Image():
         return self.channels() == 4
 
     def blend(self, im, alpha):
-        """alpha blend self and im in-place, such that self = alpha*self + (1-alpha)*im"""
+        """alpha blend self and im in-place, such that self = alpha*self + (1-alpha)*im.  alpha=0 returns im, and alpha=1 returns self"""
         assert isinstance(im, Image)
         assert alpha >=0 and alpha <= 1
         assert self.colorspace() not in ['float','rgba','bgra'], "convert to rgb first"
@@ -2661,10 +2661,10 @@ class Scene(TaggedImage):
         img[:] = mask[:]  # in-place update
         return self
 
-    def alpha_mask(self):
+    def alpha_mask(self, maskval=255):
         """Convert to RGBA and set the alpha channel to an object mask, with opaque inside object bounding boxes and transparent outside"""
         img = self.rgba().numpy()  # writeable
-        img[:,:,3] = np.uint8(self.rectangular_mask(maskval=255))
+        img[:,:,3] = np.uint8(self.rectangular_mask(maskval=maskval))
         return self
 
     def inverse_binary_mask(self):
