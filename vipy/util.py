@@ -1992,3 +1992,4 @@ def hidden_cursor(stream=sys.stdout):
         if stream.isatty():
             stream.write(SHOW_CURSOR)
             stream.flush()
+

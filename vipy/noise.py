@@ -237,7 +237,7 @@ def solarize(im, t):
 
 def permute_color_channels(im, order):
     assert sorted(order) == [0,1,2]
-    return im.array(np.array(im.load().rgb())[:,:,order])
+    return im.array(np.array(im.load().rgb())[:,:,order].copy())
 
 def greyscale(im):
     assert isinstance(im, vipy.image.Image)    
@@ -245,7 +245,7 @@ def greyscale(im):
 
 def bgr(im):
     assert isinstance(im, vipy.image.Image)    
-    return im.array(im.bgr().load().array()).colorspace('rgb')
+    return im.array(im.bgr().load().array().copy()).colorspace('rgb')
 
 def hot(im):
     assert isinstance(im, vipy.image.Image)    
@@ -405,13 +405,40 @@ class Photometric(Noise):
                          register=['blur', 'salt_and_pepper', 'jpeg_compression', 'greyscale', 'bgr', 'hot','saturate','edge','emboss',
                                    'darken','negative','scan_lines','additive_gaussian_noise','bit_depth','permute_color_channels','solarize',
                                    'colorjitter','autocontrast', 'sharpness', 'gamma', 'ghost'])
+
 class Perturbation(Noise):
-    def __init__(self, magnitude=0.5, provenance=False):
-        super().__init__(magnitude=magnitude, provenance=provenance, register=['translate', 'isotropic_scale', 'crop', 'blur', 'additive_gaussian_noise']) 
+    """Construct a sampler which applies small photometric|geometric perturbations"""
+    def __init__(self, magnitude=0.25, provenance=False):
+        super().__init__(magnitude=magnitude, provenance=provenance, register=['blur', 'salt_and_pepper', 'jpeg_compression', 'edge', 'solarize', 'additive_gaussian_noise'])
+    
+    #def transform(self, im):
+    #    assert isinstance(im, vipy.image.Image), "vipy.image.Image required"        
+    #    return self.baseline(im).rgb()
         
+    #def perturbation(self, mean, num_perturbations):
+    #    assert isinstance(mean, vipy.image.Image), "vipy.image.Image required"
+    #    assert num_perturbations > 0        
+    #    return [self.perturbation(mean.rgb()) for k in range(num_perturbations)]  # zero centered
+        
+    def gaussian(self, im, rank):
+        """Return a gaussian (mean, cov) approximation for a randomly transformed and perturbed image.
+           If there are K=rank samples and the image is shape HxWxC, then this returns torch tensors of shape 1xCxHxW mean and 1xC*H*WxK covariance U, such that the covariance matrix is U @ U.transpose(1,2)
+        """
+        import torch
+        
+        mean = im.torch().contiguous()
+        cov = (1/rank)*torch.stack([s.torch().contiguous()-mean for s in self.sample(im, num_samples=rank)], dim=3).view(-1,rank) if rank is not None and rank>0 else None   # cov = UU^T
+        return (mean, cov)
+
+    def sample(self, im, num_samples):
+        """Generate K samples from a gaussian distribution returned from Perturbation.gaussian"""
+        return [self(im) for k in range(num_samples)]        
+        
+    def montage(self, im, num_rows=8, num_samples=8):
+        return vipy.visualize.montage([p.mat2gray().rgb() for r in range(num_rows) for p in self.sample(im, num_samples)], gridrows=num_rows, gridcols=num_samples)
+    
 
 geometric = Geometric(provenance=True)
 photometric = Photometric(provenance=True)
-perturbation = Perturbation(provenance=True)
 randomcrop = RandomCrop(provenance=True)
-
+perturbation = Perturbation()

@@ -225,6 +225,10 @@ class Image():
         """
         self.attributes = {k:v for (k,v) in self.attributes.items() if not k.startswith('__')} if isinstance(self.attributes, dict) else self.attributes
         return self
+
+    def __rmul__(self, c):
+        assert isinstance(c, (float, int)), "scalar multiplication required"
+        return self.gain(c)
     
     def print(self, prefix='', sleep=None):
         """Print the representation of the image and return self with an optional sleep=n seconds
@@ -1137,7 +1141,7 @@ class Image():
     def setattribute(self, key, value):
         return self.set_attribute(key, value)
         
-    def setattributes(self, newattr):
+    def set_attributes(self, newattr):
         """Set many attributes at once by providing a dictionary to be merged with current attributes"""
         assert isinstance(newattr, dict), "New attributes must be dictionary"
         self.attributes.update(newattr)
@@ -1403,12 +1407,12 @@ class Image():
     
     def fliplr(self):
         """Mirror the image buffer about the vertical axis - Not idempotent"""
-        self._array = np.fliplr(self.load().array())
+        self._array = np.fliplr(self.load().array()).copy()
         return self
 
     def flipud(self):
         """Mirror the image buffer about the horizontal axis - Not idempotent"""
-        self._array = np.flipud(self.load().array())
+        self._array = np.flipud(self.load().array()).copy()
         return self
     
     def imagebox(self):
@@ -2053,7 +2057,11 @@ class ImageCategory(Labeled):
             elif im.num_objects() > 1:
                 raise ValueError("Invalid input - vipy.image.Scene must have at most one object")
         return cls(filename=im._filename, url=im._url, attributes=im.attributes, array=im._array, colorspace=im._colorspace, category=category).loader(im._loader)
-        
+
+    @classmethod
+    def from_torch(cls, t, category=None):
+        return ImageCategory.cast(vipy.image.Image.from_torch(t), category)
+    
     @classmethod
     def from_json(obj, s):
         d = json.loads(s) if not isinstance(s, dict) else s
@@ -2199,6 +2207,10 @@ class TaggedImage(Labeled):
             self.add_tag(t, c)
         return self
 
+    def new_soft_tags(self, soft_tags):
+        """replace soft tags with those provided"""
+        return self.clear_tags().add_soft_tags(soft_tags)
+    
     def add_soft_tag(self, soft_tag):
         """A soft tag is a tuple of (tag, confidence)"""
         return self.add_tag(*soft_tag)
@@ -3054,7 +3066,7 @@ def people():
     
     
 class Transform():
-    """Transforms are static methods that implement common transformation patterns used in distributed processing.  
+    """Transforms are static methods that implement common transformation patterns.
 
        These are useful for parallel processing of noisy or corrupted images when anonymous functions are not supported (e.g. multiprocessing)
  
@@ -3125,10 +3137,11 @@ class Transform():
         return im.clone().load().rgb().mindim(256).gain(1/255) if not im.loaded() else im
     
     @staticmethod
-    def compose(im, shape=None, gain=None, mindim=None, colorspace=None, centersquare=None, tensor=None, ignore_errors=False, jitter=None, samples=None, instanceid=None, clone=True, alpha_mask=None, objectsquare=None, dilate=1):
+    def compose(im, shape=None, gain=None, mindim=None, colorspace=None, centersquare=None, tensor=None, ignore_errors=False, jitter=None, clone=True, alpha_mask=None, objectsquare=None, dilate=1, pair=False, postprocessor=None, triplet=False):
         try:
-            if instanceid:
-                im.instanceid(n=instanceid if isinstance(instanceid, int) else 12) # set before clone so that this instance id propagates back to dataset for next shuffle
+            assert isinstance(im, vipy.image.Image), "invalid type"
+            imorig = im.clone()
+            
             if clone:
                 im = im.clone()  # clone here so that transformations do not pollute the source dataset
             if colorspace == 'lum':
@@ -3137,8 +3150,6 @@ class Transform():
                 im = im.rgb()
             if colorspace == 'rgba':
                 im = im.rgba()                                
-            if colorspace == 'float':
-                im = im.float()                
             if jitter:
                 assert callable(jitter)
                 im = jitter(im)
@@ -3152,16 +3163,25 @@ class Transform():
                 im = im.mindim(mindim)
             if alpha_mask:
                 im = im.alpha_mask() if isinstance(im, Scene) else im.transparent()                                
-            if gain is not None:
-                im = im.gain(gain)
+                
             if tensor:
-                im = im.torch()  # CHW
-            if samples:
-                im.set_attribute('samples', [Transform.compose(im, shape=shape, gain=gain, mindim=mindim, colorspace=colorspace,
-                                                               centersquare=centersquare, tensor=tensor, ignore_errors=ignore_errors,
-                                                               jitter=jitter, samples=None, alpha_mask=alpha_mask)for k in range(samples)])
-            return im
-        
+                postprocessed = im.torch()  # CHW order
+            elif postprocessor:
+                assert callable(postprocessor)
+                postprocessed = postprocessor(im)  # before gain
+            else:
+                postprocessed = im
+
+            if gain is not None:
+                postprocessed = gain*postprocessed
+                
+            if pair:
+                return (im, imorig)
+            elif triplet:
+                return (postprocessed, im, imorig)
+            else:
+                return postprocessed
+                    
         except KeyboardInterrupt:
             raise
         except:

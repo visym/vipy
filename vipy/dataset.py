@@ -1,20 +1,22 @@
 import os
 import numpy as np
+import random
+import shutil
+import copy 
+import gc 
+import itertools
+import functools
+import concurrent.futures as cf
+import vipy.parallel
+
+from pathlib import Path
 from vipy.util import findpkl, toextension, filepath, filebase, jsonlist, ishtml, ispkl, filetail, temphtml, env, cache
 from vipy.util import listpkl, listext, templike, tempdir, remkdir, tolist, fileext, writelist, tempcsv, to_iterable
 from vipy.util import newpathroot, listjson, extlist, filefull, tempdir, groupbyasdict, try_import, shufflelist, catcher
 from vipy.util import is_email_address, findjson, findimages, isimageurl, countby, chunkgen, chunkgenbysize, dividelist, chunklist
 from vipy.util import findvideos, truncate_string
 from vipy.globals import log
-import random
-import shutil
-import copy 
-import gc 
-import itertools
-from pathlib import Path
-import functools
-import concurrent.futures as cf
-import vipy.parallel
+from vipy.parallel import identity
 
 
 class Dataset():
@@ -93,7 +95,7 @@ class Dataset():
     @classmethod
     def cast(cls, obj):
         return cls(obj) if not isinstance(obj, Dataset) else obj
-    
+
     def __repr__(self):
         fields = ['id=%s' % truncate_string(self.id(), maxlen=80)] if self.id() else []
         fields += ['len=%d' % self.len()] if self.len() is not None else []
@@ -155,6 +157,10 @@ class Dataset():
             self._id = new_id
             return self
         return self._id
+
+    def name(self):
+        """Return the dataset name, which is the dataset id prefix without split modifiers"""
+        return self.id().split(':')[0]  
 
     def index(self, index=None, strict=False):
         """Update the index, useful for filtering of large datasets"""
@@ -287,7 +293,7 @@ class Dataset():
         assert p>=0 and p<=1, "invalid fraction '%s'" % p
         return self.take(n=int(len(self)*p), inplace=inplace)
 
-    def inverse_frequency(self, f):
+    def inverse_frequency(self, f=identity):
         """Return the inverse frequency of elements grouped by the callable f.  Returns a dictionary of the callable output to inverse frequency """
         attributes = self.set(f)
         frequency = self.frequency(f)
@@ -307,7 +313,7 @@ class Dataset():
         for (k,b) in enumerate(chunkgenbysize(self, n)):  
             yield Dataset(b).id('%s:%d' % (self.id() if self.id() else '', k))
                                 
-    def minibatch(self, n, ragged=True, mapper=None, bufsize=1024, accepter=None, repeat=1, aslist=False):
+    def minibatch(self, n, ragged=True, preprocessor=None, bufsize=1024, accepter=None, repeat=1, aslist=False, postprocessor=None):
         """Yield preprocessed minibatches of size n of this dataset.
 
         To yield chunks of this dataset, suitable for minibatch training/testing
@@ -323,7 +329,7 @@ class Dataset():
         ```python
         D = vipy.dataset.registry('yfcc100m_url:train').take(128)
         with vipy.globals.parallel(4):
-            for b in D.minibatch(16, mapper=vipy.image.Transform.download, accepter=lambda im: im.is_downloaded()):
+            for b in D.minibatch(16, preprocessor=vipy.image.Transform.download, accepter=lambda im: im.is_downloaded()):
                 print(b)  # complete minibatch that passed accepter
         ```
 
@@ -332,7 +338,8 @@ class Dataset():
             ragged [bool]: If ragged=true, then the last chunk will be ragged with len(chunk)<n, else skipped
             bufsize [int]:  The size of the buffer used in parallel processing of elements.  Useful for parallel loading
             accepter [callable]:  A callable that returns true|false on an element, where only elements that return true are included in the minibatch.  useful for parallel loading of elements that may fail to download
-            mapper [callable]: A callable that is applied to every element of the dataset.  Useful for parallel loading
+            preprocessor [callable]: A callable that is applied to every element of the dataset before yielding.  Useful for parallel loading
+            postprocessor [callable]: A callable that is applied to every minibatch before yielding.  Useful for dataset processing after grouping into minibatches (not parallel)
             repeat [int]: Repeat each element a given number of times.  This is useful for yielding elements for data augmentation
             aslist [bool]: Yield minibatch as a list rather than a dataset
         
@@ -343,10 +350,10 @@ class Dataset():
         ..note:: If there exists a vipy.parallel.exeuctor(), then loading and preprocessing will be performed concurrently
 
         """
-        for (k,b) in enumerate(chunkgenbysize(vipy.parallel.iter(self.repeater(repeat), mapper=mapper, bufsize=max(bufsize,n), accepter=accepter, zipped=False), n)): 
+        for (k,b) in enumerate(chunkgenbysize(vipy.parallel.iter(self.repeater(repeat), mapper=preprocessor, bufsize=max(bufsize,n), accepter=accepter), n)): 
             if ragged or len(b) == n:
-                yield Dataset.cast(b).id('%s:%d' % (self.id() if self.id() else '', k)) if not aslist else b                    
-                    
+                d = Dataset.cast(b).id('%s:%d' % (self.id() if self.id() else '', k)) if not aslist else b
+                yield d if postprocessor is None else postprocessor(d)
                         
     def shift(self, m):
         """Circular shift the dataset m elements to the left, so that self[k+m] == self.shift(m)[k].  Circular shift for boundary handling so that self.shift(m)[-1] == self[m-1]"""

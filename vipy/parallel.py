@@ -8,10 +8,11 @@ import functools
 
 
 def identity(x):
+    """identity function to avoid lambda x: x callables in parallel processing"""
     return x
 
 
-def iter(ingen, mapper=identity, bufsize=1024, progress=False, accepter=None, zipped=False):
+def iter(ingen, mapper=identity, bufsize=1024, progress=False, accepter=None):
     """Return an iterator on the input generator that will apply the mapper to each object and yield only those elements where the accepter is true
 
     ```python
@@ -27,7 +28,6 @@ def iter(ingen, mapper=identity, bufsize=1024, progress=False, accepter=None, zi
         mapper [callable]: A function applied to each element before yielding
         bufsize [int]: The maximum size of the parallel queue used by producers.  This defines the maximum number of tasks in-flight, avoids submitting every element in a long iterator
         accepter [callable]: A function which returns true or false, such that the iterator only yields elements for which the accepter returns true
-        zipped [bool]: If true, yield (x, mapper(x)) tuples, if false yield mapper(x) only.  Usefulf for `vipy.parallel.zipmap`
         progress [bool|int]: If True, show progress with a tqdm style progress bar, if integer, use this number as the progress bar total
     
     Returns:
@@ -43,7 +43,7 @@ def iter(ingen, mapper=identity, bufsize=1024, progress=False, accepter=None, zi
         for x in ingen:  # iterable access (faster)
             y = mapper(x) if mapper is not None else x
             if accepter is None or accepter(y):
-                yield y if not zipped else (x,y)
+                yield y
 
     else:
         mapper = identity if mapper is None else mapper
@@ -78,7 +78,7 @@ def iter(ingen, mapper=identity, bufsize=1024, progress=False, accepter=None, zi
             if (x,y) == (None,None):
                 break
             if accepter is None or accepter(y):
-                yield y if not zipped else (x,y)
+                yield y
     
 
 def map(f, ingen, **kwargs):
@@ -88,8 +88,3 @@ def map(f, ingen, **kwargs):
     return vipy.globals.cf().map(functools.partial(f, **kwargs), ingen)  # order preserving
                 
 
-def zipmap(ingen, mapper=identity, bufsize=1024, progress=False, accepter=None):
-    """Return an iterator that yields (x, mapper(x)) tuples where x is yielded from ingen, and mapper is a callable.  This is equivalent to zip(ingen, map(mapper, ingen)), without keeping two copies of ingen"""
-    return iter(ingen, mapper=mapper, bufsize=bufsize, progress=progress, accepter=accepter, zipped=True)
-    
-    
