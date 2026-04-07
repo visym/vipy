@@ -120,7 +120,8 @@ def ghost(im, txr=0.01, tyr=0.01, txg=-0.01, tyg=-0.01, txb=0.01, tyb=-0.01):
     return imz
 
 def crop(im, s=0.8):
-    return im.crop(vipy.geometry.BoundingBox(xmin=random.randint(0, int((1-s)*im.width())), ymin=random.randint(0, int((1-s)*im.height())), width=math.ceil(s*im.width()), height=math.ceil(s*im.height()))).resize(height=im.height(), width=im.width())
+    (H,W) = (im.height(), im.width())
+    return im.crop(vipy.geometry.BoundingBox(xmin=random.randint(0, int((1-s)*im.width())), ymin=random.randint(0, int((1-s)*im.height())), width=math.ceil(s*im.width()), height=math.ceil(s*im.height()))).resize(height=H, width=W)
 
 def fliplr(im):
     return im.load().fliplr()
@@ -199,6 +200,8 @@ def mask(im, num_masks=1, xywh_range=((0.1,0.9),(0,1,0.9),(0.3,0.5),(0.3,0.5)), 
         im = im.inverse_blur_mask(radius=radius)
     elif fill in ['pixel', 'pixelize', 'pixelate']:
         im = im.pixel_mask(radius=radius)
+    elif fill == 'alpha':
+        return im.alpha_mask()
     else:
         raise ValueError("unknown mask type '%s'" % fill)
     return im
@@ -365,10 +368,13 @@ class Noise():
         assert isinstance(im, vipy.image.Image)
         assert transform in self.transformations()
 
-        imd = self._registry[transform](im.clone().load())
+        imt = im.clone()
         if self._provenance:
-            imd.setattribute('vipy.noise', transform)
-        return imd
+            imt = vipy.image.Scene.cast(imt).append_object(vipy.object.Detection.cast(imt.imagebox()).new_category('provenance'))
+        imt = self._registry[transform](imt.load())
+        if self._provenance:
+            imt.setattribute('vipy.noise', {'transform': transform, 'bbox': imt.last_object()})  # bounding box of original image in this geometrically perturbed image
+        return imt
 
     def montage(self, im, num_transforms=None):
         """Return a montage of noise applied to the input image. This is useful for visualization of the types of noise applied to a given image
@@ -411,34 +417,16 @@ class Perturbation(Noise):
     def __init__(self, magnitude=0.25, provenance=False):
         super().__init__(magnitude=magnitude, provenance=provenance, register=['blur', 'salt_and_pepper', 'jpeg_compression', 'edge', 'solarize', 'additive_gaussian_noise'])
     
-    #def transform(self, im):
-    #    assert isinstance(im, vipy.image.Image), "vipy.image.Image required"        
-    #    return self.baseline(im).rgb()
-        
-    #def perturbation(self, mean, num_perturbations):
-    #    assert isinstance(mean, vipy.image.Image), "vipy.image.Image required"
-    #    assert num_perturbations > 0        
-    #    return [self.perturbation(mean.rgb()) for k in range(num_perturbations)]  # zero centered
-        
-    def gaussian(self, im, rank):
-        """Return a gaussian (mean, cov) approximation for a randomly transformed and perturbed image.
-           If there are K=rank samples and the image is shape HxWxC, then this returns torch tensors of shape 1xCxHxW mean and 1xC*H*WxK covariance U, such that the covariance matrix is U @ U.transpose(1,2)
-        """
-        import torch
-        
-        mean = im.torch().contiguous()
-        cov = (1/rank)*torch.stack([s.torch().contiguous()-mean for s in self.sample(im, num_samples=rank)], dim=3).view(-1,rank) if rank is not None and rank>0 else None   # cov = UU^T
-        return (mean, cov)
 
     def sample(self, im, num_samples):
         """Generate K samples from a gaussian distribution returned from Perturbation.gaussian"""
-        return [self(im) for k in range(num_samples)]        
+        return [self(im.rgb()) for k in range(num_samples)]        
         
     def montage(self, im, num_rows=8, num_samples=8):
         return vipy.visualize.montage([p.mat2gray().rgb() for r in range(num_rows) for p in self.sample(im, num_samples)], gridrows=num_rows, gridcols=num_samples)
     
-
-geometric = Geometric(provenance=True)
-photometric = Photometric(provenance=True)
-randomcrop = RandomCrop(provenance=True)
-perturbation = Perturbation()
+    
+geometric = Geometric(provenance=False)
+photometric = Photometric(provenance=False)
+randomcrop = RandomCrop(provenance=False)
+perturbation = Perturbation(provenance=False)

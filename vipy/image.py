@@ -658,13 +658,19 @@ class Image():
         """Transparent images are four channel color images with transparency, float32 or uint8.  Return true if this image contains an alpha transparency channel"""
         return self.channels() == 4
 
-    def blend(self, im, alpha):
-        """alpha blend self and im in-place, such that self = alpha*self + (1-alpha)*im.  alpha=0 returns im, and alpha=1 returns self"""
+    def blend(self, im, alpha=None):
+        """alpha blend self and im in-place, such that self = alpha*self + (1-alpha)*im.  alpha=0 returns im, and alpha=1 returns self, alpha=None uses the alpha channel of self"""
         assert isinstance(im, Image)
-        assert alpha >=0 and alpha <= 1
-        assert self.colorspace() not in ['float','rgba','bgra'], "convert to rgb first"
-        return self.load().map(lambda arr: np.uint8(alpha * arr + (1-alpha)*im.clone().load()._to_colorspace(self.colorspace()).resize_like(self).array()))
-                
+        assert alpha is None or (alpha >=0 and alpha <= 1)
+        if alpha is not None:
+            assert self.colorspace() not in ['float','rgba','bgra'], "convert to rgb first"
+            return self.load().map(lambda arr: np.uint8(alpha * arr + (1-alpha)*im.clone().load()._to_colorspace(self.colorspace()).resize_like(self).array()))
+        else:
+            assert self.colorspace() in ['rgba', 'bgra'], "image must have alpha channel"
+            alpha_channel = np.expand_dims((1/255)*self.alpha().array(), 2)
+            return self.load().rgb().map(lambda arr: np.uint8(alpha_channel * arr + (1-alpha_channel)*im.clone().load()._to_colorspace('rgb').resize_like(self).array()))
+        
+
     def isgrey(self):
         """Grey images are one channel, float32"""
         return self.channels() == 1 and self.array().dtype == np.float32
@@ -1668,6 +1674,12 @@ class Image():
         #return self.array(np.float32(self.load()._array*g)).colorspace('float') if g != 1 else self  # numba not as fast anymore
         return self.array(np.multiply(self.load().float().array(), g)).colorspace('float') if g != 1 else self
 
+    def darken(self, g):
+        """Darken the image by changing the luminance with a multiplicative gain in [0,1], preserving the original colorspace"""
+        assert g>=0 and g<=1 
+        img = np.multiply(self.load().array(), g)        
+        return self.array(np.float32(img) if self.colorspace() in ['float','grey'] else np.uint8(img))
+    
     def bias(self, b):
         """Add a bias to the image array.  Bias should be broadcastable to array().  This forces the colorspace to 'float'"""
         self.array(self.load().float().array() + b)
@@ -1972,7 +1984,7 @@ class Image():
 
         >>> im = vipy.image.vehicles().centercrop(100,100)
         >>> viewport = vipy.object.Detection.cast(im.viewport())
-        >>> im.flush().append(viewport).show()
+        >>> im.flush().append_object(viewport).show()
         """
         bb = self.imagebox()
         if self._history() is not None:
@@ -2074,8 +2086,8 @@ class ImageCategory(Labeled):
                    colorspace=d['colorspace'] if 'colorspace' in d else None,
                    array=np.array(d['array'], dtype=np.uint8) if 'array' in d and d['array'] is not None else None)
     
-    def new_category(self, c):
-        return self.set_attribute('category', c)
+    def new_category(self, c, confidence=None):
+        return self.set_attribute('category', c).set_attribute('confidence', confidence)
 
     def relabel(self):
         log.info('Enter a new category name for this image')
@@ -2084,6 +2096,7 @@ class ImageCategory(Labeled):
     def clear_category(self):
         if 'category' in self.attributes:
             del self.attributes['category']
+            del self.attributes['confidence']            
         return self
     
     def category(self):
@@ -2126,8 +2139,8 @@ class TaggedImage(Labeled):
     def __repr__(self):
         fields  = ['category=%s' % self.category()] if len(self.tags())==1 else []
         fields += ['caption=%s' % truncate_string(self.caption(), 40)] if self.caption() is not None else []        
-        fields +=  ['confidence=%1.3f' % self.confidence()] if len(self.tags())==1 and self.confidence() is not None else []
-        fields +=  ['tags=%s' % truncate_string(str(self.tags()), 40)] if len(self.tags())>1 else []
+        fields += ['confidence=%1.3f' % self.confidence()] if len(self.tags())==1 and self.confidence() is not None else []
+        fields += ['tags=%s' % truncate_string(str(self.tags()), 40)] if len(self.tags())>1 else []
         return super().__repr__().replace('vipy.image.Image', 'vipy.image.TaggedImage').replace('>', ', %s>' % ', '.join(fields))
         
     @classmethod
@@ -2410,7 +2423,10 @@ class Scene(TaggedImage):
             
     def primary_object(self):
         return self._objectlist[0] if len(self._objectlist)>0 else None
-        
+
+    def last_object(self):
+        return self._objectlist[-1] if len(self._objectlist)>0 else None
+    
     def objectmap(self, f):
         """Apply lambda function f to each object.  If f is a list of lambda, apply one to one with the objects"""
         assert callable(f)
@@ -2661,15 +2677,29 @@ class Scene(TaggedImage):
         img[:] = mask[:]  # in-place update
         return self
 
-    def alpha_mask(self, maskval=255):
-        """Convert to RGBA and set the alpha channel to an object mask, with opaque inside object bounding boxes and transparent outside"""
+    def alpha_mask(self, fgval=255, bgval=0):
+        """Convert to RGBA and set the alpha channel to an object mask, with opaque (=fgval) inside object bounding boxes and transparent (=bgval) outside"""
         img = self.rgba().numpy()  # writeable
-        img[:,:,3] = np.uint8(self.rectangular_mask(maskval=maskval))
+        img[:,:,3] = np.uint8(self.rectangular_mask(maskval=fgval))+bgval
+        return self
+
+    def luminance_mask(self, bglum=0.2):
+        """Darken the background by reducing the luminance while keeping the foreground the same luminance, help with showing the foreground pop out"""
+        mask = self.rectangular_mask() if self.channels() == 1 else np.expand_dims(self.rectangular_mask(), axis=2)
+        img = self.numpy()
+        img[:] = np.multiply(img, bglum*(1-mask) + mask)  # in-place update
+        return self
+        
+        img = self.rgba().numpy()  # writeable
+        img[:,:,3] = np.uint8(self.rectangular_mask(maskval=fgval))+bgval
         return self
 
     def inverse_binary_mask(self):
         """(1-vipy.image.Image.binary_mask`)"""
-        return self.alpha_mask(alpha=1)
+        mask = self.rectangular_mask() if self.channels() == 1 else np.expand_dims(self.rectangular_mask(), axis=2)
+        img = self.numpy()
+        img[:] = 1-mask[:]  # in-place update
+        return self
     
     def bgmask(self):
         """Set all pixels outside object bounding boxes to zero"""
@@ -3064,136 +3094,4 @@ def people():
                           vipy.object.Detection(category="person", xywh=(228.2, 948.7, 546.8, 688.5))]).mindim(1024)
 
     
-    
-class Transform():
-    """Transforms are static methods that implement common transformation patterns.
-
-       These are useful for parallel processing of noisy or corrupted images when anonymous functions are not supported (e.g. multiprocessing)
- 
-       See also: `vipy.dataset.Dataset.minibatch` for parallel processing of batches of images for downloading, loading, resizing, cropping, augmenting, tensor prep etc.
-    """
-    
-    @staticmethod
-    def load(im):
-        try:
-            return im.clone().load()
-        except:
-            return im.flush()
-
-    @staticmethod
-    def download(im):
-        try:
-            return im.clone().download()
-        except:
-            return im.flush()
-
-    @staticmethod
-    def is_loaded(im):
-        return im.is_loaded()
-
-    @staticmethod
-    def mindim(im, mindim=256):
-        try:
-            return im.clone().load().mindim(mindim)
-        except:
-            return im.flush()
-
-        
-    @staticmethod
-    def thumbnail(im, mindim=64, outfile=None):
-        try:
-            return im.clone().load().mindim(mindim).save(outfile if outfile else tocache(shortuuid(8)+'.jpg'))
-        except:
-            return im.flush()
-
-    @staticmethod
-    def saveas(im, filename):
-        try:
-            return im.clone().load().saveas(filename)
-        except:
-            return im.flush()
-        
-    @staticmethod
-    def annotate(im, mindim=64, outfile=None):
-        try:
-            return im.clone().load().mindim(mindim).annotate().save(outfile if outfile else tocache(shortuuid(8)+'.jpg'))
-        except:
-            return im.flush()
-        
-    @staticmethod
-    def centersquare_32x32_normalized(im):
-        return im.clone().load().rgb().centersquare().resize(32,32).gain(1/255) if not im.loaded() else im
-
-    @staticmethod
-    def centersquare_32x32_lum_normalized(im):
-        return im.clone().load().centersquare().lum().resize(32,32).gain(1/255) if not im.loaded() else im
-    
-    @staticmethod
-    def centersquare_256x256_normalized(im):
-        return im.clone().load().rgb().centersquare().resize(256,256).gain(1/255) if not im.loaded() else im
-
-    @staticmethod
-    def mindim256_normalized(im):
-        return im.clone().load().rgb().mindim(256).gain(1/255) if not im.loaded() else im
-    
-    @staticmethod
-    def compose(im, shape=None, gain=None, mindim=None, colorspace=None, centersquare=None, tensor=None, ignore_errors=False, jitter=None, clone=True, alpha_mask=None, objectsquare=None, dilate=1, pair=False, postprocessor=None, triplet=False):
-        try:
-            assert isinstance(im, vipy.image.Image), "invalid type"
-            imorig = im.clone()
-            
-            if clone:
-                im = im.clone()  # clone here so that transformations do not pollute the source dataset
-            if colorspace == 'lum':
-                im = im.lum()
-            if colorspace == 'rgb':
-                im = im.rgb()
-            if colorspace == 'rgba':
-                im = im.rgba()                                
-            if jitter:
-                assert callable(jitter)
-                im = jitter(im)
-            if objectsquare and isinstance(im, Scene) and len(im.objects())>0:
-                im = im.objectsquare(dilate=dilate)
-            if centersquare:
-                im = im.centersquare()
-            if shape is not None:
-                im = im.resize(*shape)
-            if mindim:
-                im = im.mindim(mindim)
-            if alpha_mask:
-                im = im.alpha_mask() if isinstance(im, Scene) else im.transparent()                                
-                
-            if tensor:
-                postprocessed = im.torch()  # CHW order
-            elif postprocessor:
-                assert callable(postprocessor)
-                postprocessed = postprocessor(im)  # before gain
-            else:
-                postprocessed = im
-
-            if gain is not None:
-                postprocessed = gain*postprocessed
-                
-            if pair:
-                return (im, imorig)
-            elif triplet:
-                return (postprocessed, im, imorig)
-            else:
-                return postprocessed
-                    
-        except KeyboardInterrupt:
-            raise
-        except:
-            if not ignore_errors:
-                raise
-            return None
-
-    @staticmethod
-    def composer(**kwargs):
-        return functools.partial(Transform.compose, **kwargs)
-
-    @staticmethod
-    def is_transformed(im):
-        return im is not None
     

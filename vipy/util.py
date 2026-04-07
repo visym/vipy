@@ -614,15 +614,17 @@ def chunklistbysize(inlist, size_per_chunk):
     assert size_per_chunk >= 1
     return [inlist[i:i+size_per_chunk] for i in range(0,len(inlist),size_per_chunk)]
 
-def chunkgenbysize(ingen, size_per_chunk):
+def chunkgenbysize(ingen, size_per_chunk, ragged=False):
     """Yield a list of lists such that each element is a list
     containing a sequential chunk of the original list of length
-    size_per_chunk"""
+    size_per_chunk.
+    If ragged, then return the last chunk even if it is smaller than size_per_chunk"""
     assert size_per_chunk >= 1
 
     if sys.version_info >= (3,12):
         for b in itertools.batched(ingen, size_per_chunk):
-            yield b  
+            if ragged or len(b) == size_per_chunk:
+                yield b  
     else:
         while True:
             try:

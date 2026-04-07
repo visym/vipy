@@ -66,7 +66,7 @@ class Dataset():
         self._loader = loader if not isinstance(dataset, Dataset) else dataset._loader  # not serializable if lambda is provided
 
         try:
-            self._type = str(type(self._loader(dataset[0]) if self._loader else dataset[0]))  # peek at first element, cached
+            self._type = type(self._loader(dataset[0]) if self._loader else dataset[0])  # peek at first element, cached
         except:
             self._type = None
 
@@ -94,7 +94,15 @@ class Dataset():
 
     @classmethod
     def cast(cls, obj):
-        return cls(obj) if not isinstance(obj, Dataset) else obj
+        """cast an object to a dataset"""
+        if isinstance(obj, (list, tuple, set)):
+            return cls(obj)
+        elif isinstance(obj, dict):
+            return cls(list(obj.items()))
+        elif isinstance(obj, Dataset):
+            return obj
+        else:
+            cls([obj])  # assume a singleton
 
     def __repr__(self):
         fields = ['id=%s' % truncate_string(self.id(), maxlen=80)] if self.id() else []
@@ -134,6 +142,9 @@ class Dataset():
     def raw(self):
         """Return a view of this dataset without the loader"""
         return Dataset(self._ds, loader=None)
+
+    def type(self):
+        return self._type
     
     def is_streaming(self):
         return self._idx is None
@@ -220,6 +231,10 @@ class Dataset():
     def flatten(self):
         """Given a length N dataset with elements length M lists or tuples, return a flattened dataset of length N*M containing elements previously in the lists/tuples"""
         return Dataset(self.list(flatten=True), id=self.id())
+
+    def singleton(self):
+        """If the dataset is length 1, return the element, otherwise return the dataset"""
+        return self if len(self) != 1 else self[0]
     
     def list(self, mapper=None, flatten=False):
         """Return a tuple as a list, loading into memory"""
@@ -313,7 +328,7 @@ class Dataset():
         for (k,b) in enumerate(chunkgenbysize(self, n)):  
             yield Dataset(b).id('%s:%d' % (self.id() if self.id() else '', k))
                                 
-    def minibatch(self, n, ragged=True, preprocessor=None, bufsize=1024, accepter=None, repeat=1, aslist=False, postprocessor=None):
+    def minibatch(self, n, preprocessor=None, bufsize=1024, accepter=None, ragged=True):
         """Yield preprocessed minibatches of size n of this dataset.
 
         To yield chunks of this dataset, suitable for minibatch training/testing
@@ -335,25 +350,20 @@ class Dataset():
 
         Args:
             n [int]: The size of the minibatch
-            ragged [bool]: If ragged=true, then the last chunk will be ragged with len(chunk)<n, else skipped
             bufsize [int]:  The size of the buffer used in parallel processing of elements.  Useful for parallel loading
-            accepter [callable]:  A callable that returns true|false on an element, where only elements that return true are included in the minibatch.  useful for parallel loading of elements that may fail to download
-            preprocessor [callable]: A callable that is applied to every element of the dataset before yielding.  Useful for parallel loading
-            postprocessor [callable]: A callable that is applied to every minibatch before yielding.  Useful for dataset processing after grouping into minibatches (not parallel)
-            repeat [int]: Repeat each element a given number of times.  This is useful for yielding elements for data augmentation
-            aslist [bool]: Yield minibatch as a list rather than a dataset
+            preprocessor [callable]: A callable that is applied to every element of the dataset before yielding.  Useful for parallel loading and transforming        
+            accepter [callable]:  A callable that returns true|false on an element after preprocessing, where only elements that return true are included in the minibatch.  useful for parallel loading of elements that may fail to download
+            ragged [bool]: If true, return the last minibatch even if it is not length n
         
         Returns:        
             Iterator over `vipy.dataset.Dataset` elements of length n.  Minibatches will be yielded loaded and preprocessed (processing done concurrently if vipy.parallel.executor() is initialized)
 
         ..note:: The distributed iterator appends the minibatch index to the minibatch.id().  
-        ..note:: If there exists a vipy.parallel.exeuctor(), then loading and preprocessing will be performed concurrently
+        ..note:: If there exists a vipy.parallel.executor(), then loading and preprocessing will be performed concurrently
 
         """
-        for (k,b) in enumerate(chunkgenbysize(vipy.parallel.iter(self.repeater(repeat), mapper=preprocessor, bufsize=max(bufsize,n), accepter=accepter), n)): 
-            if ragged or len(b) == n:
-                d = Dataset.cast(b).id('%s:%d' % (self.id() if self.id() else '', k)) if not aslist else b
-                yield d if postprocessor is None else postprocessor(d)
+        for (k,b) in enumerate(chunkgenbysize(vipy.parallel.iter(self, mapper=preprocessor, bufsize=max(bufsize,n), accepter=accepter), n, ragged=ragged)):
+            yield Dataset(b, id=f'{self.id()}:{k}')
                         
     def shift(self, m):
         """Circular shift the dataset m elements to the left, so that self[k+m] == self.shift(m)[k].  Circular shift for boundary handling so that self.shift(m)[-1] == self[m-1]"""
@@ -764,7 +774,7 @@ class Union(Dataset):
         return D
     
 
-def registry(name=None, datadir=None, freeze=True, clean=False, download=False, split='train', cast=None):
+def registry(name=None, datadir=None, freeze=True, clean=False, download=False, split='train'):
     """Common entry point for loading datasets by name.
 
     Usage:
@@ -787,7 +797,6 @@ def registry(name=None, datadir=None, freeze=True, clean=False, download=False, 
        clean [bool]: If true, force a redownload of the dataset to correct for partial download errors
        download [bool]: If true, just download the dataset, and return None
        split [str]: return 'train', 'val' or 'test' split.  If None, return (trainset, valset, testset) tuple
-       cast [callable]: If not None, convert all elements in the dataset by applying this callable to every element
     
     Datasets:
        'mnist','cifar10','cifar100','caltech101','caltech256','oxford_pets','sun397', 'food101','stanford_dogs',
@@ -970,10 +979,6 @@ def registry(name=None, datadir=None, freeze=True, clean=False, download=False, 
     else:
         raise ValueError('unknown dataset "%s" - choose from "%s"' % (name, ', '.join(sorted(datasets))))
 
-    if cast:
-        assert callable(cast), "invalid cast - must be a callable that will convert dataset elements to new type"
-        (trainset, valset, testset) = (d.map(cast) if d else None for d in (trainset, valset, testset))        
-    
     if freeze:
         gc.enable()
         gc.collect()

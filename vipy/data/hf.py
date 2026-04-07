@@ -17,7 +17,7 @@ from datasets import Image as HFImage
 
 
 def mnist():
-    dataset = load_dataset("ylecun/mnist", trust_remote_code=True).cast_column("image", HFImage(decode=False))
+    dataset = load_dataset("ylecun/mnist").cast_column("image", HFImage(decode=False))
     trainset = dataset['train'].add_column("instanceid", [f'mnist:train:{i}' for i in range(len(dataset['train']))])
     testset = dataset['test'].add_column("instanceid", [f'mnist:test:{i}' for i in range(len(dataset['test']))])    
     

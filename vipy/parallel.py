@@ -29,7 +29,7 @@ def iter(ingen, mapper=identity, bufsize=1024, progress=False, accepter=None):
         bufsize [int]: The maximum size of the parallel queue used by producers.  This defines the maximum number of tasks in-flight, avoids submitting every element in a long iterator
         accepter [callable]: A function which returns true or false, such that the iterator only yields elements for which the accepter returns true
         progress [bool|int]: If True, show progress with a tqdm style progress bar, if integer, use this number as the progress bar total
-    
+
     Returns:
         An iterator that yields mapped and accepted elements from ingen, whre mapping is performed in parallel by vipy.parallel.cf() executor
 
@@ -81,10 +81,14 @@ def iter(ingen, mapper=identity, bufsize=1024, progress=False, accepter=None):
                 yield y
     
 
-def map(f, ingen, **kwargs):
+def map(ingen, f, chunksize=1, **kwargs):
     """Apply the function f with the provided kwargs to each element in the iterator, returning the results unordered.  Function cannot be anonymous if cf executor is multiprocess """
-    assert vipy.globals.cf() is not None, "vipy.globals.cf() executor required - Try 'with vipy.globals.parallel(n=4): vipy.parallel.map(...)' "    
-    assert callable(f)    
-    return vipy.globals.cf().map(functools.partial(f, **kwargs), ingen)  # order preserving
+    assert f is None or callable(f)        
+    if f is None:
+        return ingen
+    f = functools.partial(f, **kwargs)
+    if vipy.globals.cf() is None:
+        return (f(x) for x in ingen)  # local fallback
+    return vipy.globals.cf().map(f, ingen, chunksize=chunksize)  # order preserving
                 
 
