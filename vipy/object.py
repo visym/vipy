@@ -31,7 +31,7 @@ class Object():
         return self.attributes['tags'] if 'tags' in self.attributes else []
     
     def confidences(self):
-        return tuple(self.attributes['confidences'][t] if t in self.aattributes['confidences'] else None for t in self.tags())
+        return tuple(self.attributes['confidences'][t] if t in self.attributes['confidences'] else None for t in self.tags())
     
     def add_tag(self, tag, confidence=None):
         self.append_attribute('tags', tag)

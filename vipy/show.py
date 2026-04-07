@@ -119,7 +119,7 @@ def impoints(img, objlist, fignum=None, bboxcolor='green', facecolor='white', fa
     pass
 
 def frame(fmr, im=None, color='b.', caption=False, markersize=10, fignum=1):
-    return BACKEND.frame(fr, im=im, color=color, caption=caption, markersize=markersize, fignum=fignum)
+    return BACKEND.frame(fmr, im=im, color=color, caption=caption, markersize=markersize, fignum=fignum)
 
 
 def imframe(img, fr, color='b', markersize=20, label=None, fignum=None):

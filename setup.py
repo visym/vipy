@@ -27,8 +27,9 @@ from setuptools import setup, find_packages
 # * minimum required setuptools >= 38.6.0
 #
 # ```bash
-# python3 -m pip install --upgrade setuptools wheel twine
-# python3 setup.py sdist upload -r pypi
+# python3 -m pip install --upgrade setuptools wheel twine build
+# python3 -m build
+# python3 -m twine upload --repository pypi dist/*
 # ```
 #
 # Local installation (virtualenv)
@@ -68,7 +69,8 @@ setup(
         'all': ['scikit-build', 'scipy', 'opencv-python', 'torch', 'ipython', 'scikit-learn', 'boto3', 'yt-dlp', 'dask', 'distributed', 'h5py', 'nltk', 'bs4', 'pyyaml', 'pytest', 'paramiko', 'scp', 'ujson', 'pdoc3', 'dill', 'pillow', 'numpy', 'matplotlib','ffmpeg-python','heyvi','datasets', 'plenoptic','dill'],
         'complete': ['scikit-build', 'scipy', 'opencv-python', 'torch', 'ipython', 'scikit-learn', 'boto3', 'yt-dlp', 'dask', 'distributed', 'h5py', 'nltk', 'bs4', 'pyyaml', 'pytest', 'paramiko', 'scp', 'ujson', 'numba', 'pdoc3', 'dill', 'pillow', 'numpy', 'matplotlib','ffmpeg-python','heyvi','datasets', 'plenoptic','dill']
         },
-    keywords=['computer vision machine learning ML CV privacy video image'],    
+    python_requires='>=3.7',
+    keywords=['computer vision machine learning ML CV privacy video image'],
     classifiers=[
         "Programming Language :: Python :: 3",
         "Operating System :: OS Independent",
