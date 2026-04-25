@@ -208,9 +208,9 @@ def _test_image_fileformat(imgfile):
     im = Image(filename=imgfile).load()
     imb = im
     im._array = im._array + 1  # modify array
-    np.testing.assert_array_equal(imb.numpy(), im.numpy())  # share buffer
+    assert np.array_equal(imb.numpy(), im.numpy())  # share buffer (np.testing.assert_array_equal trips on aliased operands in numpy 2.2.6 / Python 3.14)
     imc = im.clone()
-    np.testing.assert_array_equal(imc.numpy(), imb.numpy())  # share buffer
+    assert np.array_equal(imc.numpy(), imb.numpy())  # share buffer (np.testing.assert_array_equal trips on aliased operands in numpy 2.2.6 / Python 3.14)
     imc._array = imc._array + 2  # modify array
     assert np.any(imc.numpy() != imb.numpy())  
     imc = im.clone(flushforward=True)

@@ -664,11 +664,11 @@ class Image():
         assert alpha is None or (alpha >=0 and alpha <= 1)
         if alpha is not None:
             assert self.colorspace() not in ['float','rgba','bgra'], "convert to rgb first"
-            return self.load().map(lambda arr: np.uint8(alpha * arr + (1-alpha)*im.clone().load()._to_colorspace(self.colorspace()).resize_like(self).array()))
+            return self.load().map(lambda arr: np.uint8(alpha * arr + (1-alpha)*im.clone().load().to_colorspace(self.colorspace()).resize_like(self).array()))
         else:
             assert self.colorspace() in ['rgba', 'bgra'], "image must have alpha channel"
             alpha_channel = np.expand_dims((1/255)*self.alpha().array(), 2)
-            return self.load().rgb().map(lambda arr: np.uint8(alpha_channel * arr + (1-alpha_channel)*im.clone().load()._to_colorspace('rgb').resize_like(self).array()))
+            return self.load().rgb().map(lambda arr: np.uint8(alpha_channel * arr + (1-alpha_channel)*im.clone().load().to_colorspace('rgb').resize_like(self).array()))
         
 
     def isgrey(self):
@@ -750,7 +750,7 @@ class Image():
         return (int(c[0]), int(c[1]))
     
     def array(self, np_array=None, copy=False):
-        """Replace self._array with provided numpy array
+        """Replace self._array with provided numpy array of shape (HxWxC)
 
         Args:
             np_array: [numpy array] A new array to use as the pixel buffer for this image.
@@ -769,7 +769,7 @@ class Image():
         elif isnumpyarray(np_array):
             self._array = np.copy(np_array) if copy else np_array  # reference or copy
             assert self._array.dtype == np.float32 or self._array.dtype == np.uint8, "Invalid input - array() must be type uint8 or float32 and not type='%s'" % (str(self._array.dtype))                        
-            self.colorspace(None)  # must be set with colorspace() after array() but before _to_colorspace()
+            self.colorspace(None)  # must be set with colorspace() after array() but before to_colorspace()
             return self
         else:
             raise ValueError('Invalid input - array() must be numpy array and not "%s"' % (str(type(np_array))))
@@ -1000,6 +1000,9 @@ class Image():
             img = (img.transpose(3,2,0,1) if img.ndim == 4 else np.expand_dims(img.transpose(2,0,1), 0)).reshape(1,-1) # HxWxC -> 1xCxHxW -> 1xCHW
         return from_numpy(img)   # pip install torch
 
+    def tensor(self, order='CHW'):
+        """Alias for vipy.image.Image.torch"""
+        return self.torch(order)
     
     @staticmethod
     def from_torch(x, order='CHW'):
@@ -1075,7 +1078,7 @@ class Image():
             return self
     
     def colorspace(self, colorspace=None):
-        """Return or set the colorspace as ['rgb', 'rgba', 'bgr', 'bgra', 'hsv', 'float', 'grey', 'lum']"""
+        """Return or set the colorspace as ['rgb', 'rgba', 'bgr', 'bgra', 'hsv', 'float', 'grey', 'lum'], do not convert colorspace"""
         if colorspace is None:
             return self._colorspace
         else:
@@ -1435,7 +1438,7 @@ class Image():
         return img
     
     # Color conversion
-    def _to_colorspace(self, to):
+    def to_colorspace(self, to):
         """Supported colorspaces are rgb, rgba, bgr, bgra, hsv, grey, lum, float"""
         to = to if to != 'gray' else 'grey'  # standardize 'gray' -> 'grey' internally
         self.load()
@@ -1450,13 +1453,13 @@ class Image():
             img = np.squeeze(img, axis=2) if img.ndim == 3 and img.shape[2] == 1 else img  # remove singleton channel            
             self._array = np.array(PIL.Image.fromarray(img, mode='L').convert('RGB'))  # uint8 luminance [0,255] -> uint8 RGB
             self.colorspace('rgb')
-            self._to_colorspace(to)
+            self.to_colorspace(to)
         elif self.colorspace() in ['gray', 'grey']:
             img = self.load().array()  # single channel float32 [0,1]
             img = np.squeeze(img, axis=2) if img.ndim == 3 and img.shape[2] == 1 else img  # remove singleton channel                        
             self._array = np.array(PIL.Image.fromarray(255.0 * img, mode='F').convert('RGB'))  # float32 gray [0,1] -> float32 gray [0,255] -> uint8 RGB
             self.colorspace('rgb')
-            self._to_colorspace(to)
+            self.to_colorspace(to)
         elif self.colorspace() == 'rgba':
             img = self.load().array()  # uint8 RGBA
             if to == 'bgra':
@@ -1467,7 +1470,7 @@ class Image():
             else:
                 self._array = self._array[:,:,0:-1]  # uint8 RGBA -> uint8 RGB
                 self.colorspace('rgb')
-                self._to_colorspace(to)
+                self.to_colorspace(to)
         elif self.colorspace() == 'rgb':
             img = self.load().array()  # uint8 RGB
             if to in ['grey', 'gray']:
@@ -1487,18 +1490,18 @@ class Image():
             img = self.load().array()  # uint8 BGR
             self._array = np.array(img)[:,:,::-1]  # uint8 BGR -> uint8 RGB
             self.colorspace('rgb')
-            self._to_colorspace(to)
+            self.to_colorspace(to)
         elif self.colorspace() == 'bgra':
             img = self.load().array()  # uint8 BGRA
             self._array = np.array(img)[:,:,::-1]  # uint8 BGRA -> uint8 ARGB
             self._array = self._array[:,:,[1,2,3,0]]  # uint8 ARGB -> uint8 RGBA
             self.colorspace('rgba')
-            self._to_colorspace(to)
+            self.to_colorspace(to)
         elif self.colorspace() == 'hsv':
             img = self.load().array()  # uint8 HSV
             self._array = np.array(PIL.Image.fromarray(img, mode='HSV').convert('RGB'))  # uint8 HSV -> uint8 RGB
             self.colorspace('rgb')
-            self._to_colorspace(to)
+            self.to_colorspace(to)
         elif self.colorspace() == 'float':
             img = self.load().array()  # float32
             if np.max(img) > 1 or np.min(img) < 0:
@@ -1513,7 +1516,7 @@ class Image():
                 img = np.squeeze(img, axis=2) if img.ndim == 3 else img
                 self._array = (1.0 / 255.0) * np.array(PIL.Image.fromarray(np.uint8(255 * img)).convert('L')).astype(np.float32)  # float32 RGB [0,1] -> float32 gray [0,1]                
                 self.colorspace('grey')
-            self._to_colorspace(to)
+            self.to_colorspace(to)
         elif self.colorspace() is None:
             raise ValueError('Colorspace must be initialized by constructor or colorspace() to allow for colorspace conversion')
         else:
@@ -1569,40 +1572,40 @@ class Image():
     
     def rgb(self):
         """Convert the image buffer to three channel RGB uint8 colorspace"""
-        return self._to_colorspace('rgb')
+        return self.to_colorspace('rgb')
 
     def color_transform(self, colorspace):
         """Transform the image buffer from the current `vipy.image.Image.colorspace` to the provided colorspace"""
-        return self._to_colorspace(colorspace)
+        return self.to_colorspace(colorspace)
     
     def colorspace_like(self, im):
         """Convert the image buffer to have the same colorspace as the provided image"""
         assert isinstance(im, vipy.image.Image)
-        return self._to_colorspace(im.colorspace())
+        return self.to_colorspace(im.colorspace())
     
     def rgba(self):
         """Convert the image buffer to four channel RGBA uint8 colorspace"""
-        return self._to_colorspace('rgba')
+        return self.to_colorspace('rgba')
 
     def hsv(self):
         """Convert the image buffer to three channel HSV uint8 colorspace"""
-        return self._to_colorspace('hsv')
+        return self.to_colorspace('hsv')
 
     def bgr(self):
         """Convert the image buffer to three channel BGR uint8 colorspace"""
-        return self._to_colorspace('bgr')
+        return self.to_colorspace('bgr')
 
     def bgra(self):
         """Convert the image buffer to four channel BGR uint8 colorspace"""
-        return self._to_colorspace('bgra')
+        return self.to_colorspace('bgra')
 
     def float(self):
         """Convert the image buffer to float32"""
-        return self._to_colorspace('float')
+        return self.to_colorspace('float')
 
     def greyscale(self):
         """Convert the image buffer to single channel grayscale float32 in range [0,1]"""
-        return self._to_colorspace('gray')
+        return self.to_colorspace('gray')
 
     def grayscale(self):
         """Alias for greyscale()"""
@@ -1618,11 +1621,11 @@ class Image():
 
     def luminance(self):
         """Convert the image buffer to single channel uint8 in range [0,255] corresponding to the luminance component"""
-        return self._to_colorspace('lum')
+        return self.to_colorspace('lum')
 
     def lum(self):
         """Alias for luminance()"""
-        return self._to_colorspace('lum')
+        return self.to_colorspace('lum')
 
     def _apply_colormap(self, cm):
         """Convert an image to greyscale, then convert to RGB image with matplotlib colormap"""
