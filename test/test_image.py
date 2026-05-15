@@ -11,8 +11,8 @@ import vipy.calibration
 
 # Common Parameters
 jpegurl = 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Bubo_virginianus_06.jpg/1920px-Bubo_virginianus_06.jpg'
-gifurl = 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2c/Rotating_earth_%28large%29.gif/200px-Rotating_earth_%28large%29.gif'
-pngurl = 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/47/PNG_transparency_demonstration_1.png/560px-PNG_transparency_demonstration_1.png'
+gifurl = 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2c/Rotating_earth_%28large%29.gif/250px-Rotating_earth_%28large%29.gif'
+pngurl = 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/47/PNG_transparency_demonstration_1.png/330px-PNG_transparency_demonstration_1.png'
 greyfile = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'face_grey.jpg')
 rgbfile = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'face_rgb.jpg')
 rgbafile = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'face_rgba.png')
@@ -260,7 +260,7 @@ def _test_image_fileformat(imgfile):
     # GIF
     im = Image(url=gifurl)
     im.download(verbose=True)
-    assert im.shape() == (200,200)
+    assert im.shape() == (250,250)
     print('[test_image.image]["%s"]:  GIF: PASSED' % imgfile)
 
     # Transparent PNG
