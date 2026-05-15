@@ -437,7 +437,6 @@ class Noise():
         assert im.array().dtype == np.uint8 or (im.colorspace() == 'float' and im.channels() in (1, 3)), \
             "noise transforms require uint8 input or float input with 1 or 3 channels, got dtype=%s colorspace=%s channels=%d" % (im.array().dtype, im.colorspace(), im.channels())
 
-        print(transform)
         imt = im.clone()
         if self._provenance:
             imt = vipy.image.Scene.cast(imt).append_object(vipy.object.Detection.cast(imt.imagebox()).new_category('provenance'))
@@ -484,7 +483,16 @@ class Photometric(Noise):
                                    'darken', 'negative', 'scan_lines', 'additive_gaussian_noise', 'bit_depth', 'permute_color_channels', 'solarize',
                                    'colorjitter', 'sharpness', 'gamma', 'ghost'])
 
+class Identity(Noise):
+    def __init__(self):
+        super().__init__()
+        self._registry = []
 
+    def __call__(self, im):
+        assert isinstance(im, vipy.image.Image), "vipy.image.Image required"
+        return im.clone()
+
+    
 geometric = Geometric(provenance=True)
 photometric = Photometric(provenance=True)
 randomcrop = RandomCrop(provenance=True)

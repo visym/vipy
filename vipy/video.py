@@ -918,8 +918,8 @@ class Video():
                     n.__dict__['kwargs']['ss'] = 0
                 if timestamp_in_seconds == 0:
                     n.__dict__['kwargs']['ss'] = n.__dict__['kwargs']['ss'] + offset
-                else: 
-                    n.__dict__['kwargs']['ss'] = timestamp_in_seconds + offset                   
+                else:
+                    n.__dict__['kwargs']['ss'] = timestamp_in_seconds + offset
                 return self
         raise ValueError('invalid ffmpeg argument "%s" -> "%s"' % ('ss', timestamp_in_seconds))
 
@@ -956,10 +956,17 @@ class Video():
         """        
         return self._ffmpeg_commandline()
     
-    def _from_ffmpeg_commandline(self, cmd, strict=False):
-        """Convert the ffmpeg command line string (e.g. from `vipy.video.Video.commandline`) to the corresponding ffmpeg-python filter chain and update self"""
+    def _from_ffmpeg_commandline(self, cmd, strict=False, audio=False, skip_filters=()):
+        """Convert the ffmpeg command line string (e.g. from `vipy.video.Video.commandline`) to the corresponding ffmpeg-python filter chain and update self.
+
+        Args:
+            cmd: the command line string returned by `commandline()`
+            strict: re-serialize the rebuilt chain and assert it matches `cmd`
+            audio: if True, return (video_chain, audio_stream) where audio_stream is the source file's audio derived from the *same* input node as video_chain (so a downstream `ffmpeg.output(v, a, ...)` muxes both with one demux and a shared timestamp baseline).  Otherwise return just the video chain.
+            skip_filters: iterable of filter names to omit from the rebuilt chain (e.g. ('setpts',) when the caller wants the trim window without the PTS reset, to preserve the source's natural A/V offset; used by `webm()`).  Also suppresses the implicit `setpts` that this rebuilder otherwise inserts before legacy `start_frame`/`end_frame` trims.
+        """
         args = copy.copy(cmd).replace(str(self.filename()), 'FILENAME').split(' ')  # filename may contain spaces
-        
+
         assert args[0] == 'ffmpeg', "Invalid FFMEG commmand line '%s'" % cmd
         assert args[1] == '-i' or (args[3] == '-i' and (args[1] == '-ss' or args[1] == '-rtsp_flags' or args[1] == '-listen')), "Invalid FFMEG commmand line '%s'" % cmd
         assert args[-1] == 'dummyfile', "Invalid FFMEG commmand line '%s'" % cmd
@@ -979,9 +986,11 @@ class Video():
             listenval = str(args[2])
             args = [args[0]] + args[3:]
             f = ffmpeg.input(args[2].replace('FILENAME', self.filename()), listen=listenval)   # restore filename, set RTMP listener
-        else:            
+        else:
             f = ffmpeg.input(args[2].replace('FILENAME', self.filename()))  # restore filename
-        
+
+        ffmpeg_input = f  # capture the freshly built input stream before any video filters are chained, for optional audio fork below
+
         if len(args) > 4:
             assert args[3] == '-filter_complex', "Invalid FFMEG commmand line '%s'" % cmd
             assert args[4][0] == '"' and args[4][-1] == '"', "Invalid FFMEG commmand line '%s'" % cmd
@@ -991,7 +1000,8 @@ class Video():
                 assert a.count(']') == 2 and a.count('[') == 2
                 kwstr = a.split(']', maxsplit=1)[1].split('[', maxsplit=1)[0]
                 if kwstr.count('=') == 0:
-                    f = f.filter(kwstr)
+                    if kwstr not in skip_filters:
+                        f = f.filter(kwstr)
                 else:
                     (a, kw) = ([], {}) 
                     (filtername, kwstr) = kwstr.split('=', maxsplit=1)
@@ -1007,7 +1017,8 @@ class Video():
                     if 'start' in kw:
                         pass
                     if 'start_frame' in kw or 'end_frame' in kw:
-                        f = f.setpts('PTS-STARTPTS')  # reset timestamp to 0 before trim filter in seconds
+                        if 'setpts' not in skip_filters:
+                            f = f.setpts('PTS-STARTPTS')  # reset timestamp to 0 before trim filter in seconds
                         if 'end_frame' in kw:
                             self._end = (self._start if self._start is not None else 0) + int(kw['end_frame'])  # for __repr__
                             kw['end'] = int(kw['end_frame'])/self.framerate()  # convert end_frame to end (legacy)
@@ -1017,11 +1028,12 @@ class Video():
                             kw['start'] = int(kw['start_frame'])/self.framerate()  # convert start_frame to start (legacy)
                             del kw['start_frame']  # use only start and not start_frame
 
-                    f = f.filter(filtername, *a, **kw)
+                    if filtername not in skip_filters:
+                        f = f.filter(filtername, *a, **kw)
 
         if strict:
             assert self._ffmpeg_commandline(f.output('dummyfile')) == cmd, "FFMPEG command line '%s' != '%s'" % (self._ffmpeg_commandline(f.output('dummyfile')), cmd)
-        return f
+        return (f, ffmpeg_input.audio) if audio else f
 
     def _isdirty(self):
         """Has the FFMPEG filter chain been modified from the default?  If so, then ffplay() on the video file will be different from self.load().play()"""
@@ -1098,9 +1110,22 @@ class Video():
             - for flags, use flag_name=None (e.g., show_frames=None) so that ffmpeg.probe() handles them correctly
         """
         if not has_ffprobe:
-            raise ValueError('"ffprobe" executable not found on path, this is optional for vipy.video - Install from http://ffmpeg.org/download.html')            
+            raise ValueError('"ffprobe" executable not found on path, this is optional for vipy.video - Install from http://ffmpeg.org/download.html')
         assert self.downloadif().hasfilename(), "Invalid video file '%s' for ffprobe" % self.filename()
         return ffmpeg.probe(self.filename(), **kwargs)
+
+    def has_audio(self):
+        """Return True iff the source video file has an audio stream, False otherwise.
+
+        Requires ffprobe and a resolvable filename; returns False (rather than raising)
+        when either is unavailable so callers can use this as a feature gate.
+        """
+        if not has_ffprobe or not self.hasfilename():
+            return False
+        try:
+            return any(s.get('codec_type') == 'audio' for s in ffmpeg.probe(self.filename()).get('streams', []))
+        except Exception:
+            return False
 
     def frame_meta(self, k=None):
         """Return the frame metadata of the underlying video file using ffprobe for all frames as a list of dicts, each list element corresponding to a frame.  This is useful for extracting frame types (e.g. i-frames).
@@ -2139,21 +2164,62 @@ class Video():
         return outfile
 
     def gif(self, outfile, pause=3, smallest=False, smaller=False, framerate=None):
-        """Save a video to an animated GIF file, with pause=N seconds between loops.  
+        """Save a video to an animated GIF file, with pause=N seconds between loops.
 
         Args:
             pause: Integer seconds to pause between loops of the animation
             smallest:  If true, create the smallest possible file but takes much longer to run
-            smaller:  if trye, create a smaller file, which takes a little longer to run 
-            framerate [float]:  The output framerate of the webp file.  The default is the framerate of the video. 
+            smaller:  if trye, create a smaller file, which takes a little longer to run
+            framerate [float]:  The output framerate of the webp file.  The default is the framerate of the video.
 
         Returns:
             The filename of the animated GIF of this video
 
         .. warning::  This will be very large for big videos, consider using `vipy.video.Video.webp` instead.
-        """        
+        """
         assert isgif(outfile)
         return self.webp(outfile, pause, strict=False, smallest=smallest, smaller=True, framerate=framerate)
+
+    def webm(self, outfile=None, framerate=None):
+        """Save the (filtered) video to a WebM (VP9 / Opus) file, muxing in source audio if it has any.
+
+        Applies the current ffmpeg video filter chain (resize, fps, clip, etc.) and, when the
+        source file has an audio stream, rebuilds the chain through `commandline()` /
+        `_from_ffmpeg_commandline(audio=True)` so the audio fork comes from the *same*
+        `ffmpeg.input(...)` node as the video chain.  One demux, one timestamp baseline; any
+        input-level `ss` set by `clip()` already applies to both.  An `atrim` mirrors the
+        video chain's trim duration so audio ends with video.
+
+        Args:
+            outfile [str]: output .webm path; defaults to a tempfile
+            framerate [float]: output framerate; defaults to the current filter chain framerate
+
+        Returns:
+            The output filename.
+        """
+        outfile = vipy.util.tempfilename(suffix='.webm') if outfile is None else outfile
+        outfile = os.path.normpath(os.path.abspath(os.path.expanduser(outfile)))
+        premkdir(outfile)
+        assert outfile.lower().endswith('.webm'), "outfile must have .webm extension"
+        framerate = framerate if framerate is not None else self.framerate()
+
+        if self.has_audio():
+            (start, end) = self.cliprange()  # frames (int) or seconds (float); start may be 0/None, end may be None
+            fps = self.framerate_of_videofile() or 1.0
+            if   isinstance(end, int):   dur = (end - (start if isinstance(start, int) else 0)) / fps
+            elif isinstance(end, float): dur = float(end) - (float(start) if isinstance(start, float) else 0.0)
+            else:                        dur = None
+            (v, a) = self.clone()._from_ffmpeg_commandline(self.commandline(), audio=True, skip_filters=('setpts',))
+            if dur is not None and dur > 0:
+                a = a.filter('atrim', duration=dur)
+            out = ffmpeg.output(v, a, outfile, vcodec='libvpx-vp9', acodec='libopus', r=framerate)
+        else:
+            out = ffmpeg.output(self._ffmpeg, outfile, vcodec='libvpx-vp9', r=framerate)
+
+        out.overwrite_output() \
+           .global_args('-cpuflags', '0', '-loglevel', 'quiet' if not vipy.globals.GLOBAL['DEBUG'] else 'debug') \
+           .run()
+        return outfile
         
     def save(self, outfile=None, framerate=None, vcodec='libx264', verbose=False, flush=False, pause=5):
         """Save video to new output video file.  This function does not draw boxes, it saves pixels to a new video file.
@@ -3669,8 +3735,11 @@ class Scene(Video):
            A `vipy.video.Scene` object from cropping the video using the trackbox.  If there are no tracks, return None.  
 
         """
-        bb = self.trackbox(dilate).even()  # may be None if trackbox is degenerate, force even to avoid FFMPEG filter chain degeneracies
-        return self.crop(bb.maxsquare().even() if maxsquare else bb, zeropad=zeropad) if bb is not None else None  
+        bb = self.trackbox(dilate)  # may be None if trackbox is degenerate (e.g. clip has no tracks)
+        if bb is None:
+            return None
+        bb = bb.even()  # force even dims to avoid FFMPEG filter chain degeneracies
+        return self.crop(bb.maxsquare().even() if maxsquare else bb, zeropad=zeropad)
 
     def activitybox(self, activityid=None, dilate=1.0):
         """The activitybox is the union of all activity bounding boxes in the video, which is the union of all tracks contributing to all activities.  This is most useful after activityclip().

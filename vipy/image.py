@@ -2899,9 +2899,11 @@ class Scene(TaggedImage):
         
         if outfile is None:
             buf = io.BytesIO()
-            (W,H) = plt.figure(num=fignum).canvas.get_width_height()  # fast(ish)
-            plt.figure(num=fignum).canvas.print_raw(buf)  # fast(ish), FIXME: there is a bug here with captions showing behind bboxes on macos
-            img = np.frombuffer(buf.getbuffer(), dtype=np.uint8).reshape((H, W, 4))
+            fig_canvas = plt.figure(num=fignum).canvas
+            (W,H) = fig_canvas.get_width_height()  # logical (CSS) pixels
+            ratio = getattr(fig_canvas, 'device_pixel_ratio', 1)  # 2 on macOS Retina, 1 elsewhere; print_raw writes at physical resolution
+            fig_canvas.print_raw(buf)  # fast(ish), FIXME: there is a bug here with captions showing behind bboxes on macos
+            img = np.frombuffer(buf.getbuffer(), dtype=np.uint8).reshape((int(H*ratio), int(W*ratio), 4))
             if figure is None:
                 vipy.show.close(plt.gcf().number)   # memory cleanup (useful for video annotation on last frame)
             return vipy.image.Image(array=img, colorspace='rgba').rgb()

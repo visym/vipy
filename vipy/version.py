@@ -66,7 +66,7 @@ class Version():
 
     def at_least_version(self, v):
         """Is versionstring='X.Y.Z' at least the current version?"""        
-        return self.at_least_major_version(v) and self.at_least_minor_version(v) and self.at_least_release_version(v)
+        return self.int() >= Version.from_string(v).int()
 
     def is_at_least(self, v):
         return self.at_least_version(v)
@@ -85,4 +85,4 @@ class Version():
 
     
 VERSION = Version(MAJOR, MINOR, RELEASE)
-
+is_at_least = VERSION.is_at_least
