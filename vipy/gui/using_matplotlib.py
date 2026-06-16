@@ -115,7 +115,10 @@ def _imshow_tight(img, fignum=None, keypress=True):
     for a in plt.gcf().axes:
         a.get_xaxis().set_visible(False)
         a.get_yaxis().set_visible(False)
-    imh = plt.imshow(img, animated=True, interpolation='nearest', aspect='equal')
+    # animated=False: matplotlib 3.7+ excludes animated artists from the bbox_inches='tight'
+    # probe pass in savefig, which produces all-white output on Linux/Agg.  macOS hid this
+    # via flush()'s explicit plt.draw().  Static render path doesn't need the blit flag.
+    imh = plt.imshow(img, animated=False, interpolation='nearest', aspect='equal')
 
     if keypress:
         fig.canvas.mpl_connect('key_press_event', escape_to_exit)

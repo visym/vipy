@@ -447,9 +447,9 @@ def isjsonfile(filename):
     return isinstance(filename, str) and len(filename) > 5 and filename[-5:] == '.json'
 
 
-def writejson(d, outfile):
+def writejson(d, outfile, sort_keys=False):
     with open(outfile, 'w') as f:
-        json.dump(d, f)
+        json.dump(d, f, sort_keys=sort_keys)
     return outfile
 
 

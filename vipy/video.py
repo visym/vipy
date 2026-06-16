@@ -1154,7 +1154,7 @@ class Video():
             - To return the i-frame indexes for the current filter chain use self.saveas().iframes() to save to a temporary file prior to i-frame index extraction.
             - To extract the i-frame itself, use [self.frame(k) for k in self.iframes()]
         """
-        return [k for (k,d) in enumerate(self.metaframe()) if d['pict_type'] == 'I']
+        return [k for (k,d) in enumerate(self.metaframe()) if d['media_type'] == 'video' and d['pict_type'] == 'I']
     
     def print(self, prefix='', sleep=None):
         """Print the representation of the video
@@ -2209,9 +2209,17 @@ class Video():
             if   isinstance(end, int):   dur = (end - (start if isinstance(start, int) else 0)) / fps
             elif isinstance(end, float): dur = float(end) - (float(start) if isinstance(start, float) else 0.0)
             else:                        dur = None
-            (v, a) = self.clone()._from_ffmpeg_commandline(self.commandline(), audio=True, skip_filters=('setpts',))
+            # Skip the video `trim` filter from the rebuild and apply the clip duration at the
+            # input level (-t) instead.  Filter-level `trim` on video paired with `atrim` on
+            # audio produced A/V drift (different stream boundaries at the demux/encode seam);
+            # input-level -t bounds both streams uniformly from a single demux pass.  No
+            # `atrim` is applied to audio for the same reason.
+            (v, a) = self.clone()._from_ffmpeg_commandline(self.commandline(), audio=True, skip_filters=('setpts', 'trim'))
             if dur is not None and dur > 0:
-                a = a.filter('atrim', duration=dur)
+                try:
+                    a.node.__dict__['kwargs']['t'] = dur
+                except Exception:
+                    pass
             out = ffmpeg.output(v, a, outfile, vcodec='libvpx-vp9', acodec='libopus', r=framerate)
         else:
             out = ffmpeg.output(self._ffmpeg, outfile, vcodec='libvpx-vp9', r=framerate)
