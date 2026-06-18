@@ -1154,7 +1154,7 @@ class Video():
             - To return the i-frame indexes for the current filter chain use self.saveas().iframes() to save to a temporary file prior to i-frame index extraction.
             - To extract the i-frame itself, use [self.frame(k) for k in self.iframes()]
         """
-        return [k for (k,d) in enumerate(self.metaframe()) if d['media_type'] == 'video' and d['pict_type'] == 'I']
+        return [k for (k,d) in enumerate([d for d in self.metaframe() if d['media_type'] == 'video']) if d['pict_type'] == 'I']
     
     def print(self, prefix='', sleep=None):
         """Print the representation of the video

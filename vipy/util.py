@@ -483,7 +483,7 @@ def groupbyasdict(togroup, keyfunc, valuefunc=lambda x: x):
     """Return dictionary of keys and lists from groupby on unsorted inset, where keyfunc is a lambda function on elements in inset
     
     Args:
-        togroup: an iteraable of elements to group
+        togroup: an iterable of elements to group
         keyfunc:  a lambda function to operate on elements of togroup such that the value returned from the lambda is the equality key for grouping
         valuefunc: a lambda function to operate on elements of to group such that the value returned from the lambda is a transform of the element to be grouped
     Returns:
