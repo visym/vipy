@@ -2228,7 +2228,51 @@ class Video():
            .global_args('-cpuflags', '0', '-loglevel', 'quiet' if not vipy.globals.GLOBAL['DEBUG'] else 'debug') \
            .run()
         return outfile
-        
+
+    def save_audio(self, outfile=None, acodec='copy', verbose=False):
+        """Save the source video's audio stream to a standalone audio file.
+
+        Demuxes the source file's audio channel(s) into a separate audio container.  By default
+        the audio is stream-copied (no re-encode), so the call is fast and lossless as long as
+        the target container accepts the source codec.  The current ffmpeg video filter chain
+        (resize, fps, crop, etc.) is NOT applied; this extracts the raw audio from the underlying
+        source file.
+
+        Args:
+            outfile [str|None]: output audio path; the extension chooses the container
+                (e.g. '.m4a', '.aac', '.mp3', '.wav', '.flac', '.ogg', '.opus').  If None,
+                defaults to a tempfile with suffix '.m4a'.
+            acodec [str]: ffmpeg audio codec name.  Default 'copy' = stream-copy (fastest,
+                lossless; the target container must accept the source codec, e.g. AAC into
+                .m4a/.aac).  Otherwise transcode, e.g. 'aac', 'libmp3lame', 'pcm_s16le',
+                'flac', 'libopus', 'libvorbis'.
+            verbose [bool]: log progress to stdout.
+
+        Returns:
+            Absolute path to the written audio file.
+
+        .. note::
+            - Raises AssertionError if the source video has no audio stream; gate with
+              `self.has_audio()` first if the input may be silent.
+            - This intentionally bypasses the filter chain.  To extract audio aligned to a
+              `clip()`/`trim()` range, save the filtered video first (e.g. via `save()` or
+              `webm()`) then call `save_audio()` on the returned filename.
+        """
+        assert self.has_audio(), 'source video "%s" has no audio stream' % self.filename()
+        outfile = vipy.util.tempfilename(suffix='.m4a') if outfile is None else outfile
+        outfile = os.path.normpath(os.path.abspath(os.path.expanduser(outfile)))
+        premkdir(outfile)
+
+        if verbose:
+            log.info('[vipy.video.save_audio]: writing "%s"' % outfile)
+
+        ffmpeg.input(self.filename()) \
+              .output(outfile, acodec=acodec, vn=None) \
+              .overwrite_output() \
+              .global_args('-cpuflags', '0', '-loglevel', 'quiet' if not vipy.globals.GLOBAL['DEBUG'] else 'debug') \
+              .run()
+        return outfile
+
     def save(self, outfile=None, framerate=None, vcodec='libx264', verbose=False, flush=False, pause=5):
         """Save video to new output video file.  This function does not draw boxes, it saves pixels to a new video file.
 
@@ -2387,7 +2431,7 @@ class Video():
         """Alias for play"""
         return self.play(verbose=verbose, notebook=notebook, ffplay=ffplay, figure=figure)
     
-    def quicklook(self, n=9, mindim=256, startframe=0, animate=False, dt=30, thumbnail=None, aspectratio=1):
+    def quicklook(self, n=9, mindim=256, startframe=0, animate=False, dt=30, aspectratio=1):
         """Generate a montage of n uniformly spaced frames.
            Montage increases rowwise for n uniformly spaced frames, starting from frame zero and ending on the last frame.
         
@@ -2397,7 +2441,6 @@ class Video():
                animate:  If true, return a video constructed by animating the quicklook into a video by showing dt consecutive frames
                dt:  The number of frames for animation
                startframe:  The initial frame index to start the n uniformly sampled frames for the quicklook
-               thumbnail [`vipy.image.Image`]: If provided, prepent the first element in the montage with this thumbnail.  This is useful for showing a high resolution image (e.g. a face, small object) to be contained in the video for review.
                aspectratio [float]: the ratio of gridcols/gridrows in vipy.visualize.montage
         
            ..note:: The first frame in the upper left is guaranteed to be the start frame of the labeled activity, but the last frame in the bottom right may not be precisely the end frame and may be off by at most len(video)/9.
@@ -2407,12 +2450,9 @@ class Video():
         if animate:
             return Video(frames=[self.quicklook(n=n, startframe=k, animate=False, dt=dt, aspectratio=aspectratio) for k in range(0, min(dt, len(self)))], framerate=self.framerate())
         framelist = [min(int(np.round(f))+startframe, len(self)-1) for f in np.linspace(0, len(self)-1, n)]
-        imframes = [self.frame(k).maxmatte() for (j,k) in enumerate(framelist)]
+        imframes = [self.frame(k).mindim(mindim) for (j,k) in enumerate(framelist)]
         imframes = [im.savefig(figure=1).rgb() for im in imframes]  # temp storage in memory
-        if thumbnail is not None:
-            assert isinstance(thumbnail, vipy.image.Image)
-            imframes = [thumbnail.maxmatte().mindim(mindim)] + imframes  # prepend
-        return vipy.visualize.montage(imframes, imgwidth=mindim, imgheight=mindim, aspectratio=aspectratio)
+        return vipy.visualize.montage(imframes, imgwidth=imframes[0].width(), imgheight=imframes[0].height(), aspectratio=aspectratio)
 
     def torch(self, startframe=0, endframe=None, length=None, stride=1, take=None, boundary='repeat', order='nchw', verbose=False, withslice=False, scale=1.0, withlabel=False, nonelabel=False):
         """Convert the loaded video of shape NxHxWxC frames to an MxCxHxW torch tensor/
@@ -3036,41 +3076,31 @@ class Scene(Video):
         """Degenerate scene has empty or malformed tracks"""
         return len(self.tracklist()) == 0 or any([t.isempty() or t.isdegenerate() for t in self.tracklist()])
     
-    def quicklook(self, n=9, dilate=1.5, mindim=256, fontsize=10, context=False, startframe=0, animate=False, dt=30, thumbnail=None, aspectratio=1, mutator=vipy.image.mutator_show_noun_verb()):
+    def quicklook(self, n=9, mindim=256, fontsize=10, startframe=0, animate=False, dt=30, aspectratio=1, mutator=vipy.image.mutator_show_noun_verb()):
         """Generate a montage of n uniformly spaced annotated frames centered on the union of the labeled boxes in the current frame to show the activity ocurring in this scene at a glance
            Montage increases rowwise for n uniformly spaced frames, starting from frame zero and ending on the last frame.  This quicklook is most useful when len(self.activities()==1)
            for generating a quicklook from an activityclip().
         
            Args:
                n: [int]:  Number of images in the quicklook
-               dilate: [float]:  The dilation factor for the bounding box prior to crop for display
                mindim: [int]:  The minimum dimension of each of the elemenets in the montage
                fontsize: [int]:  The size of the font for the bounding box label
-               context: [bool]:  If true, replace the first and last frame in the montage with the full frame annotation, to help show the scale of the scene
                animate: [bool]:  If true, return a video constructed by animating the quicklook into a video by showing dt consecutive frames
                dt: [int]:  The number of frames for animation
                startframe: [int]:  The initial frame index to start the n uniformly sampled frames for the quicklook
-               thumbnail [`vipy.image.Image`]: If provided, prepend the first element in the montage with this thumbnail.  This is useful for showing a high resolution image (e.g. a face, small object) to be contained in the video for review.
                aspectratio [float]: the ratio of gridcols/gridrows in vipy.visualize.montage
         """
         if not self.isloaded():
             self.load()  # triggers load() into memory, user should self.flush() to free
         if animate:
-            return Video(frames=[self.quicklook(n=n, dilate=dilate, mindim=mindim, fontsize=fontsize, context=context, startframe=k, animate=False, dt=dt, thumbnail=thumbnail, aspectratio=aspectratio) for k in range(0, min(dt, len(self)))], framerate=self.framerate())
+            return Video(frames=[self.quicklook(n=n, mindim=mindim, fontsize=fontsize, startframe=k, animate=False, dt=dt, aspectratio=aspectratio) for k in range(0, min(dt, len(self)))], framerate=self.framerate())
 
         f_mutator = mutator
         framelist = [min(int(np.round(f))+startframe, len(self)-1) for f in np.linspace(0, len(self)-1, n)]
-        isdegenerate = [self.frame(k).boundingbox() is None or self.frame(k).boundingbox().dilate(dilate).intersection(self.framebox(), strict=False).isdegenerate() for (j,k) in enumerate(framelist)]
-        imframes = [self.frame(k).maxmatte()  # letterbox or pillarbox
-                    if (isdegenerate[j] or (context is True and (j == 0 or j == (n-1)))) else
-                    self.frame(k).padcrop(self.frame(k).boundingbox().dilate(dilate).imclipshape(self.width(), self.height()).maxsquare().even()).mindim(mindim, interp='nearest')
-                    for (j,k) in enumerate(framelist)]
+        imframes = [self.frame(k).mindim(mindim) for (j,k) in enumerate(framelist)]
         imframes = [f_mutator(im) for im in imframes]  # show jointlabel from frame interpolation
         imframes = [im.savefig(fontsize=fontsize, figure=1).rgb() for im in imframes]  # temp storage in memory
-        if thumbnail is not None:
-            assert isinstance(thumbnail, vipy.image.Image)
-            imframes = [thumbnail.maxmatte().mindim(mindim)] + imframes
-        return vipy.visualize.montage(imframes, imgwidth=mindim, imgheight=mindim, aspectratio=aspectratio)
+        return vipy.visualize.montage(imframes, imgwidth=imframes[0].width(), imgheight=imframes[0].height(), aspectratio=aspectratio)
     
     def tracks(self, tracks=None, id=None):
         """Return mutable dictionary of tracks,
