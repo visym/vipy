@@ -206,27 +206,40 @@ def boundingbox(img, xmin, ymin, xmax, ymax, bboxcaption=None, fignum=None, bbox
 
         captionoffset = captionoffset if ymin > 20 else (captionoffset[0], captionoffset[1]+(20*(1)))  # move down a bit if near top of image, shift once per newline in caption
 
-        # Glue the caption to small boxes.  The default captionoffset of
-        # (3, -18) places the caption 18 px ABOVE the box top -- fine for
-        # large boxes that fill most of the image, but visually detached
-        # when the box itself is only 20 px tall (the gap dominates the
-        # box).  Clamp the y-offset so that for boxes shorter than
-        # ``small_box_threshold`` the caption sits flush with the top edge
-        # of the box (or hangs from inside it when ``-captionoffset[1] < 0``);
-        # the caption stays anchored to the box regardless of size.  Tall
-        # boxes are unchanged so existing layouts don't shift.  Threshold
-        # picked empirically -- captions are ~14 px tall at fontsize=10, so
-        # a 30 px box is the largest box for which an 18 px above-box gap
-        # appears disproportionate.
-        box_height = ymax - ymin
-        small_box_threshold = 30
-        if box_height < small_box_threshold and captionoffset[1] < 0:
-            captionoffset = (captionoffset[0], 0)  # place caption top at box top
-
-        # MatplotlibDeprecationWarning: The 's' parameter of annotate() has been renamed 'text' since Matplotlib 3.3   
+        # Label rests on top of the box, with the VISIBLE bbox bottom edge
+        # flush against the box's top edge.  Implementation:
+        #   - ``xy`` is the top-left corner of the box in axes-fraction
+        #     coordinates (``ymax_frac`` is the matplotlib axes-fraction
+        #     position of the box's TOP edge -- the naming is confusing
+        #     because matplotlib's y-axis is inverted relative to image
+        #     coordinates).
+        #   - ``verticalalignment='bottom'`` puts the bottom of the TEXT
+        #     (not the bbox) at ``xy + xytext``; matplotlib then draws the
+        #     bbox with padding around the text on all sides, which means
+        #     the rendered bbox extends BELOW the anchor by
+        #     ``pad * fontsize`` points -- and the visible bbox bottom
+        #     edge would sit INSIDE the box, overlapping it, by exactly
+        #     that padding amount.
+        #   - To compensate, we lift the annotation by the bbox's bottom
+        #     padding so the visible bbox bottom lands exactly at the box
+        #     top edge.  ``boxstyle='square'`` uses ``pad=0.3`` in
+        #     mutation units (= fontsize), giving ``0.3*fontsize`` points
+        #     of bottom padding.  Convert points to display pixels via the
+        #     figure's DPI (matplotlib default 100; image.savefig uses 200).
+        #
+        # The y-component of ``captionoffset`` is deliberately ignored.
+        # Pre-2026-06 the default ``(3, -18)`` placed the label top 18 px
+        # above the box top (with ``verticalalignment='top'``), which left
+        # a visible gap between the label's bottom and the box top -- and
+        # the gap looked disproportionately large when the box itself was
+        # small.  Callers that want a gap above the box can add one in
+        # post via the saved figure; clients wanting the label INSIDE the
+        # box should use a different rendering primitive.
+        _bbox_pad = 0.3  # boxstyle='square' default; in mutation units (= fontsize)
+        _bbox_bottom_padding_pixels = (_bbox_pad * fontsize) * (plt.figure(fignum).dpi / 72.0)
         plt.annotate(**{'text' if matplotlib_version_at_least_3p3 else 's': bboxcaption},
                      xy=(xmin_frac, ymax_frac),
-                     xytext=(captionoffset[0], -captionoffset[1]),
+                     xytext=(captionoffset[0], _bbox_bottom_padding_pixels),
                      textcoords='offset pixels',
                      xycoords='axes fraction',
                      color=textcolor,
@@ -235,10 +248,10 @@ def boundingbox(img, xmin, ymin, xmax, ymax, bboxcaption=None, fignum=None, bbox
                          facecolor=textfacecolor,
                          edgecolor=textcolor,
                          alpha=textfacealpha,
-                         boxstyle='square',
+                         boxstyle='square',  # default padding (~0.3 em) keeps the text from kissing the bbox edges; the lift above compensates so the visible bbox bottom lands exactly on the box top edge
                      ),
                      horizontalalignment='left',
-                     verticalalignment='top',
+                     verticalalignment='bottom',
                      clip_on=True
                      )
 
