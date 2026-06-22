@@ -206,6 +206,23 @@ def boundingbox(img, xmin, ymin, xmax, ymax, bboxcaption=None, fignum=None, bbox
 
         captionoffset = captionoffset if ymin > 20 else (captionoffset[0], captionoffset[1]+(20*(1)))  # move down a bit if near top of image, shift once per newline in caption
 
+        # Glue the caption to small boxes.  The default captionoffset of
+        # (3, -18) places the caption 18 px ABOVE the box top -- fine for
+        # large boxes that fill most of the image, but visually detached
+        # when the box itself is only 20 px tall (the gap dominates the
+        # box).  Clamp the y-offset so that for boxes shorter than
+        # ``small_box_threshold`` the caption sits flush with the top edge
+        # of the box (or hangs from inside it when ``-captionoffset[1] < 0``);
+        # the caption stays anchored to the box regardless of size.  Tall
+        # boxes are unchanged so existing layouts don't shift.  Threshold
+        # picked empirically -- captions are ~14 px tall at fontsize=10, so
+        # a 30 px box is the largest box for which an 18 px above-box gap
+        # appears disproportionate.
+        box_height = ymax - ymin
+        small_box_threshold = 30
+        if box_height < small_box_threshold and captionoffset[1] < 0:
+            captionoffset = (captionoffset[0], 0)  # place caption top at box top
+
         # MatplotlibDeprecationWarning: The 's' parameter of annotate() has been renamed 'text' since Matplotlib 3.3   
         plt.annotate(**{'text' if matplotlib_version_at_least_3p3 else 's': bboxcaption},
                      xy=(xmin_frac, ymax_frac),
