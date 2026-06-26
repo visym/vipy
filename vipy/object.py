@@ -122,7 +122,8 @@ class Detection(BoundingBox, Object):
         return self.json(encode=True)
 
     def json(self, encode=True):
-        d = {k.lstrip('_'):getattr(self, k) for k in Detection.__slots__ if getattr(self, k) is not None}  # prettyjson (remove "_" prefix to attributes)  
+        d = {k.lstrip('_'):getattr(self, k) for k in Detection.__slots__ if getattr(self, k) is not None}  # prettyjson (remove "_" prefix to attributes)
+        if d.get('attributes') == {}: d.pop('attributes')  # drop empty attributes -- noise after clear_attributes(deep=True); from_json defaults to {} when missing
         return json.dumps(d) if encode else d
     
     @classmethod
@@ -254,7 +255,8 @@ class Keypoint2d(Point2d, Object):
                    id=d['id'] if 'id' in d else True)
     
     def json(self, encode=True):
-        d = {k.lstrip('_'):getattr(self, k) for k in Keypoint2d.__slots__ if getattr(self, k) is not None}  # prettyjson (remove "_" prefix to attributes)  
+        d = {k.lstrip('_'):getattr(self, k) for k in Keypoint2d.__slots__ if getattr(self, k) is not None}  # prettyjson (remove "_" prefix to attributes)
+        if d.get('attributes') == {}: d.pop('attributes')  # drop empty attributes -- noise after clear_attributes(deep=True); from_json defaults to {} when missing
         return json.dumps(d) if encode else d
                 
     
@@ -346,8 +348,9 @@ class Track():
         return self.json(encode=True)
     
     def json(self, encode=True):
-        d = {k:getattr(self, k) if k != '_keyboxes' else tuple([bb.json(encode=False) for bb in getattr(self, k)]) for k in Track.__slots__}        
-        d = {k.lstrip('_'):v for (k,v) in d.items() if v is not None}  # prettyjson (remove "_" prefix to attributes)                
+        d = {k:getattr(self, k) if k != '_keyboxes' else tuple([bb.json(encode=False) for bb in getattr(self, k)]) for k in Track.__slots__}
+        d = {k.lstrip('_'):v for (k,v) in d.items() if v is not None}  # prettyjson (remove "_" prefix to attributes)
+        if d.get('attributes') == {}: d.pop('attributes')  # drop empty attributes -- noise after clear_attributes(deep=True); from_json defaults to {} when missing
         d['keyframes'] = tuple([int(f) for f in self._keyframes])
         return json.dumps(d) if encode else d
 

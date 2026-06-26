@@ -115,7 +115,8 @@ class Activity(object):
         return self.json(encode=True)
     
     def json(self, encode=True):
-        d = {k.lstrip('_'):getattr(self, k) for k in Activity.__slots__ if getattr(self, k) is not None}  # prettyjson (remove "_" prefix to attributes)          
+        d = {k.lstrip('_'):getattr(self, k) for k in Activity.__slots__ if getattr(self, k) is not None}  # prettyjson (remove "_" prefix to attributes)
+        if d.get('attributes') == {}: d.pop('attributes')  # drop empty attributes -- noise after clear_attributes(deep=True); from_json defaults to {} when missing
         d = {k:v if k != 'trackid' else tuple(v) for (k,v) in d.items()}  # sets are non-serializable
         return json.dumps(d) if encode else d
     

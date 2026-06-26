@@ -671,15 +671,17 @@ class Video():
         """
         return self.attributes if k is None else self.attributes[k]
 
-    def sanitize(self):
+    def sanitize(self, deep=False):
         """Remove all private keys from the attributes dictionary.
-        
+
         The attributes dictionary is useful storage for arbitrary (key,value) pairs.  However, this storage may contain sensitive information that should be scrubbed from the video before serialization.  As a general rule, any key that is of the form '__keyname' prepended by two underscores is a private key.  This is analogous to private or reserved attributes in the python lanugage.  Users should reserve these keynames for those keys that should be sanitized and removed before any seerialization of this object.
-        
+
         ```python
         assert self.setattribute('__mykey', 1).sanitize().hasattribute('__mykey') == False
         ```
 
+        Args:
+            deep [bool]: when True, also scrub private keys from nested track and activity attributes (and per-keybox attributes).  Implemented by `vipy.video.Scene.sanitize`; a no-op at the `Video` level since `Video` has no tracks or activities.  Use this before serializing a `Scene` to JSON when downstream consumers should not see vipy-internal keys such as `__trackid`.
         """
         if self._has_private_attribute():
             self.attributes = {k:v for (k,v) in self.attributes.items() if not k.startswith('__')}
@@ -2733,8 +2735,18 @@ class Video():
         self.attributes = {}
         return self
 
-    def clear_attributes(self):
-        """Remove all attributes"""
+    def clear_attributes(self, deep=False):
+        """Remove all attributes.
+
+        Args:
+            deep [bool]: when True, also clear attributes from nested tracks
+                (and per-keybox attributes) and activities.  Implemented by
+                `vipy.video.Scene.clear_attributes`; a no-op at the `Video`
+                level since `Video` has no tracks or activities.  Use this
+                before serializing a `Scene` to JSON when you want a maximally
+                stripped output (e.g. ``tags`` baked onto keyboxes during
+                annotation that downstream consumers do not need).
+        """
         self.attributes = {}
         return self
     
@@ -3542,6 +3554,67 @@ class Scene(Video):
         self.tracks([t for t in other.tracklist() if frame is None or t.during(frame)])
         return self
     
+    def clear_attributes(self, deep=False):
+        """Remove all attributes from this scene.
+
+        With ``deep=True`` the wipe also descends into every track (including
+        per-keybox attributes) and every activity.  This is the recommended
+        pre-serialization step when downstream consumers should see nothing
+        beyond the structural fields (keyframes, keyboxes, categories) --
+        annotation-time ``tags``, ``confidences``, vendor metadata, etc. are
+        all cleared.
+
+        Default behavior (``deep=False``) matches ``vipy.video.Video.clear_attributes``:
+        only the scene's own ``self.attributes`` dict is cleared, tracks and
+        activities are left untouched.
+
+        Args:
+            deep [bool]: when True, also clear ``attributes`` on each track,
+                on each of its keyboxes, and on each activity.
+
+        Returns:
+            self (chainable).
+        """
+        if deep:
+            for t in self.tracks().values():
+                t.attributes = {}
+                for bb in t.keyboxes():
+                    bb.attributes = {}
+            for a in self.activities().values():
+                a.attributes = {}
+        return super().clear_attributes(deep=deep)
+
+    def sanitize(self, deep=False):
+        """Remove all private (``__``-prefixed) keys from this scene's attributes.
+
+        With ``deep=True`` the scrub also descends into every track (including
+        per-keybox attributes) and every activity.  This is the recommended
+        pre-serialization step when downstream consumers should not see
+        vipy-internal cross-reference keys such as ``__trackid`` (which
+        ``vipy.object.Track.linear_interpolation`` stamps onto each keybox for
+        detection-to-track correspondence).
+
+        Default behavior (``deep=False``) matches ``vipy.video.Video.sanitize``:
+        only the scene's own ``self.attributes`` dict is scrubbed, tracks and
+        activities are left untouched.
+
+        Args:
+            deep [bool]: when True, also scrub ``__*`` keys from each track's
+                ``attributes`` and each of its keyboxes' ``attributes``, and
+                from each activity's ``attributes``.
+
+        Returns:
+            self (chainable).
+        """
+        if deep:
+            for t in self.tracks().values():
+                t.attributes = {k:v for (k,v) in t.attributes.items() if not k.startswith('__')}
+                for bb in t.keyboxes():
+                    bb.attributes = {k:v for (k,v) in bb.attributes.items() if not k.startswith('__')}
+            for a in self.activities().values():
+                a.attributes = {k:v for (k,v) in a.attributes.items() if not k.startswith('__')}
+        return super().sanitize(deep=deep)
+
     def json(self, encode=True):
         """Return JSON encoded string of this object.  This may fail if attributes contain non-json encodeable object. Try self.sanitize() or self.clone(sanitize=True) first"""
         d = json.loads(super().json())

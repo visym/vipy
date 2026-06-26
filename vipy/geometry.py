@@ -208,7 +208,8 @@ class BoundingBox():
         return self.json(encode=True)
     
     def json(self, encode=True):
-        d = {k.lstrip('_'):getattr(self, k) for k in BoundingBox.__slots__}  # prettyjson (remove "_" prefix to attributes)        
+        d = {k.lstrip('_'):getattr(self, k) for k in BoundingBox.__slots__}  # prettyjson (remove "_" prefix to attributes)
+        if d.get('attributes') == {}: d.pop('attributes')  # drop empty attributes -- noise after clear_attributes(deep=True); from_json defaults to {} when missing
         return json.dumps(d) if encode else d
 
     def clone(self):
