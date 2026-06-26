@@ -340,7 +340,7 @@ class Track():
                    framerate=d['framerate'] if 'framerate' in d and d['framerate'] is not None else 30,  # legacy support (pip_175k)
                    interpolation=d['interpolation'] if 'interpolation' in d else 'linear',
                    boundary=d['boundary'],
-                   attributes=d['attributes'],
+                   attributes=d['attributes'] if 'attributes' in d else None,
                    id=d['id'] if 'id' in d else None)
 
     def __json__(self):

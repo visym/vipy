@@ -617,7 +617,7 @@ class Video():
                 framerate=d['framerate'],
                 array=np.array(d['array']) if d['array'] is not None else None,
                 colorspace=d['colorspace'],
-                attributes=d['attributes'],
+                attributes=d['attributes'] if 'attributes' in d else None,
                 startframe=d['startframe'],
                 endframe=d['endframe'],
                 startsec=d['startsec'] if 'startsec' in d else None,
