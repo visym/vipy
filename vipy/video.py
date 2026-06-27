@@ -3674,7 +3674,7 @@ class Scene(Video):
                 self._start = self._start * (fps/self._framerate)  # __repr__ only
             if self._end is not None and isinstance(self._end, int):
                 self._end = int(np.round(self._end * (fps/self._framerate))) # __repr__only
-            elif self._end is not None and isinstnace(self._end, float):
+            elif self._end is not None and isinstance(self._end, float):
                 self._end = self._end * (fps/self._framerate)  # __repr__ only
 
             self._ffmpeg = self._ffmpeg.filter('fps', fps=float(fps), round='near' if self._framerate is None else 'up')  # create new fps filter                
