@@ -2,6 +2,7 @@ import vipy
 import numpy as np
 from io import BytesIO
 import PIL
+import PIL.ImageOps    # submodule is NOT auto-imported by 'import PIL'; posterize/solarize need it
 import random
 import math
 
@@ -437,12 +438,9 @@ class Noise():
         assert im.array().dtype == np.uint8 or (im.colorspace() == 'float' and im.channels() in (1, 3)), \
             "noise transforms require uint8 input or float input with 1 or 3 channels, got dtype=%s colorspace=%s channels=%d" % (im.array().dtype, im.colorspace(), im.channels())
 
-        imt = im.clone()
+        imt = self._dispatch(im.clone().load(), transform)
         if self._provenance:
-            imt = vipy.image.Scene.cast(imt).append_object(vipy.object.Detection.cast(imt.imagebox()).new_category('provenance'))
-        imt = self._dispatch(imt.load(), transform)
-        if self._provenance:
-            imt.setattribute('vipy.noise', {'transform': transform, 'bbox': imt.last_object()})  # bounding box of original image in this geometrically perturbed image
+            imt.setattribute('vipy.noise', transform)  # record only the noise source; do not cast to Scene or append a bounding box, so the image type / label is preserved
         return imt
 
     def montage(self, im, num_transforms=None):

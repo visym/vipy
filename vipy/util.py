@@ -1204,11 +1204,21 @@ def readtxt(infile):
 def writecsv(list_of_tuples, outfile=None, mode='w', separator=',', header=None, comment='# '):
     """Write list of tuples to an output csv file with each list element on a row and tuple elements separated by commas.
 
+    Cell values that contain the separator, a double quote, or a newline are
+    quoted per RFC 4180: the whole cell is wrapped in double quotes and any
+    embedded double quotes are doubled.  This is what standard CSV parsers
+    (Excel, pandas, csv.reader, DuckDB, ...) expect.  Without it, values like
+    Apple's ``iPhone17,1`` device identifier corrupt the row -- the literal
+    comma inside the value gets read as a column separator.
+
     Examples:
     ```python
     vipy.util.writecsv([(1,2,3), (4,5,6)], '/tmp/out.csv')
     vipy.util.writecsv([(1,2,3), (4,5,6)], '/tmp/out.csv', separator=';'))
     vipy.util.writecsv([(1,2,3), (4,5,6)], '/tmp/out.csv', header=('h1','h2','h3'))
+    vipy.util.writecsv([('iPhone17,1', 29)], '/tmp/out.csv', header=('Device','Count'), comment='')
+    # -> Device,Count
+    #    "iPhone17,1",29
     ```
 
     Args:
@@ -1217,12 +1227,23 @@ def writecsv(list_of_tuples, outfile=None, mode='w', separator=',', header=None,
         mode: 'w' for overwrite, 'a' for append
         separator: a string specifying the separator between columns.  defaults to ','
         header: a tuple containing strings to be appended to the first row of the csv file
-        comment:  the comment symbol to be prepended to the header row 
+        comment:  the comment symbol to be prepended to the header row
 
     Returns:
         the outfile path
     """
-    
+
+    def _quote(v, sep):
+        # RFC 4180: wrap in double quotes if the cell contains the separator,
+        # a double quote, or a newline; escape any internal double quotes by
+        # doubling them.  Non-string cells pass through str() first.  Pure
+        # numeric / short-string cells emit unchanged so the common case
+        # produces the same output the pre-quoting writer used to.
+        s = str(v)
+        if sep in s or '"' in s or '\n' in s or '\r' in s:
+            return '"' + s.replace('"', '""') + '"'
+        return s
+
     list_of_tuples = list_of_tuples if not isnumpy(list_of_tuples) else list_of_tuples.tolist()
     list_of_tuples = list_of_tuples if header is None else [tuple([h if k>0 else comment+h for (k,h) in enumerate(header)])]+list_of_tuples  # prepend header with comment symbol
     outfile = os.path.abspath(os.path.expanduser(outfile)) if outfile is not None else tempcsv()
@@ -1231,9 +1252,9 @@ def writecsv(list_of_tuples, outfile=None, mode='w', separator=',', header=None,
             n = len(u)
             for (k, v) in enumerate(u):
                 if (k + 1) < n:
-                    f.write(str(v) + separator)
+                    f.write(_quote(v, separator) + separator)
                 else:
-                    f.write(str(v) + '\n')
+                    f.write(_quote(v, separator) + '\n')
     return(outfile)
 
 
